@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --app-bg: #050505;
+  --app-panel: rgba(10, 10, 12, 0.86);
+  --app-panel-2: rgba(14, 14, 18, 0.92);
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.14);
+  --app-text-soft: rgba(255, 255, 255, 0.72);
+  --app-glow-violet: rgba(120, 119, 255, 0.14);
+  --app-glow-pink: rgba(236, 72, 153, 0.1);
+  --app-glow-cyan: rgba(34, 211, 238, 0.08);
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(120, 119, 255, 0.11), transparent 24%),
+    radial-gradient(circle at 84% 16%, rgba(236, 72, 153, 0.08), transparent 22%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 30%),
+    radial-gradient(circle at 72% 68%, rgba(34, 211, 238, 0.05), transparent 24%),
+    linear-gradient(180deg, #08080b 0%, #050505 100%);
+  color: #ffffff;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(120, 119, 255, 0.06), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.05), transparent 24%);
+  filter: blur(28px);
+  opacity: 0.75;
+}
+
+main {
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+}
+
+[data-scroll-root='app'] {
+  min-height: 100svh;
+  overflow-x: hidden;
+  touch-action: pan-y pinch-zoom;
+  position: relative;
+  z-index: 1;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  min-width: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+input,
+textarea,
+select {
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+img,
+video {
+  max-width: 100%;
+  display: block;
+}
+
+::selection {
+  background: rgba(120, 119, 255, 0.32);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(8, 8, 10, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, rgba(120, 119, 255, 0.34), rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  border: 2px solid rgba(8, 8, 10, 0.8);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(120, 119, 255, 0.52), rgba(236, 72, 153, 0.18));
+}
+
+/* Global fix for all light/white CTA buttons and pills */
+button.bg-white,
+a.bg-white,
+span.bg-white,
+div.bg-white,
+button.border-white.bg-white,
+a.border-white.bg-white,
+span.border-white.bg-white,
+div.border-white.bg-white,
+button[class*='bg-[linear-gradient(90deg,#ffffff_0%'],
+a[class*='bg-[linear-gradient(90deg,#ffffff_0%'],
+span[class*='bg-[linear-gradient(90deg,#ffffff_0%'],
+div[class*='bg-[linear-gradient(90deg,#ffffff_0%'] {
+  color: #050505 !important;
+}
+
+button.bg-white:hover,
+a.bg-white:hover,
+button.border-white.bg-white:hover,
+a.border-white.bg-white:hover,
+button[class*='bg-[linear-gradient(90deg,#ffffff_0%']:hover,
+a[class*='bg-[linear-gradient(90deg,#ffffff_0%']:hover {
+  color: #050505 !important;
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 767px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  body::before {
+    background-size: 84px 84px;
+    opacity: 0.1;
+  }
+}
