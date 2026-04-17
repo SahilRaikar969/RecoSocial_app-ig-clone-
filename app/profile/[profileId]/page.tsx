@@ -197,6 +197,7 @@ export default async function PublicProfilePage({
         followedByMe={profile.followed_by_me}
         returnTo={buildReturnTo(viewedProfileId, activeTab)}
         categoryHighlights={categoryHighlights}
+        canMessage={profile.can_message}
       />
 
       <ProfileSurfaceTabs tabs={tabs} />

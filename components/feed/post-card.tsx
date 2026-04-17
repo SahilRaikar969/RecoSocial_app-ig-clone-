@@ -141,8 +141,8 @@ export async function PostCard({
 
   return (
     <AnimatedShellCard>
-      <article className="group relative overflow-hidden rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(14,14,18,0.96),rgba(5,5,7,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_20px_60px_rgba(0,0,0,0.34)] transition duration-300 hover:-translate-y-0.5 hover:border-zinc-700/90 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_28px_90px_rgba(0,0,0,0.42)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.12),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.07),transparent_24%)] opacity-80" />
+      <article className="group relative overflow-hidden rounded-[28px] md:rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(14,14,18,0.96),rgba(5,5,7,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_34px_rgba(0,0,0,0.22)] transition duration-300 md:hover:-translate-y-0.5 md:hover:border-zinc-700/90 md:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_70px_rgba(0,0,0,0.38)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.06),transparent_24%)] opacity-80" />
 
         <div className="relative flex items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-4 sm:px-5">
           <Link
@@ -153,10 +153,10 @@ export async function PostCard({
               <img
                 src={authorAvatarUrl}
                 alt={authorDisplayName}
-                className="h-11 w-11 rounded-full border border-zinc-700 object-cover ring-2 ring-white/5"
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-zinc-700 object-cover ring-2 ring-white/5"
               />
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
                 User
               </div>
             )}
@@ -223,31 +223,27 @@ export async function PostCard({
             initialSaveCount={post.save_count ?? 0}
             commentCount={resolvedCommentCount}
             commentsHref={`/post/${post.id}`}
-            commentsLabel={
-              resolvedCommentCount > 0
-                ? `View ${resolvedCommentCount} comment${resolvedCommentCount === 1 ? '' : 's'}`
-                : 'Start the conversation'
-            }
+            commentsLabel=""
             secondaryHref={openHref}
             secondaryAriaLabel={post.media_type === 'video' ? 'Watch reel' : 'Open post'}
           />
 
+          {post.caption ? (
+            <div className="mt-3 rounded-[22px] border border-zinc-800 bg-zinc-950/65 px-4 py-3">
+              <p className="text-[14px] sm:text-[15px] leading-7 text-zinc-200">
+                <Link
+                  href={authorProfileHref}
+                  className="mr-2 font-semibold text-white transition hover:text-zinc-300"
+                >
+                  {authorUsername}
+                </Link>
+                {post.caption}
+              </p>
+            </div>
+          ) : null}
+
           <PostDetailDisclosure defaultOpen={showAllComments}>
             <div className="space-y-4">
-              {post.caption ? (
-                <div className="rounded-[24px] border border-zinc-800 bg-zinc-950/70 px-4 py-4">
-                  <p className="text-[15px] leading-7 text-zinc-200">
-                    <Link
-                      href={authorProfileHref}
-                      className="mr-2 font-semibold text-white transition hover:text-zinc-300"
-                    >
-                      {authorUsername}
-                    </Link>
-                    {post.caption}
-                  </p>
-                </div>
-              ) : null}
-
               {categories.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {categories.map((category) => (

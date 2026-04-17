@@ -43,9 +43,20 @@ export function PostMedia({
   const [isActuallyPlaying, setIsActuallyPlaying] = useState(false)
   const [hasMediaError, setHasMediaError] = useState(false)
   const [isVideoLoaded, setIsVideoLoaded] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
 
   const isVideo = mediaType === 'video'
   const feedLikeMode = useMemo(() => isFeedLikePath(pathname), [pathname])
+
+  useEffect(() => {
+    function updateViewportMode() {
+      setIsMobileViewport(window.innerWidth < 768)
+    }
+
+    updateViewportMode()
+    window.addEventListener('resize', updateViewportMode)
+    return () => window.removeEventListener('resize', updateViewportMode)
+  }, [])
 
   useEffect(() => {
     setHasMediaError(false)
@@ -79,10 +90,10 @@ export function PostMedia({
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0]
-        setIsInViewport(entry.isIntersecting && entry.intersectionRatio >= 0.6)
+        setIsInViewport(entry.isIntersecting && entry.intersectionRatio >= 0.7)
       },
       {
-        threshold: [0.2, 0.4, 0.6, 0.8],
+        threshold: [0.3, 0.5, 0.7, 0.9],
       }
     )
 
@@ -101,6 +112,12 @@ export function PostMedia({
       return
     }
 
+    if (isMobileViewport) {
+      video.pause()
+      setIsActuallyPlaying(false)
+      return
+    }
+
     if (isInViewport && !isPausedByUser) {
       const playPromise = video.play()
       if (playPromise && typeof playPromise.then === 'function') {
@@ -112,7 +129,7 @@ export function PostMedia({
       video.pause()
       setIsActuallyPlaying(false)
     }
-  }, [feedLikeMode, hasMediaError, isInViewport, isPausedByUser, isVideo])
+  }, [feedLikeMode, hasMediaError, isInViewport, isPausedByUser, isVideo, isMobileViewport])
 
   useEffect(() => {
     const video = videoRef.current
@@ -146,9 +163,7 @@ export function PostMedia({
         ref={containerRef}
         className="relative flex aspect-[4/5] items-center justify-center bg-zinc-950 text-sm text-zinc-500"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,119,255,0.08),transparent_35%)]" />
-
-        <div className="relative rounded-full border border-zinc-800 bg-black/80 px-4 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+        <div className="rounded-full border border-zinc-800 bg-black px-4 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
           Media unavailable
         </div>
       </div>
@@ -160,19 +175,15 @@ export function PostMedia({
       ref={containerRef}
       className="group relative overflow-hidden border-y border-zinc-900 bg-zinc-950"
     >
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(120,119,255,0.08),transparent_26%)]" />
-
       {priorityLabel ? (
-        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
+        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
           {priorityLabel}
         </div>
       ) : null}
 
       {isVideo ? (
         <>
-          {!isVideoLoaded ? (
-            <MediaSkeleton className="aspect-[4/5] w-full" />
-          ) : null}
+          {!isVideoLoaded ? <MediaSkeleton className="aspect-[4/5] w-full" /> : null}
 
           <button
             type="button"
@@ -188,7 +199,7 @@ export function PostMedia({
               loop
               muted
               preload="metadata"
-              className={`aspect-[4/5] w-full bg-black object-cover transition duration-500 ${
+              className={`aspect-[4/5] w-full bg-black object-cover transition duration-300 ${
                 isVideoLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
               }`}
               onLoadedData={() => setIsVideoLoaded(true)}
@@ -202,38 +213,32 @@ export function PostMedia({
             />
           </button>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/10 to-transparent px-4 pb-4 pt-20">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/88 via-black/12 to-transparent px-4 pb-4 pt-16">
             <div className="flex items-end justify-between gap-3">
-              <div className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
-                {feedLikeMode
-                  ? isActuallyPlaying
-                    ? 'Playing'
-                    : isPausedByUser
-                      ? 'Paused'
-                      : 'Ready'
-                  : 'Video'}
+              <div className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+                {isMobileViewport
+                  ? 'Tap to play'
+                  : feedLikeMode
+                    ? isActuallyPlaying
+                      ? 'Playing'
+                      : isPausedByUser
+                        ? 'Paused'
+                        : 'Ready'
+                    : 'Video'}
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsMuted((current) => !current)}
-                  className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur transition hover:scale-[1.03] hover:bg-black/75"
+                  className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
                   aria-label={isMuted ? 'Unmute video' : 'Mute video'}
                 >
-                  {isMuted ? (
-                    <VolumeX className="h-4 w-4" />
-                  ) : (
-                    <Volume2 className="h-4 w-4" />
-                  )}
+                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </button>
 
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
-                  {isActuallyPlaying ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white">
+                  {isActuallyPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </div>
               </div>
             </div>
@@ -243,7 +248,7 @@ export function PostMedia({
         <SmartImage
           src={mediaUrl}
           alt={alt}
-          className="aspect-[4/5] w-full bg-black object-cover transition duration-500 group-hover:scale-[1.015]"
+          className="aspect-[4/5] w-full bg-black object-cover"
           fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-zinc-950 text-sm text-zinc-500"
           fallbackText="Media unavailable"
         />

@@ -1,6 +1,3 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 
 type AnimatedShellCardProps = {
@@ -13,14 +10,8 @@ export function AnimatedShellCard({
   className = '',
 }: AnimatedShellCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -2 }}
-      className={className}
-    >
+    <div className={`transition-transform duration-200 ease-out md:hover:-translate-y-0.5 ${className}`}>
       {children}
-    </motion.div>
+    </div>
   )
 }

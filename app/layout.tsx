@@ -9,12 +9,12 @@ export const metadata: Metadata = {
     template: '%s · RecoSocial',
   },
   description:
-    'RecoSocial is a modern social platform for discovering creators, posts, reels, and personalized recommendations.',
+    'RecoSocial is a modern social platform for discovering creators, posts, reels, stories, direct messages, and personalized recommendations.',
   applicationName: 'RecoSocial',
   openGraph: {
     title: 'RecoSocial',
     description:
-      'A premium dark social product for creators, posts, reels, and personalized discovery.',
+      'A premium dark social product for creators, posts, reels, lightweight stories, direct messages, and personalized discovery.',
     siteName: 'RecoSocial',
     type: 'website',
   },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'RecoSocial',
     description:
-      'A premium dark social product for creators, posts, reels, and personalized discovery.',
+      'A premium dark social product for creators, posts, reels, lightweight stories, direct messages, and personalized discovery.',
   },
 }
 

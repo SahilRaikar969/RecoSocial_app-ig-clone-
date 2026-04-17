@@ -45,7 +45,8 @@ export async function getProfilePageData(
     savedCountResult,
     followerCountResult,
     followingCountResult,
-    followRowResult,
+    followedByMeResult,
+    followsYouResult,
   ] = await Promise.all([
     supabase
       .from('profiles')
@@ -110,6 +111,15 @@ export async function getProfilePageData(
           .eq('follower_id', safeViewerId)
           .eq('following_id', safeProfileId)
           .maybeSingle(),
+
+    isOwnProfile
+      ? Promise.resolve({ data: null, error: null } as any)
+      : supabase
+          .from('follows')
+          .select('follower_id, following_id')
+          .eq('follower_id', safeProfileId)
+          .eq('following_id', safeViewerId)
+          .maybeSingle(),
   ])
 
   if (profileResult.error) throw new Error(profileResult.error.message)
@@ -117,10 +127,13 @@ export async function getProfilePageData(
   if (savedCountResult.error) throw new Error(savedCountResult.error.message)
   if (followerCountResult.error) throw new Error(followerCountResult.error.message)
   if (followingCountResult.error) throw new Error(followingCountResult.error.message)
-  if (followRowResult?.error) throw new Error(followRowResult.error.message)
+  if (followedByMeResult?.error) throw new Error(followedByMeResult.error.message)
+  if (followsYouResult?.error) throw new Error(followsYouResult.error.message)
 
   const profile = profileResult.data ?? buildFallbackProfile(safeProfileId)
-  const followedByMe = !isOwnProfile && !!followRowResult?.data
+  const followedByMe = !isOwnProfile && !!followedByMeResult?.data
+  const followsYou = !isOwnProfile && !!followsYouResult?.data
+  const canMessage = followedByMe && followsYou
 
   const rawPosts = (postsResult.data ?? []).map((post: any) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
@@ -159,7 +172,6 @@ export async function getProfilePageData(
   ].filter(Boolean)
 
   const uniqueProfileIds = [...new Set(profileIds)]
-
   let profileMap = new Map<string, any>()
 
   if (uniqueProfileIds.length > 0) {
@@ -170,9 +182,7 @@ export async function getProfilePageData(
 
     if (profilesError) throw new Error(profilesError.message)
 
-    profileMap = new Map(
-      (profilesData ?? []).map((row: any) => [row.id, row])
-    )
+    profileMap = new Map((profilesData ?? []).map((row: any) => [row.id, row]))
   }
 
   const resolvedProfile = profileMap.get(profile.id) ?? profile
@@ -199,6 +209,8 @@ export async function getProfilePageData(
       avatar_url: resolvedProfile.avatar_url || null,
       is_own_profile: isOwnProfile,
       followed_by_me: followedByMe,
+      follows_you: followsYou,
+      can_message: canMessage,
     },
     stats: {
       post_count: posts.length,

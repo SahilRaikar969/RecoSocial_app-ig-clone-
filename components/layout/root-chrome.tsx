@@ -18,8 +18,10 @@ export function RootChrome({ children }: RootChromeProps) {
     pathname.startsWith('/signup/')
 
   const isLandingRoute = pathname === '/'
+  const isReelRoute = pathname.startsWith('/reel/')
+  const isStoryViewerRoute = /^\/stories\/[^/]+$/.test(pathname)
 
-  if (isAuthRoute || isLandingRoute) {
+  if (isAuthRoute || isLandingRoute || isReelRoute || isStoryViewerRoute) {
     return <>{children}</>
   }
 
