@@ -20,8 +20,15 @@ export function RootChrome({ children }: RootChromeProps) {
   const isLandingRoute = pathname === '/'
   const isReelRoute = pathname.startsWith('/reel/')
   const isStoryViewerRoute = /^\/stories\/[^/]+$/.test(pathname)
+  const isCameraRoute = pathname.startsWith('/camera')
 
-  if (isAuthRoute || isLandingRoute || isReelRoute || isStoryViewerRoute) {
+  if (
+    isAuthRoute ||
+    isLandingRoute ||
+    isReelRoute ||
+    isStoryViewerRoute ||
+    isCameraRoute
+  ) {
     return <>{children}</>
   }
 

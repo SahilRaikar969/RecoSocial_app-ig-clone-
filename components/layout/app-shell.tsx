@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
   Bookmark,
+  Camera,
   Compass,
   Heart,
   Home,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { MobileNav } from '@/components/layout/mobile-nav'
+import { SwipeCameraGateway } from '@/components/camera/swipe-camera-gateway'
 
 type AppShellProps = {
   children: ReactNode
@@ -161,17 +163,17 @@ function DefaultRightPanel({ pathname }: { pathname: string }) {
 
           <div className="mt-5 grid gap-3">
             <Link
+              href={`/camera?returnTo=${encodeURIComponent(pathname)}`}
+              className="rounded-3xl border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+            >
+              Open camera
+            </Link>
+
+            <Link
               href="/messages"
               className="rounded-3xl border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
             >
               Open messages
-            </Link>
-
-            <Link
-              href="/create"
-              className="rounded-3xl border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
-            >
-              Publish a post
             </Link>
 
             <Link
@@ -185,9 +187,9 @@ function DefaultRightPanel({ pathname }: { pathname: string }) {
       </section>
 
       <section className="rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-        <h3 className="text-sm font-semibold text-white">Phase 1 + 2</h3>
+        <h3 className="text-sm font-semibold text-white">Camera batch</h3>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
-          Settings now live inside Profile, stories are created from the profile avatar entry, and app entry behavior routes signed-in users directly into the product.
+          Camera now supports capture, preview, retake, and direct publish as post or story. Feed and create surfaces also get swipe-right access on mobile.
         </p>
       </section>
     </div>
@@ -297,6 +299,8 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
 
   return (
     <div data-scroll-root="app" className="relative min-h-screen bg-transparent text-white">
+      <SwipeCameraGateway />
+
       <div className="pointer-events-none fixed inset-x-0 top-0 z-0 hidden md:block h-48 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_55%)]" />
       <div className="pointer-events-none fixed left-[8%] top-32 z-0 hidden md:block h-72 w-72 rounded-full bg-violet-500/6 blur-[110px]" />
       <div className="pointer-events-none fixed right-[10%] top-48 z-0 hidden md:block h-72 w-72 rounded-full bg-pink-500/5 blur-[120px]" />
@@ -356,6 +360,14 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
               className="rounded-full border border-zinc-800 bg-zinc-950/85 px-3 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:text-white md:hidden"
             >
               Search
+            </Link>
+
+            <Link
+              href={`/camera?returnTo=${encodeURIComponent(pathname)}`}
+              className="inline-flex rounded-full border border-zinc-800 bg-zinc-950/85 p-2 text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+              aria-label="Open camera"
+            >
+              <Camera className="h-5 w-5" />
             </Link>
 
             <div className="hidden items-center gap-2 md:flex">
