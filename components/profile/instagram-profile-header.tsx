@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Settings } from 'lucide-react'
+import { Plus, Settings } from 'lucide-react'
 import { CopyProfileLinkButton } from '@/components/profile/copy-profile-link-button'
 import { FollowButton } from '@/components/profile/follow-button'
 import { SmartImage } from '@/components/ui/smart-image'
@@ -85,13 +85,25 @@ export function InstagramProfileHeader({
 
         <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-4 sm:grid-cols-[120px_minmax(0,1fr)] md:grid-cols-[150px_minmax(0,1fr)] md:gap-x-10">
           <div className="flex items-start justify-center md:justify-start">
-            <SmartImage
-              src={avatarUrl}
-              alt={profile.display_name}
-              className="h-[88px] w-[88px] rounded-full border border-zinc-700 bg-zinc-950 object-cover ring-4 ring-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.28)] sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
-              fallbackClassName="flex h-[88px] w-[88px] items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-950 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
-              fallbackText="No avatar"
-            />
+            <div className="relative">
+              <SmartImage
+                src={avatarUrl}
+                alt={profile.display_name}
+                className="h-[88px] w-[88px] rounded-full border border-zinc-700 bg-zinc-950 object-cover ring-4 ring-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.28)] sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
+                fallbackClassName="flex h-[88px] w-[88px] items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-950 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
+                fallbackText="No avatar"
+              />
+
+              {isOwnProfile ? (
+                <Link
+                  href="/stories/create"
+                  className="absolute bottom-0 right-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white bg-[linear-gradient(180deg,#ffffff_0%,#ececff_100%)] text-black shadow-[0_10px_24px_rgba(255,255,255,0.18)] transition hover:-translate-y-0.5 hover:opacity-90 sm:h-10 sm:w-10"
+                  aria-label="Create story"
+                >
+                  <Plus className="h-4.5 w-4.5" />
+                </Link>
+              ) : null}
+            </div>
           </div>
 
           <div className="min-w-0 space-y-4">
@@ -165,13 +177,6 @@ export function InstagramProfileHeader({
                       className="rounded-xl border border-white bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:opacity-90"
                     >
                       Create post
-                    </Link>
-
-                    <Link
-                      href="/stories/create"
-                      className="rounded-xl border border-zinc-700 bg-zinc-950/85 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-900"
-                    >
-                      Add story
                     </Link>
                   </>
                 ) : (

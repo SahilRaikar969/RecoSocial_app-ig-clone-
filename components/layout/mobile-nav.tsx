@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Heart, Home, Mail, PlusSquare, Settings, User } from 'lucide-react'
+import { Compass, Heart, Home, Mail, PlusSquare, User } from 'lucide-react'
 
 const navItems = [
   { href: '/feed', label: 'Home', icon: Home },
@@ -69,14 +69,6 @@ export function MobileNav() {
           )
         })}
       </div>
-
-      <Link
-        href="/settings"
-        className="absolute right-3 top-[-48px] inline-flex h-11 w-11 items-center justify-center rounded-full border border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_8px_20px_rgba(120,119,255,0.14)]"
-        aria-label="Open settings"
-      >
-        <Settings className="h-4.5 w-4.5" />
-      </Link>
     </nav>
   )
 }

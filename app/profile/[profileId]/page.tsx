@@ -139,6 +139,8 @@ export default async function PublicProfilePage({
     resolvePostsWithMedia(likedPosts),
   ])
 
+  const isLockedPrivateProfile = profile.is_private && !profile.followed_by_me
+
   const currentPosts = activeTab === 'liked' ? resolvedLikedPosts : resolvedPosts
   const categoryHighlights = buildCategoryHighlights(resolvedPosts)
 
@@ -200,23 +202,35 @@ export default async function PublicProfilePage({
         canMessage={profile.can_message}
       />
 
-      <ProfileSurfaceTabs tabs={tabs} />
-
-      <div className="mt-1">
-        {currentPosts.length ? (
-          <ProfilePostGrid
-            posts={currentPosts}
-            emptyTitle={currentMeta.emptyTitle}
-            emptyBody={currentMeta.emptyBody}
-          />
-        ) : (
+      {isLockedPrivateProfile ? (
+        <div className="mt-4">
           <ProfileSurfaceEmpty
-            eyebrow="Profile"
-            title={currentMeta.emptyTitle}
-            body={currentMeta.emptyBody}
+            eyebrow="Private profile"
+            title="This account is private"
+            body="Follow this creator to view their posts and liked content."
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <ProfileSurfaceTabs tabs={tabs} />
+
+          <div className="mt-1">
+            {currentPosts.length ? (
+              <ProfilePostGrid
+                posts={currentPosts}
+                emptyTitle={currentMeta.emptyTitle}
+                emptyBody={currentMeta.emptyBody}
+              />
+            ) : (
+              <ProfileSurfaceEmpty
+                eyebrow="Profile"
+                title={currentMeta.emptyTitle}
+                body={currentMeta.emptyBody}
+              />
+            )}
+          </div>
+        </>
+      )}
     </main>
   )
 }

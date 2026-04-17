@@ -26,6 +26,8 @@ function buildFallbackProfile(profileId: string) {
     display_name: `Creator ${String(profileId || 'unknown').slice(0, 6)}`,
     bio: '',
     avatar_url: null,
+    is_private: false,
+    theme_preference: 'dark',
   }
 }
 
@@ -50,7 +52,7 @@ export async function getProfilePageData(
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, username, display_name, bio, avatar_url')
+      .select('id, username, display_name, bio, avatar_url, is_private, theme_preference')
       .eq('id', safeProfileId)
       .maybeSingle(),
 
@@ -211,6 +213,8 @@ export async function getProfilePageData(
       followed_by_me: followedByMe,
       follows_you: followsYou,
       can_message: canMessage,
+      is_private: Boolean(profile.is_private),
+      theme_preference: String(profile.theme_preference || 'dark'),
     },
     stats: {
       post_count: posts.length,

@@ -11,7 +11,6 @@ import {
   Mail,
   PlusSquare,
   Search,
-  Settings,
   Sparkles,
   User,
 } from 'lucide-react'
@@ -97,13 +96,6 @@ function getRouteContext(pathname: string) {
     }
   }
 
-  if (pathname.startsWith('/stories/create')) {
-    return {
-      label: 'Create story',
-      description: 'Upload a lightweight image or video story that expires after 6 hours.',
-    }
-  }
-
   if (pathname.startsWith('/post/')) {
     return {
       label: 'Post',
@@ -169,10 +161,10 @@ function DefaultRightPanel({ pathname }: { pathname: string }) {
 
           <div className="mt-5 grid gap-3">
             <Link
-              href="/stories/create"
+              href="/messages"
               className="rounded-3xl border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
             >
-              Publish a story
+              Open messages
             </Link>
 
             <Link
@@ -183,19 +175,19 @@ function DefaultRightPanel({ pathname }: { pathname: string }) {
             </Link>
 
             <Link
-              href="/settings"
+              href="/profile"
               className="rounded-3xl border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
             >
-              Open settings
+              Open profile
             </Link>
           </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-        <h3 className="text-sm font-semibold text-white">Phase 1 polish</h3>
+        <h3 className="text-sm font-semibold text-white">Phase 1 + 2</h3>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
-          Feed cards are tighter, captions are easier to scan, categories are broader, and settings now have a first-class entry point without disturbing the desktop layout.
+          Settings now live inside Profile, stories are created from the profile avatar entry, and app entry behavior routes signed-in users directly into the product.
         </p>
       </section>
     </div>
@@ -311,10 +303,7 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
 
       <header className="sticky top-0 z-40 border-b border-zinc-900/90 bg-black/88 backdrop-blur-md md:backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1520px] items-center gap-3 px-4 md:px-6">
-          <Link
-            href="/feed"
-            className="group inline-flex items-center gap-2"
-          >
+          <Link href="/feed" className="group inline-flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-violet-400/20 bg-[linear-gradient(180deg,rgba(120,119,255,0.22),rgba(236,72,153,0.18))] shadow-[0_0_24px_rgba(120,119,255,0.22)]">
               <Sparkles className="h-4.5 w-4.5 text-white" />
             </span>
@@ -382,17 +371,6 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
               </Link>
 
               <Link
-                href="/stories/create"
-                className={`rounded-full border px-3 py-2 text-sm font-medium transition ${
-                  pathname.startsWith('/stories/create')
-                    ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_10px_24px_rgba(120,119,255,0.12)]'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                }`}
-              >
-                Story
-              </Link>
-
-              <Link
                 href="/create"
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                   pathname.startsWith('/create')
@@ -401,18 +379,6 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
                 }`}
               >
                 Create
-              </Link>
-
-              <Link
-                href="/settings"
-                className={`inline-flex rounded-full border p-2 transition ${
-                  isActivePath(pathname, '/settings')
-                    ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_10px_24px_rgba(120,119,255,0.12)]'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-400 hover:border-zinc-700 hover:text-white'
-                }`}
-                aria-label="Open settings"
-              >
-                <Settings className="h-5 w-5" />
               </Link>
 
               <Link
@@ -463,30 +429,6 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
                 active={isActivePath(pathname, item.href)}
               />
             ))}
-
-            <Link
-              href="/settings"
-              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                pathname.startsWith('/settings')
-                  ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_12px_32px_rgba(120,119,255,0.12)]'
-                  : 'border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-950/90 hover:text-white'
-              }`}
-            >
-              <Settings className="h-5 w-5" />
-              <span>Settings</span>
-            </Link>
-
-            <Link
-              href="/stories/create"
-              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                pathname.startsWith('/stories/create')
-                  ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_12px_32px_rgba(120,119,255,0.12)]'
-                  : 'border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-950/90 hover:text-white'
-              }`}
-            >
-              <Sparkles className="h-5 w-5" />
-              <span>Story</span>
-            </Link>
 
             <Link
               href="/create"
