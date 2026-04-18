@@ -499,3 +499,101 @@ export async function updatePost(formData: FormData) {
 
   redirect(buildRedirectUrl(returnTo, { post_updated: '1' }))
 }
+
+export async function deletePost(formData: FormData) {
+  const supabase = await createClient()
+  const { profileId } = await getDevSession()
+
+  const postId = String(formData.get('post_id') || '').trim()
+  const returnTo = String(formData.get('return_to') || '/feed').trim()
+
+  if (!postId || !profileId) {
+    redirect(buildRedirectUrl(returnTo, { error: 'missing_post_delete_ids' }))
+  }
+
+  const { data: postRow, error: postLookupError } = await supabase
+    .from('posts')
+    .select('id, author_id')
+    .eq('id', postId)
+    .maybeSingle()
+
+  if (postLookupError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(postLookupError.message),
+      })
+    )
+  }
+
+  if (!postRow || postRow.author_id !== profileId) {
+    redirect(buildRedirectUrl(returnTo, { error: 'post_not_found' }))
+  }
+
+  const { error: deleteCommentsError } = await supabase
+    .from('comments')
+    .delete()
+    .eq('post_id', postId)
+
+  if (deleteCommentsError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(deleteCommentsError.message),
+      })
+    )
+  }
+
+  const { error: deleteLikesError } = await supabase
+    .from('likes')
+    .delete()
+    .eq('post_id', postId)
+
+  if (deleteLikesError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(deleteLikesError.message),
+      })
+    )
+  }
+
+  const { error: deleteSavesError } = await supabase
+    .from('saves')
+    .delete()
+    .eq('post_id', postId)
+
+  if (deleteSavesError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(deleteSavesError.message),
+      })
+    )
+  }
+
+  const { error: deleteCategoriesError } = await supabase
+    .from('post_categories')
+    .delete()
+    .eq('post_id', postId)
+
+  if (deleteCategoriesError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(deleteCategoriesError.message),
+      })
+    )
+  }
+
+  const { error: deletePostError } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+    .eq('author_id', profileId)
+
+  if (deletePostError) {
+    redirect(
+      buildRedirectUrl(returnTo, {
+        error: encodeURIComponent(deletePostError.message),
+      })
+    )
+  }
+
+  redirect('/feed?post_deleted=1')
+}
