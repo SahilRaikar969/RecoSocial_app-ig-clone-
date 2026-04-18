@@ -7,10 +7,12 @@ import {
   CameraOff,
   Check,
   ChevronsLeftRight,
+  ImagePlus,
+  Loader2,
   RotateCcw,
+  Upload,
   Video,
   Circle,
-  Loader2,
   X,
 } from 'lucide-react'
 
@@ -27,6 +29,75 @@ type CameraStudioProps = {
 
 type CaptureMode = 'photo' | 'video'
 type PublishTarget = 'post' | 'story'
+type InputSource = 'camera' | 'upload'
+
+const ACCEPTED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+])
+
+const ACCEPTED_VIDEO_TYPES = new Set([
+  'video/webm',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-m4v',
+  'video/3gpp',
+  'video/3gpp2',
+  'video/ogg',
+])
+
+const ACCEPTED_IMAGE_EXTENSIONS = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+])
+
+const ACCEPTED_VIDEO_EXTENSIONS = new Set([
+  'webm',
+  'mp4',
+  'mov',
+  'm4v',
+  '3gp',
+  '3g2',
+  'ogv',
+  'ogg',
+])
+
+function getFileExtension(name: string) {
+  return name.includes('.')
+    ? name.split('.').pop()?.toLowerCase() || 'bin'
+    : 'bin'
+}
+
+function hasAcceptedTypeOrExtension(
+  file: File,
+  mimeTypes: Set<string>,
+  extensions: Set<string>
+) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
+
+  if (type && mimeTypes.has(type)) {
+    return true
+  }
+
+  return extensions.has(extension)
+}
+
+function isHeicLikeFile(file: File) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
+
+  return (
+    type.includes('heic') ||
+    type.includes('heif') ||
+    extension === 'heic' ||
+    extension === 'heif'
+  )
+}
 
 export function CameraStudio({
   returnTo,
@@ -35,12 +106,14 @@ export function CameraStudio({
   const router = useRouter()
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
   const [mode, setMode] = useState<CaptureMode>('photo')
   const [target, setTarget] = useState<PublishTarget>('post')
+  const [source, setSource] = useState<InputSource>('camera')
   const [caption, setCaption] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
@@ -48,6 +121,7 @@ export function CameraStudio({
   const [cameraError, setCameraError] = useState('')
   const [recording, setRecording] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [cameraSupported, setCameraSupported] = useState(true)
 
   const [capturedFile, setCapturedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
@@ -58,16 +132,41 @@ export function CameraStudio({
   )
 
   useEffect(() => {
-    void startCamera()
+    const hasCameraApi =
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function'
+
+    setCameraSupported(hasCameraApi)
+
+    if (!hasCameraApi) {
+      setCameraError('This browser/device does not support in-app camera access. Use upload instead.')
+      setSource('upload')
+      return
+    }
+
+    if (source === 'camera') {
+      void startCamera()
+    }
 
     return () => {
       stopCamera()
+    }
+  }, [facingMode, source, mode])
+
+  useEffect(() => {
+    return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
-  }, [facingMode])
+  }, [previewUrl])
+
+  function revokePreview() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }
 
   function stopCamera() {
-    recorderRef.current?.stop()
     recorderRef.current = null
 
     if (streamRef.current) {
@@ -85,7 +184,7 @@ export function CameraStudio({
       setCameraError('')
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: mode === 'video',
         video: {
           facingMode,
           width: { ideal: 1080 },
@@ -102,6 +201,7 @@ export function CameraStudio({
 
       setCameraReady(true)
     } catch (error: any) {
+      setCameraReady(false)
       setCameraError(
         error?.message || 'Unable to access camera on this device/browser.'
       )
@@ -109,10 +209,7 @@ export function CameraStudio({
   }
 
   function clearCapture() {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
-
+    revokePreview()
     setCapturedFile(null)
     setPreviewUrl('')
     setPublishing(false)
@@ -129,6 +226,11 @@ export function CameraStudio({
     const context = canvas.getContext('2d')
     if (!context) return
 
+    if (facingMode === 'user') {
+      context.translate(canvas.width, 0)
+      context.scale(-1, 1)
+    }
+
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
     const blob = await new Promise<Blob | null>((resolve) =>
@@ -141,8 +243,7 @@ export function CameraStudio({
       type: 'image/jpeg',
     })
 
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-
+    revokePreview()
     setCapturedFile(file)
     setPreviewUrl(URL.createObjectURL(file))
   }
@@ -151,10 +252,11 @@ export function CameraStudio({
     const stream = streamRef.current
     if (!stream) return
 
-    const recorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm',
-    })
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : 'video/webm'
 
+    const recorder = new MediaRecorder(stream, { mimeType })
     chunksRef.current = []
 
     recorder.ondataavailable = (event) => {
@@ -169,8 +271,7 @@ export function CameraStudio({
         type: 'video/webm',
       })
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-
+      revokePreview()
       setCapturedFile(file)
       setPreviewUrl(URL.createObjectURL(file))
       setRecording(false)
@@ -185,11 +286,54 @@ export function CameraStudio({
     recorderRef.current?.stop()
   }
 
+  function isAcceptedUpload(file: File) {
+    if (mode === 'photo') {
+      return hasAcceptedTypeOrExtension(
+        file,
+        ACCEPTED_IMAGE_TYPES,
+        ACCEPTED_IMAGE_EXTENSIONS
+      )
+    }
+
+    return hasAcceptedTypeOrExtension(
+      file,
+      ACCEPTED_VIDEO_TYPES,
+      ACCEPTED_VIDEO_EXTENSIONS
+    )
+  }
+
+  function handleUploadSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (isHeicLikeFile(file)) {
+      setCameraError('HEIC and HEIF are not supported in this build yet. Use JPG, PNG, or WEBP.')
+      event.target.value = ''
+      return
+    }
+
+    if (!isAcceptedUpload(file)) {
+      setCameraError(
+        mode === 'photo'
+          ? 'Use JPG, JPEG, PNG, or WEBP for photo upload.'
+          : 'Use WEBM, MP4, MOV, M4V, OGG, 3GP, or 3G2 for video upload.'
+      )
+      event.target.value = ''
+      return
+    }
+
+    setCameraError('')
+    revokePreview()
+    setCapturedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
   async function handlePublish() {
     if (!capturedFile) return
 
     try {
       setPublishing(true)
+      setCameraError('')
 
       const formData = new FormData()
       formData.set('target', target)
@@ -210,7 +354,7 @@ export function CameraStudio({
         throw new Error(payload?.error || 'camera_publish_failed')
       }
 
-      router.push(payload.redirectUrl || returnTo)
+      router.push(payload.redirectTo || payload.redirectUrl || returnTo)
       router.refresh()
     } catch (error: any) {
       setPublishing(false)
@@ -220,7 +364,7 @@ export function CameraStudio({
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-4 md:px-6 md:py-6">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -231,7 +375,7 @@ export function CameraStudio({
           </button>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
-            Camera
+            Camera studio
           </div>
         </div>
 
@@ -241,17 +385,19 @@ export function CameraStudio({
           </div>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="overflow-hidden rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="overflow-hidden rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
             <div className="relative aspect-[9/16] bg-black">
-              {!previewUrl ? (
+              {!previewUrl && source === 'camera' ? (
                 <>
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     muted
-                    className="h-full w-full object-cover"
+                    className={`h-full w-full object-contain ${
+                      facingMode === 'user' ? 'scale-x-[-1]' : ''
+                    }`}
                   />
 
                   {!cameraReady ? (
@@ -260,68 +406,136 @@ export function CameraStudio({
                     </div>
                   ) : null}
                 </>
-              ) : resolvedMediaType === 'image' ? (
-                <img
-                  src={previewUrl}
-                  alt="Captured preview"
-                  className="h-full w-full object-cover"
-                />
+              ) : previewUrl ? (
+                resolvedMediaType === 'image' ? (
+                  <img
+                    src={previewUrl}
+                    alt="Captured preview"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <video
+                    src={previewUrl}
+                    controls
+                    playsInline
+                    className="h-full w-full object-contain"
+                  />
+                )
               ) : (
-                <video
-                  src={previewUrl}
-                  controls
-                  playsInline
-                  className="h-full w-full object-cover"
-                />
+                <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-zinc-950 px-6 text-center">
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full border border-zinc-800 bg-black text-zinc-400">
+                    {cameraSupported ? (
+                      <Upload className="h-7 w-7" />
+                    ) : (
+                      <CameraOff className="h-7 w-7" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-white">
+                      {cameraSupported ? 'Upload media instead' : 'Camera unavailable'}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-zinc-400">
+                      {cameraSupported
+                        ? 'Choose a photo or video directly from your device.'
+                        : 'This browser or device cannot access the in-app camera. Upload media instead.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-2xl border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                  >
+                    Choose file
+                  </button>
+                </div>
               )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={
+                  mode === 'photo'
+                    ? 'image/jpeg,image/jpg,image/png,image/webp'
+                    : 'video/webm,video/mp4,video/quicktime,video/x-m4v,video/3gpp,video/3gpp2,video/ogg'
+                }
+                className="hidden"
+                onChange={handleUploadSelect}
+              />
 
               {!previewUrl ? (
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/90 via-black/20 to-transparent px-4 pb-4 pt-20">
                   <button
                     type="button"
-                    onClick={() =>
-                      setFacingMode((current) =>
-                        current === 'user' ? 'environment' : 'user'
-                      )
-                    }
+                    onClick={() => {
+                      if (source === 'camera') {
+                        setFacingMode((current) =>
+                          current === 'user' ? 'environment' : 'user'
+                        )
+                      } else {
+                        fileInputRef.current?.click()
+                      }
+                    }}
                     className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
                   >
-                    <ChevronsLeftRight className="h-5 w-5" />
+                    {source === 'camera' ? (
+                      <ChevronsLeftRight className="h-5 w-5" />
+                    ) : (
+                      <ImagePlus className="h-5 w-5" />
+                    )}
                   </button>
 
-                  {mode === 'photo' ? (
-                    <button
-                      type="button"
-                      onClick={handleTakePhoto}
-                      className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-white/10 text-white transition hover:scale-[1.02]"
-                    >
-                      <Camera className="h-7 w-7" />
-                    </button>
-                  ) : !recording ? (
-                    <button
-                      type="button"
-                      onClick={startVideoRecording}
-                      className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-500 bg-red-500/20 text-red-300 transition hover:scale-[1.02]"
-                    >
-                      <Circle className="h-7 w-7 fill-current" />
-                    </button>
+                  {source === 'camera' ? (
+                    mode === 'photo' ? (
+                      <button
+                        type="button"
+                        onClick={handleTakePhoto}
+                        disabled={!cameraReady}
+                        className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-white/10 text-white transition hover:scale-[1.02] disabled:opacity-60"
+                      >
+                        <Camera className="h-7 w-7" />
+                      </button>
+                    ) : !recording ? (
+                      <button
+                        type="button"
+                        onClick={startVideoRecording}
+                        disabled={!cameraReady}
+                        className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-500 bg-red-500/20 text-red-300 transition hover:scale-[1.02] disabled:opacity-60"
+                      >
+                        <Circle className="h-7 w-7 fill-current" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={stopVideoRecording}
+                        className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-500 bg-red-500 text-white transition hover:scale-[1.02]"
+                      >
+                        <Video className="h-7 w-7" />
+                      </button>
+                    )
                   ) : (
                     <button
                       type="button"
-                      onClick={stopVideoRecording}
-                      className="inline-flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-500 bg-red-500 text-white transition hover:scale-[1.02]"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex h-16 items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-6 text-sm font-semibold text-black transition hover:opacity-90"
                     >
-                      <Video className="h-7 w-7" />
+                      <Upload className="h-4 w-4" />
+                      Upload
                     </button>
                   )}
 
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white">
-                    {mode === 'photo' ? (
-                      <Camera className="h-5 w-5" />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSource((current) => (current === 'camera' ? 'upload' : 'camera'))
+                    }
+                    className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
+                  >
+                    {source === 'camera' ? (
+                      <Upload className="h-5 w-5" />
                     ) : (
-                      <Video className="h-5 w-5" />
+                      <Camera className="h-5 w-5" />
                     )}
-                  </div>
+                  </button>
                 </div>
               ) : (
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/90 via-black/20 to-transparent px-4 pb-4 pt-20">
@@ -337,14 +551,19 @@ export function CameraStudio({
                     type="button"
                     onClick={handlePublish}
                     disabled={publishing}
-                    className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-6 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-70"
+                    className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-6 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
                   >
                     {publishing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Publishing
+                      </>
                     ) : (
-                      <Check className="h-4 w-4" />
+                      <>
+                        <Check className="h-4 w-4" />
+                        Publish
+                      </>
                     )}
-                    Publish
                   </button>
 
                   <button
@@ -360,22 +579,22 @@ export function CameraStudio({
           </section>
 
           <aside className="space-y-5">
-            <section className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-              <div className="inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-200">
+            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                 Capture mode
-              </div>
+              </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setMode('photo')
-                    clearCapture()
+                    setRecording(false)
                   }}
-                  className={`rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                     mode === 'photo'
                       ? 'border-white bg-white text-black'
-                      : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
                   Photo
@@ -385,75 +604,66 @@ export function CameraStudio({
                   type="button"
                   onClick={() => {
                     setMode('video')
-                    clearCapture()
+                    setRecording(false)
                   }}
-                  className={`rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                     mode === 'video'
                       ? 'border-white bg-white text-black'
-                      : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
                   Video
                 </button>
               </div>
+
+              <p className="mt-4 text-sm leading-7 text-zinc-400">
+                Front camera now previews mirrored like a normal selfie camera, and live preview uses contain instead of aggressive default zoom.
+              </p>
             </section>
 
-            <section className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-              <div className="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-cyan-200">
-                Destination
-              </div>
+            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Publish target
+              </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setTarget('post')}
-                  className={`rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                     target === 'post'
                       ? 'border-white bg-white text-black'
-                      : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
-                  Publish as post
+                  Post
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setTarget('story')}
-                  className={`rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                     target === 'story'
                       ? 'border-white bg-white text-black'
-                      : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
-                  Publish as story
+                  Story
                 </button>
               </div>
 
-              <div className="mt-5 space-y-3">
-                <label className="block text-sm font-medium text-zinc-300">
-                  Caption
-                </label>
-                <textarea
-                  value={caption}
-                  onChange={(event) => setCaption(event.target.value)}
-                  rows={4}
-                  maxLength={280}
-                  placeholder="Write a caption..."
-                  className="min-h-[110px] w-full rounded-[22px] border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm leading-7 text-white outline-none placeholder:text-zinc-500"
-                />
-              </div>
-
               {target === 'post' ? (
-                <div className="mt-5 space-y-3">
-                  <label className="block text-sm font-medium text-zinc-300">
+                <div className="mt-4">
+                  <label className="mb-2 block text-sm font-medium text-white">
                     Category
                   </label>
+
                   <select
                     value={categoryId}
                     onChange={(event) => setCategoryId(event.target.value)}
-                    className="w-full rounded-[22px] border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none"
+                    className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none"
                   >
-                    <option value="">No category</option>
+                    <option value="">Select category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
@@ -464,16 +674,27 @@ export function CameraStudio({
               ) : null}
             </section>
 
-            <section className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-              <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
-                Quick notes
-              </div>
+            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+              <label className="mb-2 block text-sm font-medium text-white">
+                Caption
+              </label>
 
-              <ul className="mt-4 space-y-3 text-sm leading-7 text-zinc-400">
-                <li>Swipe right from the left edge on feed or create to open camera on mobile.</li>
-                <li>Camera capture works best on HTTPS or localhost.</li>
-                <li>Use post for permanent feed content and story for 6-hour media.</li>
-              </ul>
+              <textarea
+                value={caption}
+                onChange={(event) => setCaption(event.target.value)}
+                rows={6}
+                placeholder="Write a caption..."
+                className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+              />
+
+              <div className="mt-4 rounded-2xl border border-zinc-800 bg-black px-4 py-4">
+                <p className="text-sm font-medium text-white">Capture flow</p>
+                <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+                  <li>• Device upload fallback stays active if live camera capture is unstable.</li>
+                  <li>• HEIC and HEIF are blocked cleanly instead of failing unpredictably.</li>
+                  <li>• Wider mobile video variants are accepted across the capture publish flow.</li>
+                </ul>
+              </div>
             </section>
           </aside>
         </div>

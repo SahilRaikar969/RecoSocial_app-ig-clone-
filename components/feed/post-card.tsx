@@ -141,8 +141,8 @@ export async function PostCard({
 
   return (
     <AnimatedShellCard>
-      <article className="group relative overflow-hidden rounded-[28px] md:rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(14,14,18,0.96),rgba(5,5,7,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_34px_rgba(0,0,0,0.22)] transition duration-300 md:hover:-translate-y-0.5 md:hover:border-zinc-700/90 md:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_70px_rgba(0,0,0,0.38)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.10),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.06),transparent_24%)] opacity-80" />
+      <article className="group relative overflow-hidden rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(14,14,18,0.98),rgba(5,5,7,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_12px_28px_rgba(0,0,0,0.18)] transition duration-300 md:hover:border-zinc-700/90 md:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_22px_54px_rgba(0,0,0,0.28)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.05),transparent_24%)] opacity-80" />
 
         <div className="relative flex items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-4 sm:px-5">
           <Link
@@ -195,7 +195,7 @@ export async function PostCard({
           {showOpenPostLink ? (
             <Link
               href={openHref}
-              className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-100 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+              className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
             >
               {openLabel}
             </Link>
@@ -229,7 +229,7 @@ export async function PostCard({
           />
 
           {post.caption ? (
-            <div className="mt-3 rounded-[22px] border border-zinc-800 bg-zinc-950/65 px-4 py-3">
+            <div className="mt-3 rounded-[20px] border border-zinc-800 bg-zinc-950/70 px-4 py-3">
               <p className="text-[14px] sm:text-[15px] leading-7 text-zinc-200">
                 <Link
                   href={authorProfileHref}
@@ -250,7 +250,7 @@ export async function PostCard({
                     <Link
                       key={category.id}
                       href={`/explore?category=${encodeURIComponent(category.slug)}`}
-                      className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-violet-400/20 hover:bg-violet-500/10 hover:text-white"
+                      className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-violet-400/20 hover:bg-violet-500/10 hover:text-white"
                     >
                       {category.name}
                     </Link>
@@ -263,7 +263,7 @@ export async function PostCard({
                   {post.reason_labels.slice(0, 3).map((label) => (
                     <span
                       key={label}
-                      className="rounded-full border border-emerald-900/60 bg-emerald-950/40 px-3 py-1.5 text-[11px] font-medium text-emerald-200 shadow-[0_10px_25px_rgba(16,185,129,0.06)]"
+                      className="rounded-full border border-emerald-900/60 bg-emerald-950/40 px-3 py-1.5 text-[11px] font-medium text-emerald-200"
                     >
                       {label}
                     </span>
@@ -273,7 +273,7 @@ export async function PostCard({
             </div>
 
             {(showAllComments || (post.comments && post.comments.length > 0)) ? (
-              <div className="rounded-[26px] border border-zinc-800 bg-black/35 p-4">
+              <div className="rounded-[24px] border border-zinc-800 bg-black/35 p-4">
                 <CommentThreadPanel
                   postId={post.id}
                   profileId={devProfileId}

@@ -32,13 +32,13 @@ export function MessageThread({
   messages,
 }: MessageThreadProps) {
   return (
-    <section className="rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
-      <div className="flex items-center gap-3 border-b border-zinc-800 px-5 py-4">
+    <section className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+      <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-4 md:px-5">
         <SmartImage
           src={otherProfile.avatar_url}
           alt={otherProfile.display_name}
-          className="h-12 w-12 rounded-full object-cover"
-          fallbackClassName="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500"
+          className="h-11 w-11 md:h-12 md:w-12 rounded-full object-cover"
+          fallbackClassName="flex h-11 w-11 md:h-12 md:w-12 items-center justify-center rounded-full bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500"
           fallbackText="User"
         />
 
@@ -48,7 +48,7 @@ export function MessageThread({
         </div>
       </div>
 
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-3 px-4 py-4 md:px-5">
         {messages.map((message) => {
           const own = message.sender_id === viewerProfileId
 
@@ -58,13 +58,13 @@ export function MessageThread({
               className={`flex ${own ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[82%] rounded-[22px] px-4 py-3 text-sm leading-7 ${
+                className={`max-w-[86%] sm:max-w-[82%] rounded-[20px] px-4 py-3 text-sm leading-7 ${
                   own
                     ? 'border border-violet-400/20 bg-violet-500/10 text-white'
-                    : 'border border-zinc-800 bg-zinc-950/85 text-zinc-200'
+                    : 'border border-zinc-800 bg-zinc-950/90 text-zinc-200'
                 }`}
               >
-                <p>{message.body}</p>
+                <p className="break-words">{message.body}</p>
                 <p className="mt-1 text-right text-[11px] text-zinc-400">
                   {formatTime(message.created_at)}
                 </p>
@@ -74,7 +74,7 @@ export function MessageThread({
         })}
 
         {!messages.length ? (
-          <div className="rounded-[22px] border border-dashed border-zinc-800 bg-zinc-950/70 px-5 py-12 text-center text-sm text-zinc-500">
+          <div className="rounded-[22px] border border-dashed border-zinc-800 bg-zinc-950/80 px-5 py-12 text-center text-sm text-zinc-500">
             No messages yet
           </div>
         ) : null}

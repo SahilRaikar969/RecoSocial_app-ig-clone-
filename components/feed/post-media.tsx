@@ -199,7 +199,7 @@ export function PostMedia({
               loop
               muted
               preload="metadata"
-              className={`aspect-[4/5] w-full bg-black object-cover transition duration-300 ${
+              className={`aspect-[4/5] w-full bg-black object-contain transition duration-300 ${
                 isVideoLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
               }`}
               onLoadedData={() => setIsVideoLoaded(true)}
@@ -248,7 +248,7 @@ export function PostMedia({
         <SmartImage
           src={mediaUrl}
           alt={alt}
-          className="aspect-[4/5] w-full bg-black object-cover"
+          className="aspect-[4/5] w-full bg-black object-contain"
           fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-zinc-950 text-sm text-zinc-500"
           fallbackText="Media unavailable"
         />

@@ -23,6 +23,10 @@ const MAX_IMAGE_FILE_SIZE = 15 * 1024 * 1024
 const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024
 const MAX_THUMBNAIL_FILE_SIZE = 10 * 1024 * 1024
 
+const IMAGE_UPLOAD_ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,image/gif'
+const VIDEO_UPLOAD_ACCEPT =
+  'video/mp4,video/webm,video/quicktime,video/x-m4v,video/3gpp,video/3gpp2,video/ogg'
+
 function isDirectPreviewableUrl(value: string) {
   const trimmed = value.trim()
   if (!trimmed) return false
@@ -41,7 +45,12 @@ function isDirectPreviewableUrl(value: string) {
       pathname.endsWith('.gif') ||
       pathname.endsWith('.mp4') ||
       pathname.endsWith('.webm') ||
-      pathname.endsWith('.mov')
+      pathname.endsWith('.mov') ||
+      pathname.endsWith('.m4v') ||
+      pathname.endsWith('.3gp') ||
+      pathname.endsWith('.3g2') ||
+      pathname.endsWith('.ogv') ||
+      pathname.endsWith('.ogg')
     )
   } catch {
     return false
@@ -62,6 +71,20 @@ function formatBytes(bytes: number) {
 
 function formatCategoryDescription(category: CategoryOption) {
   return category.description?.trim() || `${category.name} discovery topic`
+}
+
+function isHeicLikeFile(file: File | null) {
+  if (!file) return false
+
+  const type = String(file.type || '').toLowerCase().trim()
+  const lowerName = String(file.name || '').toLowerCase()
+
+  return (
+    type.includes('heic') ||
+    type.includes('heif') ||
+    lowerName.endsWith('.heic') ||
+    lowerName.endsWith('.heif')
+  )
 }
 
 function ChecklistItem({
@@ -113,152 +136,120 @@ export function CreatePostForm({
 }: CreatePostFormProps) {
   const [mediaSourceMode, setMediaSourceMode] = useState<'url' | 'upload'>('upload')
   const [thumbnailSourceMode, setThumbnailSourceMode] = useState<'url' | 'upload'>('upload')
-
-  const [mediaUrl, setMediaUrl] = useState('')
-  const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
   const [caption, setCaption] = useState('')
-
+  const [mediaPath, setMediaPath] = useState('')
+  const [thumbnailPath, setThumbnailPath] = useState('')
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
-
-  const [mediaPreviewUrl, setMediaPreviewUrl] = useState('')
-  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState('')
-
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [clientError, setClientError] = useState('')
 
   useEffect(() => {
-    if (!mediaFile) {
-      setMediaPreviewUrl('')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(mediaFile)
-    setMediaPreviewUrl(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [mediaFile])
-
-  useEffect(() => {
-    if (!thumbnailFile) {
-      setThumbnailPreviewUrl('')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(thumbnailFile)
-    setThumbnailPreviewUrl(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [thumbnailFile])
-
-  useEffect(() => {
     setClientError('')
   }, [
-    mediaSourceMode,
-    thumbnailSourceMode,
-    mediaUrl,
-    thumbnailUrl,
-    mediaType,
     caption,
+    mediaPath,
+    thumbnailPath,
     mediaFile,
     thumbnailFile,
     selectedCategories,
+    mediaType,
+    mediaSourceMode,
+    thumbnailSourceMode,
   ])
 
-  useEffect(() => {
-    if (mediaType === 'image') {
-      setThumbnailFile(null)
-      setThumbnailUrl('')
-    }
-  }, [mediaType])
-
-  const isPreviewableUrl = useMemo(() => isDirectPreviewableUrl(mediaUrl), [mediaUrl])
-  const isPreviewableThumbnailUrl = useMemo(
-    () => isDirectPreviewableUrl(thumbnailUrl),
-    [thumbnailUrl]
-  )
+  const creatorUsername = useMemo(() => `you_${getCompactId(profileId)}`, [profileId])
+  const creatorDisplayName = 'Your profile'
 
   const resolvedMediaPreview =
     mediaSourceMode === 'upload'
-      ? mediaPreviewUrl
-      : isPreviewableUrl
-        ? mediaUrl
+      ? mediaFile
+        ? URL.createObjectURL(mediaFile)
+        : ''
+      : isDirectPreviewableUrl(mediaPath)
+        ? mediaPath.trim()
         : ''
 
   const resolvedThumbnailPreview =
-    thumbnailSourceMode === 'upload'
-      ? thumbnailPreviewUrl
-      : isPreviewableThumbnailUrl
-        ? thumbnailUrl
-        : ''
+    mediaType === 'video'
+      ? thumbnailSourceMode === 'upload'
+        ? thumbnailFile
+          ? URL.createObjectURL(thumbnailFile)
+          : ''
+        : isDirectPreviewableUrl(thumbnailPath)
+          ? thumbnailPath.trim()
+          : ''
+      : ''
 
-  const effectiveError = clientError || errorMessage
-  const captionCharactersLeft = MAX_CAPTION_LENGTH - caption.length
-  const creatorUsername = `creator_${getCompactId(profileId, 6).toLowerCase()}`
-  const creatorDisplayName = `Creator ${getCompactId(profileId, 6)}`
-  const selectedCategoryObjects = categories.filter((category) =>
-    selectedCategories.includes(category.name)
+  useEffect(() => {
+    return () => {
+      if (mediaFile && resolvedMediaPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(resolvedMediaPreview)
+      }
+    }
+  }, [mediaFile, resolvedMediaPreview])
+
+  useEffect(() => {
+    return () => {
+      if (thumbnailFile && resolvedThumbnailPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(resolvedThumbnailPreview)
+      }
+    }
+  }, [thumbnailFile, resolvedThumbnailPreview])
+
+  const selectedCategoryObjects = useMemo(
+    () =>
+      categories.filter((category) => selectedCategories.includes(category.name)),
+    [categories, selectedCategories]
   )
 
   const publishReadiness = useMemo(() => {
     const mediaReady =
       mediaSourceMode === 'upload'
-        ? Boolean(mediaFile)
-        : Boolean(mediaUrl.trim() && isPreviewableUrl)
+        ? !!mediaFile
+        : mediaPath.trim().length > 0 && isDirectPreviewableUrl(mediaPath)
 
     const thumbnailReady =
-      mediaType === 'image'
+      mediaType !== 'video'
         ? true
         : thumbnailSourceMode === 'upload'
-          ? !thumbnailFile || Boolean(thumbnailFile)
-          : !thumbnailUrl.trim() || isPreviewableThumbnailUrl
+          ? !thumbnailFile || !!thumbnailFile
+          : !thumbnailPath.trim() || isDirectPreviewableUrl(thumbnailPath)
 
-    const categoriesReady = selectedCategories.length > 0
     const captionReady = caption.length <= MAX_CAPTION_LENGTH
+    const categoriesReady = selectedCategories.length > 0
 
     return {
       mediaReady,
       thumbnailReady,
-      categoriesReady,
       captionReady,
-      ready: mediaReady && thumbnailReady && categoriesReady && captionReady,
+      categoriesReady,
+      ready: mediaReady && thumbnailReady && captionReady && categoriesReady,
     }
   }, [
-    caption.length,
-    isPreviewableThumbnailUrl,
-    isPreviewableUrl,
-    mediaFile,
     mediaSourceMode,
+    mediaFile,
+    mediaPath,
     mediaType,
-    mediaUrl,
-    selectedCategories.length,
-    thumbnailFile,
     thumbnailSourceMode,
-    thumbnailUrl,
+    thumbnailFile,
+    thumbnailPath,
+    caption.length,
+    selectedCategories.length,
   ])
 
-  const readinessScore = [
-    publishReadiness.mediaReady,
-    publishReadiness.captionReady,
-    publishReadiness.categoriesReady,
-    mediaType === 'video' ? publishReadiness.thumbnailReady : true,
-  ].filter(Boolean).length
-
-  const readinessMax = mediaType === 'video' ? 4 : 3
-  const readinessPercent = Math.round((readinessScore / readinessMax) * 100)
-
-  function handleCategoryToggle(categoryName: string) {
+  function toggleCategory(name: string) {
     setSelectedCategories((current) =>
-      current.includes(categoryName)
-        ? current.filter((item) => item !== categoryName)
-        : [...current, categoryName]
+      current.includes(name)
+        ? current.filter((value) => value !== name)
+        : [...current, name]
     )
   }
 
   function validateBeforeSubmit() {
     if (caption.length > MAX_CAPTION_LENGTH) {
-      return 'Caption is too long. Keep it within 280 characters.'
+      return `Caption must stay within ${MAX_CAPTION_LENGTH} characters.`
     }
 
     if (mediaSourceMode === 'upload') {
@@ -266,32 +257,50 @@ export function CreatePostForm({
         return 'Choose a media file before publishing.'
       }
 
-      if (mediaType === 'image' && mediaFile.size > MAX_IMAGE_FILE_SIZE) {
-        return 'Image file is too large. Keep it under 15 MB.'
+      if (isHeicLikeFile(mediaFile)) {
+        return 'HEIC and HEIF are not supported in this build yet. Convert the image to JPG, PNG, or WEBP first.'
       }
 
-      if (mediaType === 'video' && mediaFile.size > MAX_VIDEO_FILE_SIZE) {
-        return 'Video file is too large. Keep it under 50 MB.'
+      if (
+        mediaType === 'image' &&
+        mediaFile.size > MAX_IMAGE_FILE_SIZE
+      ) {
+        return `Image uploads must stay under ${formatBytes(MAX_IMAGE_FILE_SIZE)}.`
+      }
+
+      if (
+        mediaType === 'video' &&
+        mediaFile.size > MAX_VIDEO_FILE_SIZE
+      ) {
+        return `Video uploads must stay under ${formatBytes(MAX_VIDEO_FILE_SIZE)}.`
       }
     } else {
-      if (!mediaUrl.trim()) {
-        return 'Paste a direct media URL before publishing.'
+      if (!mediaPath.trim()) {
+        return 'Add a direct media URL before publishing.'
       }
 
-      if (!isDirectPreviewableUrl(mediaUrl)) {
-        return 'Use a direct media URL ending in an image or video file extension.'
+      if (!isDirectPreviewableUrl(mediaPath)) {
+        return 'Media URL must point directly to a previewable image or video file.'
       }
     }
 
     if (mediaType === 'video') {
       if (thumbnailSourceMode === 'upload') {
-        if (thumbnailFile && thumbnailFile.size > MAX_THUMBNAIL_FILE_SIZE) {
-          return 'Thumbnail file is too large. Keep it under 10 MB.'
+        if (thumbnailFile && isHeicLikeFile(thumbnailFile)) {
+          return 'HEIC and HEIF thumbnails are not supported in this build yet.'
         }
-      } else {
-        if (thumbnailUrl.trim() && !isDirectPreviewableUrl(thumbnailUrl)) {
-          return 'Use a direct thumbnail image URL ending in .jpg, .png, .gif, or .webp.'
+
+        if (
+          thumbnailFile &&
+          thumbnailFile.size > MAX_THUMBNAIL_FILE_SIZE
+        ) {
+          return `Thumbnail uploads must stay under ${formatBytes(MAX_THUMBNAIL_FILE_SIZE)}.`
         }
+      } else if (
+        thumbnailPath.trim() &&
+        !isDirectPreviewableUrl(thumbnailPath)
+      ) {
+        return 'Thumbnail URL must point directly to a previewable image file.'
       }
     }
 
@@ -303,407 +312,291 @@ export function CreatePostForm({
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    const validationError = validateBeforeSubmit()
+    const nextError = validateBeforeSubmit()
 
-    if (validationError) {
+    if (nextError) {
       event.preventDefault()
-      setClientError(validationError)
+      setClientError(nextError)
     }
   }
 
+  const effectiveError = clientError || errorMessage
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <form
-        action={createPost}
-        onSubmit={handleSubmit}
-        className="relative overflow-hidden rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(16,16,22,0.96),rgba(8,8,10,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_24px_70px_rgba(0,0,0,0.30)]"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_24%)]" />
-
-        <input type="hidden" name="dev_profile_id" value={profileId} />
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_0.92fr]">
+      <form action={createPost} onSubmit={handleSubmit} className="space-y-6">
+        <input type="hidden" name="profile_id" value={profileId} />
         <input type="hidden" name="media_type" value={mediaType} />
-
-        {selectedCategories.map((category) => (
-          <input key={category} type="hidden" name="categories" value={category} />
+        {selectedCategories.map((name) => (
+          <input key={name} type="hidden" name="categories" value={name} />
         ))}
 
-        <div className="relative border-b border-zinc-800/80 px-5 py-5 sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="inline-flex rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-100">
-                Create flow
-              </div>
-              <h2 className="mt-4 text-xl font-semibold text-white">Compose post</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-                Build the post as a product-grade publishing surface before it goes live.
-              </p>
-            </div>
-
-            <div className="min-w-[220px] rounded-[24px] border border-zinc-800 bg-zinc-950/75 px-4 py-4 shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                Publish readiness
-              </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black">
-                <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,rgba(120,119,255,0.95),rgba(236,72,153,0.8))] transition-all"
-                  style={{ width: `${readinessPercent}%` }}
-                />
-              </div>
-              <p className="mt-3 text-sm text-zinc-200">
-                {readinessScore}/{readinessMax} steps ready
-              </p>
-            </div>
-          </div>
-
-          {effectiveError ? (
-            <div className="mt-4 rounded-2xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
-              {effectiveError}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="relative space-y-6 px-5 py-5 sm:px-6">
-          <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/60 p-5 transition hover:border-zinc-700">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-              Step 1
-            </p>
-            <h3 className="mt-1 text-base font-semibold text-white">
-              Choose post type
-            </h3>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setMediaType('image')}
-                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                  mediaType === 'image'
-                    ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
-                }`}
-              >
-                Image post
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMediaType('video')}
-                className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                  mediaType === 'video'
-                    ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
-                }`}
-              >
-                Video post
-              </button>
-            </div>
-          </section>
-
-          <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/60 p-5 transition hover:border-zinc-700">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="overflow-hidden rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(16,16,22,0.96),rgba(8,8,10,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_24px_70px_rgba(0,0,0,0.30)]">
+          <div className="border-b border-zinc-800/80 px-5 py-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                  Step 2
+                  Creator studio
                 </p>
-                <h3 className="mt-1 text-base font-semibold text-white">
-                  Main media
-                </h3>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                  Publish a new post
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">
+                  Build a clean media post with stronger mobile upload handling, clearer framing, and category-ready distribution.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={() => setMediaSourceMode('upload')}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                    mediaSourceMode === 'upload'
-                      ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                      : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
+                  onClick={() => setMediaType('image')}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                    mediaType === 'image'
+                      ? 'border-white bg-white text-black'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
-                  Upload file
+                  Image
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setMediaSourceMode('url')}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                    mediaSourceMode === 'url'
-                      ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                      : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
+                  onClick={() => setMediaType('video')}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                    mediaType === 'video'
+                      ? 'border-white bg-white text-black'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
-                  Use direct URL
+                  Video
                 </button>
               </div>
             </div>
+          </div>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-              <div className="space-y-4">
+          {effectiveError ? (
+            <div className="border-b border-red-900/30 bg-red-950/30 px-5 py-4 text-sm text-red-100">
+              {effectiveError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-6 px-5 py-5">
+            <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                    Step 1
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold text-white">
+                    Media source
+                  </h2>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMediaSourceMode('upload')}
+                    className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${
+                      mediaSourceMode === 'upload'
+                        ? 'border-white bg-white text-black'
+                        : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    }`}
+                  >
+                    Upload
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMediaSourceMode('url')}
+                    className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${
+                      mediaSourceMode === 'url'
+                        ? 'border-white bg-white text-black'
+                        : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    }`}
+                  >
+                    URL
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4">
                 {mediaSourceMode === 'upload' ? (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-zinc-300">
-                      Upload {mediaType}
-                    </label>
-
                     <input
                       name="media_file"
                       type="file"
-                      accept={mediaType === 'image' ? 'image/*' : 'video/*'}
-                      onChange={(event) => setMediaFile(event.target.files?.[0] ?? null)}
+                      accept={mediaType === 'image' ? IMAGE_UPLOAD_ACCEPT : VIDEO_UPLOAD_ACCEPT}
+                      onChange={(event) => {
+                        const nextFile = event.target.files?.[0] ?? null
+
+                        if (isHeicLikeFile(nextFile)) {
+                          setMediaFile(null)
+                          setClientError('HEIC and HEIF are not supported in this build yet. Convert the image to JPG, PNG, or WEBP first.')
+                          event.currentTarget.value = ''
+                          return
+                        }
+
+                        setMediaFile(nextFile)
+                      }}
                       className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
                     />
 
                     <p className="mt-2 text-xs text-zinc-500">
                       {mediaType === 'image'
-                        ? `Accepted image upload. Keep it under ${formatBytes(MAX_IMAGE_FILE_SIZE)}.`
-                        : `Accepted video upload. Keep it under ${formatBytes(MAX_VIDEO_FILE_SIZE)}.`}
+                        ? `Accepted image upload. JPG, PNG, WEBP, or GIF. Keep it under ${formatBytes(MAX_IMAGE_FILE_SIZE)}.`
+                        : `Accepted video upload. MP4, WEBM, MOV, M4V, OGG, 3GP, or 3G2. Keep it under ${formatBytes(MAX_VIDEO_FILE_SIZE)}.`}
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-zinc-300">
-                      Direct media URL
-                    </label>
-
                     <input
                       name="media_path"
                       type="text"
-                      value={mediaUrl}
-                      onChange={(event) => setMediaUrl(event.target.value)}
-                      placeholder={
-                        mediaType === 'image'
-                          ? 'https://example.com/post-image.jpg'
-                          : 'https://example.com/post-video.mp4'
-                      }
-                      className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-violet-500/30 focus:shadow-[0_0_0_1px_rgba(120,119,255,0.12)]"
+                      value={mediaPath}
+                      onChange={(event) => setMediaPath(event.target.value)}
+                      placeholder="https://example.com/file.jpg"
+                      className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
                     />
 
                     <p className="mt-2 text-xs text-zinc-500">
-                      Use a direct file URL ending in a valid image or video extension.
+                      Direct file link required. The URL must end in a previewable media extension.
                     </p>
                   </div>
                 )}
-
-                <div className="rounded-[24px] border border-zinc-800 bg-black px-4 py-4">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                    Media status
-                  </p>
-                  <p className="mt-2 text-sm text-zinc-300">
-                    {mediaSourceMode === 'upload'
-                      ? mediaFile
-                        ? `${mediaFile.name} · ${formatBytes(mediaFile.size)}`
-                        : 'No file selected yet'
-                      : mediaUrl.trim()
-                        ? isPreviewableUrl
-                          ? 'Direct media URL looks previewable'
-                          : 'Current URL does not look like a direct file'
-                        : 'No direct media URL added yet'}
-                  </p>
-                </div>
               </div>
+            </section>
 
-              <div className="rounded-[24px] border border-zinc-800 bg-black p-4">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                  Preview
-                </p>
+            {mediaType === 'video' ? (
+              <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                      Step 2
+                    </p>
+                    <h2 className="mt-1 text-base font-semibold text-white">
+                      Thumbnail
+                    </h2>
+                  </div>
 
-                <div className="mt-3 overflow-hidden rounded-[22px] border border-zinc-800 bg-zinc-950">
-                  {resolvedMediaPreview ? (
-                    mediaType === 'video' ? (
-                      <video
-                        src={resolvedMediaPreview}
-                        controls
-                        playsInline
-                        poster={resolvedThumbnailPreview || undefined}
-                        className="aspect-[4/5] w-full bg-black object-cover"
-                      />
-                    ) : (
-                      <img
-                        src={resolvedMediaPreview}
-                        alt="Selected post preview"
-                        className="aspect-[4/5] w-full bg-black object-cover"
-                      />
-                    )
-                  ) : (
-                    <div className="flex aspect-[4/5] items-center justify-center px-6 text-center text-sm text-zinc-500">
-                      Media preview will appear here
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailSourceMode('upload')}
+                      className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${
+                        thumbnailSourceMode === 'upload'
+                          ? 'border-white bg-white text-black'
+                          : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      }`}
+                    >
+                      Upload
+                    </button>
 
-          {mediaType === 'video' ? (
-            <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/60 p-5 transition hover:border-zinc-700">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                    Step 3
-                  </p>
-                  <h3 className="mt-1 text-base font-semibold text-white">
-                    Video thumbnail
-                  </h3>
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailSourceMode('url')}
+                      className={`rounded-2xl border px-4 py-2.5 text-sm font-medium transition ${
+                        thumbnailSourceMode === 'url'
+                          ? 'border-white bg-white text-black'
+                          : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-700 hover:text-white'
+                      }`}
+                    >
+                      URL
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setThumbnailSourceMode('upload')}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                      thumbnailSourceMode === 'upload'
-                        ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                        : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
-                    }`}
-                  >
-                    Upload thumbnail
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setThumbnailSourceMode('url')}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                      thumbnailSourceMode === 'url'
-                        ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
-                        : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white'
-                    }`}
-                  >
-                    Use direct URL
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-                <div className="space-y-4">
+                <div className="mt-4">
                   {thumbnailSourceMode === 'upload' ? (
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-zinc-300">
-                        Upload thumbnail
-                      </label>
-
                       <input
                         name="thumbnail_file"
                         type="file"
-                        accept="image/*"
-                        onChange={(event) =>
-                          setThumbnailFile(event.target.files?.[0] ?? null)
-                        }
+                        accept={IMAGE_UPLOAD_ACCEPT}
+                        onChange={(event) => {
+                          const nextFile = event.target.files?.[0] ?? null
+
+                          if (isHeicLikeFile(nextFile)) {
+                            setThumbnailFile(null)
+                            setClientError('HEIC and HEIF thumbnails are not supported in this build yet. Use JPG, PNG, WEBP, or GIF.')
+                            event.currentTarget.value = ''
+                            return
+                          }
+
+                          setThumbnailFile(nextFile)
+                        }}
                         className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
                       />
 
                       <p className="mt-2 text-xs text-zinc-500">
-                        Optional but strongly recommended. Keep it under {formatBytes(MAX_THUMBNAIL_FILE_SIZE)}.
+                        Optional. Video publishing should still work without a manual thumbnail. Keep it under {formatBytes(MAX_THUMBNAIL_FILE_SIZE)}.
                       </p>
                     </div>
                   ) : (
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-zinc-300">
-                        Direct thumbnail URL
-                      </label>
-
                       <input
                         name="thumbnail_path"
                         type="text"
-                        value={thumbnailUrl}
-                        onChange={(event) => setThumbnailUrl(event.target.value)}
-                        placeholder="https://example.com/video-thumbnail.jpg"
-                        className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-violet-500/30 focus:shadow-[0_0_0_1px_rgba(120,119,255,0.12)]"
+                        value={thumbnailPath}
+                        onChange={(event) => setThumbnailPath(event.target.value)}
+                        placeholder="https://example.com/thumbnail.jpg"
+                        className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
                       />
 
                       <p className="mt-2 text-xs text-zinc-500">
-                        Use a direct image file URL for the video thumbnail.
+                        Optional direct thumbnail image URL.
                       </p>
                     </div>
                   )}
-
-                  <div className="rounded-[24px] border border-zinc-800 bg-black px-4 py-4">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                      Thumbnail status
-                    </p>
-                    <p className="mt-2 text-sm text-zinc-300">
-                      {thumbnailSourceMode === 'upload'
-                        ? thumbnailFile
-                          ? `${thumbnailFile.name} · ${formatBytes(thumbnailFile.size)}`
-                          : 'No thumbnail file selected'
-                        : thumbnailUrl.trim()
-                          ? isPreviewableThumbnailUrl
-                            ? 'Direct thumbnail URL looks previewable'
-                            : 'Current thumbnail URL does not look like a direct image'
-                          : 'No thumbnail URL added yet'}
-                    </p>
-                  </div>
                 </div>
+              </section>
+            ) : null}
 
-                <div className="rounded-[24px] border border-zinc-800 bg-black p-4">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-                    Thumbnail preview
-                  </p>
+            <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                Step {mediaType === 'video' ? '3' : '2'}
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-white">
+                Caption
+              </h2>
 
-                  <div className="mt-3 overflow-hidden rounded-[22px] border border-zinc-800 bg-zinc-950">
-                    {resolvedThumbnailPreview ? (
-                      <img
-                        src={resolvedThumbnailPreview}
-                        alt="Selected thumbnail preview"
-                        className="aspect-[4/5] w-full bg-black object-cover"
-                      />
-                    ) : (
-                      <div className="flex aspect-[4/5] items-center justify-center px-6 text-center text-sm text-zinc-500">
-                        Thumbnail preview will appear here
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/60 p-5 transition hover:border-zinc-700">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-              Step {mediaType === 'video' ? '4' : '3'}
-            </p>
-            <h3 className="mt-1 text-base font-semibold text-white">
-              Caption and categories
-            </h3>
-
-            <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">
-                  Caption
-                </label>
-
-                <textarea
-                  name="caption"
-                  value={caption}
-                  onChange={(event) => setCaption(event.target.value)}
-                  rows={6}
-                  maxLength={MAX_CAPTION_LENGTH}
-                  placeholder="Write a caption for this post..."
-                  className="w-full rounded-[24px] border border-zinc-800 bg-black px-4 py-4 text-sm leading-7 text-white outline-none placeholder:text-zinc-500 focus:border-violet-500/30 focus:shadow-[0_0_0_1px_rgba(120,119,255,0.12)]"
-                />
-
-                <div className="mt-2 flex items-center justify-between gap-3 text-xs">
-                  <span className="text-zinc-500">
-                    Keep the caption short but useful for discovery.
-                  </span>
-                  <span
-                    className={
-                      captionCharactersLeft < 30 ? 'text-amber-300' : 'text-zinc-500'
-                    }
-                  >
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium text-white">
+                    Caption
+                  </label>
+                  <span className="text-xs text-zinc-500">
                     {caption.length}/{MAX_CAPTION_LENGTH}
                   </span>
                 </div>
-              </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <label className="block text-sm font-medium text-zinc-300">
+                <textarea
+                  name="caption"
+                  rows={5}
+                  value={caption}
+                  onChange={(event) => setCaption(event.target.value)}
+                  placeholder="Write something that adds context to the post."
+                  className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+                />
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                    Step {mediaType === 'video' ? '4' : '3'}
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold text-white">
                     Categories
-                  </label>
-                  <span className="text-xs text-zinc-500">
-                    {selectedCategories.length} selected
-                  </span>
+                  </h2>
                 </div>
 
+                <span className="text-xs text-zinc-500">
+                  {selectedCategories.length} selected
+                </span>
+              </div>
+
+              <div className="mt-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {categories.map((category) => {
                     const active = selectedCategories.includes(category.name)
@@ -712,7 +605,7 @@ export function CreatePostForm({
                       <button
                         key={category.id}
                         type="button"
-                        onClick={() => handleCategoryToggle(category.name)}
+                        onClick={() => toggleCategory(category.name)}
                         className={`rounded-[22px] border p-4 text-left transition ${
                           active
                             ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'
@@ -746,10 +639,10 @@ export function CreatePostForm({
                   })}
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800/80 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800/80 px-5 py-5">
             <Link
               href="/feed"
               className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white"
@@ -802,13 +695,13 @@ export function CreatePostForm({
                       controls
                       playsInline
                       poster={resolvedThumbnailPreview || undefined}
-                      className="aspect-[4/5] w-full bg-black object-cover"
+                      className="aspect-[4/5] w-full bg-black object-contain"
                     />
                   ) : (
                     <img
                       src={resolvedMediaPreview}
                       alt="Preview"
-                      className="aspect-[4/5] w-full bg-black object-cover"
+                      className="aspect-[4/5] w-full bg-black object-contain"
                     />
                   )
                 ) : (

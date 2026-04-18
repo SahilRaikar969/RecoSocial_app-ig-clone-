@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { updateProfile } from '@/actions/profile'
+import { AvatarCropEditor } from '@/components/profile/avatar-crop-editor'
 
 type EditableProfile = {
   id: string
@@ -65,6 +66,7 @@ export function EditProfileForm({
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
+  const [avatarCropDataUrl, setAvatarCropDataUrl] = useState('')
   const [removeAvatar, setRemoveAvatar] = useState(false)
   const [clientError, setClientError] = useState('')
 
@@ -82,7 +84,7 @@ export function EditProfileForm({
 
   useEffect(() => {
     setClientError('')
-  }, [displayName, username, bio, avatarUrl, avatarFile, removeAvatar])
+  }, [displayName, username, bio, avatarUrl, avatarFile, avatarCropDataUrl, removeAvatar])
 
   const previewName = displayName.trim() || 'Unnamed profile'
   const previewUsername = normalizeUsernameInput(username) || 'username'
@@ -90,7 +92,7 @@ export function EditProfileForm({
 
   const resolvedAvatarPreview = removeAvatar
     ? ''
-    : avatarPreviewUrl || avatarUrl.trim()
+    : avatarCropDataUrl || avatarPreviewUrl || avatarUrl.trim()
 
   const effectiveError = clientError || errorMessage
 
@@ -125,6 +127,10 @@ export function EditProfileForm({
       return `Avatar file must stay under ${MAX_AVATAR_FILE_SIZE_MB} MB.`
     }
 
+    if (avatarFile && !avatarCropDataUrl) {
+      return 'Adjust the avatar crop before saving.'
+    }
+
     return ''
   }
 
@@ -154,6 +160,7 @@ export function EditProfileForm({
           <input type="hidden" name="profile_id" value={profile.id} />
           <input type="hidden" name="remove_avatar" value={removeAvatar ? 'true' : 'false'} />
           <input type="hidden" name="return_to" value="/profile/edit" />
+          <input type="hidden" name="avatar_crop_data_url" value={avatarCropDataUrl} />
 
           <section className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
@@ -263,10 +270,32 @@ export function EditProfileForm({
                 <input
                   type="file"
                   name="avatar_file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                   onChange={(e) => {
-                    setAvatarFile(e.target.files?.[0] || null)
-                    if (e.target.files?.[0]) {
+                    const nextFile = e.target.files?.[0] || null
+                    const lowerName = String(nextFile?.name || '').toLowerCase()
+                    const lowerType = String(nextFile?.type || '').toLowerCase()
+
+                    if (
+                      nextFile &&
+                      (
+                        lowerType.includes('heic') ||
+                        lowerType.includes('heif') ||
+                        lowerName.endsWith('.heic') ||
+                        lowerName.endsWith('.heif')
+                      )
+                    ) {
+                      setAvatarFile(null)
+                      setAvatarCropDataUrl('')
+                      setClientError('HEIC and HEIF are not supported for avatar upload in this build yet.')
+                      e.currentTarget.value = ''
+                      return
+                    }
+
+                    setAvatarFile(nextFile)
+                    setAvatarCropDataUrl('')
+                    if (nextFile) {
+                      setAvatarUrl('')
                       setRemoveAvatar(false)
                     }
                   }}
@@ -276,6 +305,12 @@ export function EditProfileForm({
                 <p className="mt-2 text-xs leading-5 text-zinc-500">
                   Recommended: JPG, PNG, WEBP, or GIF.
                 </p>
+
+                <AvatarCropEditor
+                  file={avatarFile}
+                  onCroppedChange={(value) => setAvatarCropDataUrl(value)}
+                  onErrorChange={(value) => setClientError(value)}
+                />
               </div>
 
               <div>
@@ -290,6 +325,8 @@ export function EditProfileForm({
                   onChange={(e) => {
                     setAvatarUrl(e.target.value)
                     if (e.target.value.trim()) {
+                      setAvatarFile(null)
+                      setAvatarCropDataUrl('')
                       setRemoveAvatar(false)
                     }
                   }}
@@ -310,6 +347,7 @@ export function EditProfileForm({
                     setRemoveAvatar(e.target.checked)
                     if (e.target.checked) {
                       setAvatarFile(null)
+                      setAvatarCropDataUrl('')
                       setAvatarUrl('')
                     }
                   }}

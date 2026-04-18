@@ -13,6 +13,7 @@ const MAX_AVATAR_FILE_SIZE = 10 * 1024 * 1024
 
 const ACCEPTED_AVATAR_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
   'image/gif',
@@ -40,6 +41,20 @@ function getFileExtension(name: string) {
 
 function normalizeUsername(value: string) {
   return value.trim().toLowerCase().replace(/^@+/, '')
+}
+
+function dataUrlToFile(dataUrl: string, fileName: string) {
+  const [meta, base64] = dataUrl.split(',')
+
+  if (!meta || !base64) {
+    throw new Error('invalid_avatar_crop')
+  }
+
+  const mimeMatch = meta.match(/data:(.*?);base64/)
+  const mime = mimeMatch?.[1] || 'image/jpeg'
+  const buffer = Buffer.from(base64, 'base64')
+
+  return new File([buffer], fileName, { type: mime })
 }
 
 function isValidUsername(value: string) {
@@ -99,6 +114,25 @@ export async function updateProfile(formData: FormData) {
       ? avatarFileValue
       : null
 
+  const avatarCropDataUrl = String(
+    formData.get('avatar_crop_data_url') || ''
+  ).trim()
+
+  let croppedAvatarFile: File | null = null
+
+  if (avatarCropDataUrl) {
+    try {
+      croppedAvatarFile = dataUrlToFile(
+        avatarCropDataUrl,
+        `avatar-crop-${Date.now()}.jpg`
+      )
+    } catch {
+      redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_crop' }))
+    }
+  }
+
+  const resolvedAvatarUpload = croppedAvatarFile || avatarFile
+
   if (!profileId) {
     redirect(buildRedirectUrl(returnTo, { error: 'missing_profile_id' }))
   }
@@ -127,12 +161,12 @@ export async function updateProfile(formData: FormData) {
     redirect(buildRedirectUrl(returnTo, { error: 'bio_too_long' }))
   }
 
-  if (avatarFile) {
-    if (!avatarFile.type || !ACCEPTED_AVATAR_TYPES.has(avatarFile.type)) {
+  if (resolvedAvatarUpload) {
+    if (!resolvedAvatarUpload.type || !ACCEPTED_AVATAR_TYPES.has(resolvedAvatarUpload.type)) {
       redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_file_type' }))
     }
 
-    if (avatarFile.size > MAX_AVATAR_FILE_SIZE) {
+    if (resolvedAvatarUpload.size > MAX_AVATAR_FILE_SIZE) {
       redirect(buildRedirectUrl(returnTo, { error: 'avatar_file_too_large' }))
     }
   }
@@ -162,9 +196,9 @@ export async function updateProfile(formData: FormData) {
 
   let resolvedAvatarUrl: string | null = avatarUrlInput || null
 
-  if (avatarFile) {
+  if (resolvedAvatarUpload) {
     try {
-      resolvedAvatarUrl = await uploadAvatarToMediaBucket(avatarFile, profileId)
+      resolvedAvatarUrl = await uploadAvatarToMediaBucket(resolvedAvatarUpload, profileId)
     } catch (error: any) {
       redirect(
         buildRedirectUrl(returnTo, {

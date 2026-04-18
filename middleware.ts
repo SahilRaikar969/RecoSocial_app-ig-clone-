@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATH_PREFIXES = [
   '/login',
   '/signup',
+  '/forgot-password',
+  '/reset-password',
 ]
 
 const PUBLIC_EXACT_PATHS = [
@@ -20,6 +22,7 @@ function isStaticAsset(pathname: string) {
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_EXACT_PATHS.includes(pathname)) return true
+
   return PUBLIC_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )
@@ -74,6 +77,8 @@ export async function middleware(request: NextRequest) {
     url.search = ''
     return NextResponse.redirect(url)
   }
+
+  response.headers.set('Cache-Control', 'private, no-store')
 
   return response
 }

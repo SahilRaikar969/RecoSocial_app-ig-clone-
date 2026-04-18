@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MediaSkeleton } from '@/components/ui/media-skeleton'
 
 type SmartImageProps = {
@@ -41,34 +41,6 @@ export function SmartImage({
   const normalizedSrc = useMemo(() => String(src || '').trim(), [src])
   const shouldRender = isProbablyRenderableUrl(normalizedSrc)
 
-  useEffect(() => {
-    setFailed(false)
-    setLoaded(false)
-
-    if (!shouldRender) return
-
-    const image = new window.Image()
-    image.decoding = 'async'
-    image.loading = loading
-    image.src = normalizedSrc
-
-    if (image.complete) {
-      setLoaded(true)
-      return
-    }
-
-    const handleLoad = () => setLoaded(true)
-    const handleError = () => setFailed(true)
-
-    image.addEventListener('load', handleLoad)
-    image.addEventListener('error', handleError)
-
-    return () => {
-      image.removeEventListener('load', handleLoad)
-      image.removeEventListener('error', handleError)
-    }
-  }, [normalizedSrc, shouldRender, loading])
-
   if (!shouldRender || failed) {
     return (
       <div className={fallbackClassName || className}>
@@ -88,7 +60,7 @@ export function SmartImage({
         fetchPriority={fetchPriority}
         decoding="async"
         referrerPolicy="no-referrer"
-        className={`h-full w-full object-cover transition duration-300 ${
+        className={`h-full w-full transition duration-200 ${
           loaded ? 'opacity-100' : 'opacity-0'
         }`}
         onLoad={() => setLoaded(true)}

@@ -70,7 +70,7 @@ export default async function SettingsPage({
       <SurfaceHero
         eyebrow="Settings"
         title="Account and app controls"
-        description="Profile is now the single entry point for settings. This phase adds working account preferences, theme storage, privacy control, direct logout, and faster access to safety surfaces already inside the product."
+        description="Profile is the single entry point for settings. This surface now carries cleaner spacing, stronger mobile readability, and the core account controls without clutter."
         actions={[
           { href: '/profile', label: 'Back to profile', variant: 'secondary' },
           { href: '/feed', label: 'Back to feed', variant: 'secondary' },
@@ -83,7 +83,7 @@ export default async function SettingsPage({
       />
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <div className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+        <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
           <div className="inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-200">
             Appearance
           </div>
@@ -94,10 +94,10 @@ export default async function SettingsPage({
               <input type="hidden" name="theme" value="dark" />
               <button
                 type="submit"
-                className={`w-full rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
                   currentTheme === 'dark'
                     ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
                 }`}
               >
                 Dark premium
@@ -109,10 +109,10 @@ export default async function SettingsPage({
               <input type="hidden" name="theme" value="light" />
               <button
                 type="submit"
-                className={`w-full rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
                   currentTheme === 'light'
                     ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
                 }`}
               >
                 Light premium
@@ -121,11 +121,11 @@ export default async function SettingsPage({
           </div>
 
           <p className="mt-4 text-sm leading-7 text-zinc-400">
-            Theme preference is now stored. The full light-surface visual pass is intentionally kept separate from this batch to avoid breaking the polished dark product surfaces already working.
+            Theme preference is stored. Full light-surface repaint remains intentionally separate so the working dark product is not destabilized.
           </p>
         </div>
 
-        <div className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+        <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
           <div className="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-cyan-200">
             Privacy
           </div>
@@ -136,10 +136,10 @@ export default async function SettingsPage({
               <input type="hidden" name="is_private" value="false" />
               <button
                 type="submit"
-                className={`w-full rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
                   !isPrivate
                     ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
                 }`}
               >
                 Public account
@@ -151,10 +151,10 @@ export default async function SettingsPage({
               <input type="hidden" name="is_private" value="true" />
               <button
                 type="submit"
-                className={`w-full rounded-[22px] border px-4 py-4 text-left text-sm transition ${
+                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
                   isPrivate
                     ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/85 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
                 }`}
               >
                 Private account
@@ -167,7 +167,7 @@ export default async function SettingsPage({
           </p>
         </div>
 
-        <div className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+        <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
           <div className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-200">
             Safety surfaces
           </div>
@@ -175,28 +175,28 @@ export default async function SettingsPage({
           <div className="mt-5 space-y-3">
             <Link
               href="/profile?tab=hidden"
-              className="block rounded-[22px] border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
               Hidden posts
             </Link>
 
             <Link
               href="/profile?tab=reported"
-              className="block rounded-[22px] border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
               Reported posts
             </Link>
 
             <Link
               href="/activity"
-              className="block rounded-[22px] border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
               Open activity
             </Link>
           </div>
         </div>
 
-        <div className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.98))] p-5 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+        <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
           <div className="inline-flex rounded-full border border-pink-500/20 bg-pink-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-pink-200">
             Account
           </div>
@@ -204,14 +204,14 @@ export default async function SettingsPage({
           <div className="mt-5 space-y-3">
             <Link
               href="/profile/edit"
-              className="block rounded-[22px] border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
               Edit profile
             </Link>
 
             <Link
               href="/stories/create"
-              className="block rounded-[22px] border border-zinc-800 bg-zinc-950/85 px-4 py-4 text-sm text-zinc-300 transition hover:-translate-y-0.5 hover:border-zinc-700 hover:text-white"
+              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
               Create story
             </Link>
@@ -219,7 +219,7 @@ export default async function SettingsPage({
             <form action={logout}>
               <button
                 type="submit"
-                className="block w-full rounded-[22px] border border-red-900/40 bg-red-950/25 px-4 py-4 text-left text-sm text-red-100 transition hover:-translate-y-0.5 hover:border-red-800/60"
+                className="block w-full rounded-[20px] border border-red-900/40 bg-red-950/25 px-4 py-4 text-left text-sm text-red-100 transition hover:border-red-800/60"
               >
                 Log out
               </button>

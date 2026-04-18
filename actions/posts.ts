@@ -11,17 +11,41 @@ const MAX_IMAGE_FILE_SIZE = 15 * 1024 * 1024
 const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024
 const MAX_THUMBNAIL_FILE_SIZE = 10 * 1024 * 1024
 
-const ACCEPTED_IMAGE_TYPES = new Set([
+const ACCEPTED_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
   'image/gif',
 ])
 
-const ACCEPTED_VIDEO_TYPES = new Set([
+const ACCEPTED_VIDEO_MIME_TYPES = new Set([
   'video/mp4',
   'video/webm',
   'video/quicktime',
+  'video/x-m4v',
+  'video/3gpp',
+  'video/3gpp2',
+  'video/ogg',
+])
+
+const ACCEPTED_IMAGE_EXTENSIONS = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+])
+
+const ACCEPTED_VIDEO_EXTENSIONS = new Set([
+  'mp4',
+  'webm',
+  'mov',
+  'm4v',
+  '3gp',
+  '3g2',
+  'ogv',
+  'ogg',
 ])
 
 function sanitizeFileName(name: string) {
@@ -38,18 +62,55 @@ function getFileExtension(name: string) {
     : 'bin'
 }
 
-function isAcceptedMediaFile(file: File, mediaType: 'image' | 'video') {
-  if (!file.type) return false
+function hasAcceptedTypeOrExtension(
+  file: File,
+  mimeTypes: Set<string>,
+  extensions: Set<string>
+) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
 
-  if (mediaType === 'image') {
-    return ACCEPTED_IMAGE_TYPES.has(file.type)
+  if (type && mimeTypes.has(type)) {
+    return true
   }
 
-  return ACCEPTED_VIDEO_TYPES.has(file.type)
+  return extensions.has(extension)
+}
+
+function isHeicLikeFile(file: File) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
+
+  return (
+    type.includes('heic') ||
+    type.includes('heif') ||
+    extension === 'heic' ||
+    extension === 'heif'
+  )
+}
+
+function isAcceptedMediaFile(file: File, mediaType: 'image' | 'video') {
+  if (mediaType === 'image') {
+    return hasAcceptedTypeOrExtension(
+      file,
+      ACCEPTED_IMAGE_MIME_TYPES,
+      ACCEPTED_IMAGE_EXTENSIONS
+    )
+  }
+
+  return hasAcceptedTypeOrExtension(
+    file,
+    ACCEPTED_VIDEO_MIME_TYPES,
+    ACCEPTED_VIDEO_EXTENSIONS
+  )
 }
 
 function isAcceptedThumbnailFile(file: File) {
-  return !!file.type && ACCEPTED_IMAGE_TYPES.has(file.type)
+  return hasAcceptedTypeOrExtension(
+    file,
+    ACCEPTED_IMAGE_MIME_TYPES,
+    ACCEPTED_IMAGE_EXTENSIONS
+  )
 }
 
 function isFileTooLarge(file: File, mediaType: 'image' | 'video') {
@@ -67,11 +128,7 @@ function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
   return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
 }
 
-async function uploadToMediaBucket(
-  file: File,
-  folder: string,
-  ownerId: string
-) {
+async function uploadToMediaBucket(file: File, folder: string, ownerId: string) {
   const supabase = await createClient()
 
   const fileExt = getFileExtension(file.name)
@@ -81,19 +138,73 @@ async function uploadToMediaBucket(
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
-  const { error } = await supabase.storage
-    .from('media')
-    .upload(filePath, buffer, {
-      contentType: file.type || undefined,
-      upsert: false,
-      cacheControl: '3600',
-    })
+  const { error } = await supabase.storage.from('media').upload(filePath, buffer, {
+    contentType: file.type || undefined,
+    upsert: false,
+    cacheControl: '3600',
+  })
 
   if (error) {
     throw new Error(error.message)
   }
 
   return filePath
+}
+
+function normalizeCategoryNames(formData: FormData) {
+  return [
+    ...new Set(
+      formData
+        .getAll('categories')
+        .map(String)
+        .map((value) => value.trim())
+        .filter(Boolean)
+    ),
+  ]
+}
+
+function getUploads(formData: FormData) {
+  const mediaFile = formData.get('media_file')
+  const thumbnailFile = formData.get('thumbnail_file')
+
+  const mediaUpload = mediaFile instanceof File && mediaFile.size > 0 ? mediaFile : null
+  const thumbnailUpload =
+    thumbnailFile instanceof File && thumbnailFile.size > 0 ? thumbnailFile : null
+
+  return { mediaUpload, thumbnailUpload }
+}
+
+async function resolveCategoryRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  categoryNames: string[],
+  returnToOnError: string
+) {
+  if (categoryNames.length === 0) {
+    redirect(buildRedirectUrl(returnToOnError, { error: 'no_categories_selected' }))
+  }
+
+  const { data: categoryRows, error: categoriesError } = await supabase
+    .from('categories')
+    .select('id, name')
+    .in('name', categoryNames)
+
+  if (categoriesError) {
+    redirect(
+      buildRedirectUrl(returnToOnError, {
+        error: encodeURIComponent(categoriesError.message),
+      })
+    )
+  }
+
+  if (!categoryRows || categoryRows.length === 0) {
+    redirect(buildRedirectUrl(returnToOnError, { error: 'categories_not_found' }))
+  }
+
+  if (categoryRows.length !== categoryNames.length) {
+    redirect(buildRedirectUrl(returnToOnError, { error: 'some_categories_not_found' }))
+  }
+
+  return categoryRows
 }
 
 export async function createPost(formData: FormData) {
@@ -108,23 +219,8 @@ export async function createPost(formData: FormData) {
   const mediaType = String(formData.get('media_type') || '').trim() as 'image' | 'video'
   const mediaPathInput = String(formData.get('media_path') || '').trim()
   const thumbnailPathInput = String(formData.get('thumbnail_path') || '').trim()
-
-  const mediaFile = formData.get('media_file')
-  const thumbnailFile = formData.get('thumbnail_file')
-
-  const mediaUpload = mediaFile instanceof File && mediaFile.size > 0 ? mediaFile : null
-  const thumbnailUpload =
-    thumbnailFile instanceof File && thumbnailFile.size > 0 ? thumbnailFile : null
-
-  const categoryNames = [
-    ...new Set(
-      formData
-        .getAll('categories')
-        .map(String)
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ),
-  ]
+  const { mediaUpload, thumbnailUpload } = getUploads(formData)
+  const categoryNames = normalizeCategoryNames(formData)
 
   if (caption.length > MAX_CAPTION_LENGTH) {
     redirect('/create?error=caption_too_long')
@@ -136,6 +232,14 @@ export async function createPost(formData: FormData) {
 
   if (!mediaPathInput && !mediaUpload) {
     redirect('/create?error=media_source_required')
+  }
+
+  if (mediaUpload && isHeicLikeFile(mediaUpload)) {
+    redirect('/create?error=heic_not_supported')
+  }
+
+  if (thumbnailUpload && isHeicLikeFile(thumbnailUpload)) {
+    redirect('/create?error=thumbnail_heic_not_supported')
   }
 
   if (mediaUpload) {
@@ -183,33 +287,18 @@ export async function createPost(formData: FormData) {
           profileId
         )
       } catch (error: any) {
-        redirect(`/create?error=${encodeURIComponent(error?.message || 'thumbnail_upload_failed')}`)
+        redirect(
+          `/create?error=${encodeURIComponent(error?.message || 'thumbnail_upload_failed')}`
+        )
       }
     } else if (thumbnailPathInput && !isValidMediaUrl(thumbnailPathInput)) {
       redirect('/create?error=invalid_thumbnail_url')
     }
+  } else {
+    resolvedThumbnailPath = ''
   }
 
-  if (categoryNames.length === 0) {
-    redirect('/create?error=no_categories_selected')
-  }
-
-  const { data: categoryRows, error: categoriesError } = await supabase
-    .from('categories')
-    .select('id, name')
-    .in('name', categoryNames)
-
-  if (categoriesError) {
-    redirect(`/create?error=${encodeURIComponent(categoriesError.message)}`)
-  }
-
-  if (!categoryRows || categoryRows.length === 0) {
-    redirect('/create?error=categories_not_found')
-  }
-
-  if (categoryRows.length !== categoryNames.length) {
-    redirect('/create?error=some_categories_not_found')
-  }
+  const categoryRows = await resolveCategoryRows(supabase, categoryNames, '/create')
 
   const { data: post, error: postError } = await supabase
     .from('posts')
@@ -257,22 +346,8 @@ export async function updatePost(formData: FormData) {
   const mediaPathInput = String(formData.get('media_path') || '').trim()
   const thumbnailPathInput = String(formData.get('thumbnail_path') || '').trim()
 
-  const mediaFile = formData.get('media_file')
-  const thumbnailFile = formData.get('thumbnail_file')
-
-  const mediaUpload = mediaFile instanceof File && mediaFile.size > 0 ? mediaFile : null
-  const thumbnailUpload =
-    thumbnailFile instanceof File && thumbnailFile.size > 0 ? thumbnailFile : null
-
-  const categoryNames = [
-    ...new Set(
-      formData
-        .getAll('categories')
-        .map(String)
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ),
-  ]
+  const { mediaUpload, thumbnailUpload } = getUploads(formData)
+  const categoryNames = normalizeCategoryNames(formData)
 
   if (!postId || !profileId) {
     redirect(buildRedirectUrl(returnTo, { error: 'missing_post_update_ids' }))
@@ -286,10 +361,6 @@ export async function updatePost(formData: FormData) {
     redirect(buildRedirectUrl(returnTo, { error: 'invalid_media_type' }))
   }
 
-  if (!mediaPathInput && !mediaUpload) {
-    redirect(buildRedirectUrl(returnTo, { error: 'media_source_required' }))
-  }
-
   const { data: postRow, error: postLookupError } = await supabase
     .from('posts')
     .select('id, author_id, media_type, thumbnail_path')
@@ -297,19 +368,23 @@ export async function updatePost(formData: FormData) {
     .maybeSingle()
 
   if (postLookupError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(postLookupError.message),
-      })
-    )
+    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(postLookupError.message) }))
   }
 
-  if (!postRow) {
+  if (!postRow || postRow.author_id !== profileId) {
     redirect(buildRedirectUrl(returnTo, { error: 'post_not_found' }))
   }
 
-  if (postRow.author_id !== profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'not_post_owner' }))
+  if (!mediaPathInput && !mediaUpload) {
+    redirect(buildRedirectUrl(returnTo, { error: 'media_source_required' }))
+  }
+
+  if (mediaUpload && isHeicLikeFile(mediaUpload)) {
+    redirect(buildRedirectUrl(returnTo, { error: 'heic_not_supported' }))
+  }
+
+  if (thumbnailUpload && isHeicLikeFile(thumbnailUpload)) {
+    redirect(buildRedirectUrl(returnTo, { error: 'thumbnail_heic_not_supported' }))
   }
 
   if (mediaUpload) {
@@ -375,30 +450,7 @@ export async function updatePost(formData: FormData) {
     resolvedThumbnailPath = ''
   }
 
-  if (categoryNames.length === 0) {
-    redirect(buildRedirectUrl(returnTo, { error: 'no_categories_selected' }))
-  }
-
-  const { data: categoryRows, error: categoriesError } = await supabase
-    .from('categories')
-    .select('id, name')
-    .in('name', categoryNames)
-
-  if (categoriesError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(categoriesError.message),
-      })
-    )
-  }
-
-  if (!categoryRows || categoryRows.length === 0) {
-    redirect(buildRedirectUrl(returnTo, { error: 'categories_not_found' }))
-  }
-
-  if (categoryRows.length !== categoryNames.length) {
-    redirect(buildRedirectUrl(returnTo, { error: 'some_categories_not_found' }))
-  }
+  const categoryRows = await resolveCategoryRows(supabase, categoryNames, returnTo)
 
   const { error: updateError } = await supabase
     .from('posts')
@@ -412,22 +464,18 @@ export async function updatePost(formData: FormData) {
     .eq('author_id', profileId)
 
   if (updateError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(updateError.message),
-      })
-    )
+    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(updateError.message) }))
   }
 
-  const { error: clearCategoriesError } = await supabase
+  const { error: deleteCategoryError } = await supabase
     .from('post_categories')
     .delete()
     .eq('post_id', postId)
 
-  if (clearCategoriesError) {
+  if (deleteCategoryError) {
     redirect(
       buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(clearCategoriesError.message),
+        error: encodeURIComponent(deleteCategoryError.message),
       })
     )
   }
@@ -449,63 +497,5 @@ export async function updatePost(formData: FormData) {
     )
   }
 
-  redirect(`/post/${postId}?updated=1`)
-}
-
-export async function deletePost(formData: FormData) {
-  const supabase = await createClient()
-  const { profileId } = await getDevSession()
-
-  const postId = String(formData.get('post_id') || '').trim()
-  const returnTo = String(formData.get('return_to') || '/profile').trim()
-
-  if (!postId || !profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'missing_post_delete_ids' }))
-  }
-
-  const { data: postRow, error: postLookupError } = await supabase
-    .from('posts')
-    .select('id, author_id')
-    .eq('id', postId)
-    .maybeSingle()
-
-  if (postLookupError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(postLookupError.message),
-      })
-    )
-  }
-
-  if (!postRow) {
-    redirect(buildRedirectUrl(returnTo, { error: 'post_not_found' }))
-  }
-
-  if (postRow.author_id !== profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'not_post_owner' }))
-  }
-
-  await supabase.from('notifications').delete().eq('post_id', postId)
-  await supabase.from('post_reports').delete().eq('post_id', postId)
-  await supabase.from('hidden_posts').delete().eq('post_id', postId)
-  await supabase.from('likes').delete().eq('post_id', postId)
-  await supabase.from('saves').delete().eq('post_id', postId)
-  await supabase.from('comments').delete().eq('post_id', postId)
-  await supabase.from('post_categories').delete().eq('post_id', postId)
-
-  const { error: deleteError } = await supabase
-    .from('posts')
-    .delete()
-    .eq('id', postId)
-    .eq('author_id', profileId)
-
-  if (deleteError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteError.message),
-      })
-    )
-  }
-
-  redirect(buildRedirectUrl(returnTo, { deleted: '1' }))
+  redirect(buildRedirectUrl(returnTo, { post_updated: '1' }))
 }

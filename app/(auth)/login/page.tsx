@@ -5,36 +5,75 @@ import { login } from '@/actions/auth'
 type LoginPageProps = {
   searchParams?: Promise<{
     error?: string
+    message?: string
   }>
 }
 
-function getErrorMessage(error?: string) {
-  const value = String(error || '').trim()
+function getBannerState(error?: string, message?: string) {
+  const errorValue = String(error || '').trim()
+  const messageValue = String(message || '').trim()
 
-  if (!value) return ''
-
-  if (value === 'Invalid login credentials') {
-    return 'Incorrect email or password.'
+  if (messageValue === 'password_reset_email_sent') {
+    return {
+      tone: 'success' as const,
+      text: 'Password reset email sent. Open the link from your email to set a new password.',
+    }
   }
 
-  if (value === 'Email not confirmed') {
-    return 'Email is not confirmed yet.'
+  if (messageValue === 'password_reset_success') {
+    return {
+      tone: 'success' as const,
+      text: 'Password updated successfully. Login with your new password.',
+    }
   }
 
-  if (value === 'confirm_email_required') {
-    return 'Your account was created. Confirm your email in Supabase or disable email confirmation for development.'
+  if (!errorValue) {
+    return {
+      tone: 'neutral' as const,
+      text: '',
+    }
   }
 
-  if (value === 'login_failed') {
-    return 'Login failed. Try again.'
+  if (errorValue === 'Invalid login credentials') {
+    return {
+      tone: 'error' as const,
+      text: 'Incorrect email or password.',
+    }
   }
 
-  return decodeURIComponent(value)
+  if (errorValue === 'Email not confirmed') {
+    return {
+      tone: 'error' as const,
+      text: 'Email is not confirmed yet.',
+    }
+  }
+
+  if (errorValue === 'confirm_email_required') {
+    return {
+      tone: 'error' as const,
+      text: 'Your account was created. Confirm your email in Supabase or disable email confirmation for development.',
+    }
+  }
+
+  if (errorValue === 'login_failed') {
+    return {
+      tone: 'error' as const,
+      text: 'Login failed. Try again.',
+    }
+  }
+
+  return {
+    tone: 'error' as const,
+    text: decodeURIComponent(errorValue),
+  }
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const errorMessage = getErrorMessage(resolvedSearchParams?.error)
+  const banner = getBannerState(
+    resolvedSearchParams?.error,
+    resolvedSearchParams?.message
+  )
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
@@ -94,10 +133,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Access your personalized social surface.
             </p>
 
-            {errorMessage ? (
-              <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+            {banner.text ? (
+              <div
+                className={`mt-5 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm ${
+                  banner.tone === 'success'
+                    ? 'border border-emerald-900/40 bg-emerald-950/30 text-emerald-100'
+                    : 'border border-red-900/40 bg-red-950/30 text-red-100'
+                }`}
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{errorMessage}</span>
+                <span>{banner.text}</span>
               </div>
             ) : null}
 
@@ -118,9 +163,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-sm font-medium text-zinc-300">
-                  Password
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
+                    Password
+                  </label>
+
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-semibold text-zinc-300 underline underline-offset-4 transition hover:text-white"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+
                 <input
                   id="password"
                   name="password"

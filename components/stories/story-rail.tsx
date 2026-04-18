@@ -22,7 +22,7 @@ type StoryRailProps = {
 
 export function StoryRail({ items }: StoryRailProps) {
   return (
-    <section className="rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.24)]">
+    <section className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_12px_28px_rgba(0,0,0,0.20)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <div className="inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-200">
@@ -34,21 +34,21 @@ export function StoryRail({ items }: StoryRailProps) {
         </div>
 
         <Link
-          href="/stories/create"
+          href="/profile"
           className="inline-flex items-center gap-2 rounded-2xl border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
-          Add story
+          Profile
         </Link>
       </div>
 
-      <div className="-mx-1 overflow-x-auto px-1">
-        <div className="flex min-w-max gap-4">
+      <div className="-mx-1 overflow-x-auto px-1" data-disable-camera-swipe="true">
+        <div className="flex min-w-max gap-3 md:gap-4">
           {items.map((item) => (
             <Link
               key={item.author.id}
               href={`/stories/${item.first_story_id}`}
-              className="group flex w-[84px] shrink-0 flex-col items-center gap-2"
+              className="group flex w-[78px] md:w-[84px] shrink-0 flex-col items-center gap-2"
             >
               <div
                 className={`rounded-full p-[2px] transition ${
@@ -61,21 +61,21 @@ export function StoryRail({ items }: StoryRailProps) {
                   <SmartImage
                     src={item.author.avatar_url}
                     alt={item.author.display_name}
-                    className="h-[72px] w-[72px] rounded-full object-cover"
-                    fallbackClassName="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-zinc-950 text-[10px] uppercase tracking-[0.16em] text-zinc-500"
+                    className="h-[66px] w-[66px] md:h-[72px] md:w-[72px] rounded-full object-cover"
+                    fallbackClassName="flex h-[66px] w-[66px] md:h-[72px] md:w-[72px] items-center justify-center rounded-full bg-zinc-950 text-[10px] uppercase tracking-[0.16em] text-zinc-500"
                     fallbackText="Story"
                   />
                 </div>
               </div>
 
-              <span className="max-w-[84px] truncate text-center text-xs leading-4 text-zinc-300 group-hover:text-white">
+              <span className="max-w-[78px] md:max-w-[84px] truncate text-center text-[11px] md:text-xs leading-4 text-zinc-300 group-hover:text-white">
                 {item.is_own_story ? 'Your story' : item.author.username}
               </span>
             </Link>
           ))}
 
           {!items.length ? (
-            <div className="flex h-[110px] items-center justify-center rounded-2xl border border-dashed border-zinc-800 px-5 text-sm text-zinc-500">
+            <div className="flex h-[102px] items-center justify-center rounded-2xl border border-dashed border-zinc-800 px-5 text-sm text-zinc-500">
               No active stories yet
             </div>
           ) : null}

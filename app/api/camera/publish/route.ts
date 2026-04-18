@@ -5,6 +5,7 @@ import { getDevSession } from '@/lib/auth/get-dev-session'
 
 const ACCEPTED_IMAGE_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
 ])
@@ -13,6 +14,28 @@ const ACCEPTED_VIDEO_TYPES = new Set([
   'video/webm',
   'video/mp4',
   'video/quicktime',
+  'video/x-m4v',
+  'video/3gpp',
+  'video/3gpp2',
+  'video/ogg',
+])
+
+const ACCEPTED_IMAGE_EXTENSIONS = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+])
+
+const ACCEPTED_VIDEO_EXTENSIONS = new Set([
+  'webm',
+  'mp4',
+  'mov',
+  'm4v',
+  '3gp',
+  '3g2',
+  'ogv',
+  'ogg',
 ])
 
 const MAX_IMAGE_SIZE = 12 * 1024 * 1024
@@ -31,6 +54,33 @@ function getFileExtension(name: string) {
   return name.includes('.')
     ? name.split('.').pop()?.toLowerCase() || 'bin'
     : 'bin'
+}
+
+function hasAcceptedTypeOrExtension(
+  file: File,
+  mimeTypes: Set<string>,
+  extensions: Set<string>
+) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
+
+  if (type && mimeTypes.has(type)) {
+    return true
+  }
+
+  return extensions.has(extension)
+}
+
+function isHeicLikeFile(file: File) {
+  const type = String(file.type || '').toLowerCase().trim()
+  const extension = getFileExtension(file.name)
+
+  return (
+    type.includes('heic') ||
+    type.includes('heif') ||
+    extension === 'heic' ||
+    extension === 'heif'
+  )
 }
 
 async function uploadToMediaBucket(file: File, folder: string, ownerId: string) {
@@ -108,8 +158,15 @@ export async function POST(request: Request) {
       )
     }
 
+    if (isHeicLikeFile(upload)) {
+      return NextResponse.json(
+        { ok: false, error: 'heic_not_supported' },
+        { status: 400 }
+      )
+    }
+
     if (mediaType === 'image') {
-      if (!upload.type || !ACCEPTED_IMAGE_TYPES.has(upload.type)) {
+      if (!hasAcceptedTypeOrExtension(upload, ACCEPTED_IMAGE_TYPES, ACCEPTED_IMAGE_EXTENSIONS)) {
         return NextResponse.json(
           { ok: false, error: 'invalid_image_file' },
           { status: 400 }
@@ -125,7 +182,7 @@ export async function POST(request: Request) {
     }
 
     if (mediaType === 'video') {
-      if (!upload.type || !ACCEPTED_VIDEO_TYPES.has(upload.type)) {
+      if (!hasAcceptedTypeOrExtension(upload, ACCEPTED_VIDEO_TYPES, ACCEPTED_VIDEO_EXTENSIONS)) {
         return NextResponse.json(
           { ok: false, error: 'invalid_video_file' },
           { status: 400 }
@@ -157,68 +214,69 @@ export async function POST(request: Request) {
         author_id: profileId,
         media_type: mediaType,
         media_path: mediaPath,
-        thumbnail_path: null,
-        caption: caption || null,
       })
 
       if (error) {
         return NextResponse.json(
           { ok: false, error: error.message },
-          { status: 400 }
+          { status: 500 }
         )
       }
 
       return NextResponse.json({
         ok: true,
-        redirectUrl: `${returnTo}?story_created=1`,
+        redirectTo: returnTo || '/feed',
       })
     }
 
-    const { data: insertedPost, error: postError } = await supabase
-      .from('posts')
-      .insert({
-        author_id: profileId,
-        caption: caption || null,
-        media_type: mediaType,
-        media_path: mediaPath,
-        thumbnail_path: null,
-      })
-      .select('id')
-      .single()
-
-    if (postError) {
+    if (!categoryId) {
       return NextResponse.json(
-        { ok: false, error: postError.message },
+        { ok: false, error: 'category_required' },
         { status: 400 }
       )
     }
 
-    if (categoryId) {
-      const { error: categoryError } = await supabase
-        .from('post_categories')
-        .insert({
-          post_id: insertedPost.id,
-          category_id: categoryId,
-        })
+    const { data: post, error: postError } = await supabase
+      .from('posts')
+      .insert({
+        author_id: profileId,
+        caption,
+        media_type: mediaType,
+        media_path: mediaPath,
+        status: 'published',
+        visibility: 'public',
+      })
+      .select('id')
+      .single()
 
-      if (categoryError) {
-        return NextResponse.json(
-          { ok: false, error: categoryError.message },
-          { status: 400 }
-        )
-      }
+    if (postError || !post) {
+      return NextResponse.json(
+        { ok: false, error: postError?.message || 'post_create_failed' },
+        { status: 500 }
+      )
+    }
+
+    const { error: postCategoryError } = await supabase
+      .from('post_categories')
+      .insert({
+        post_id: post.id,
+        category_id: categoryId,
+      })
+
+    if (postCategoryError) {
+      return NextResponse.json(
+        { ok: false, error: postCategoryError.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
       ok: true,
-      redirectUrl: `${returnTo}?post_created=1`,
+      redirectTo: returnTo || '/feed',
     })
   } catch (error: any) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: error?.message || 'camera_publish_failed',
-      },
+      { ok: false, error: error?.message || 'camera_publish_failed' },
       { status: 500 }
     )
   }

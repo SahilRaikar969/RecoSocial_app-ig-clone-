@@ -36,7 +36,7 @@ export function MobileNav() {
   if (isAuthRoute || isReelRoute || isStoryViewerRoute) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800/90 bg-black/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800/90 bg-black/96 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 md:hidden">
       <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
         {navItems.map((item) => {
           const Icon = item.icon
@@ -51,7 +51,7 @@ export function MobileNav() {
               <div
                 className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
                   active
-                    ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_8px_20px_rgba(120,119,255,0.10)]'
+                    ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_6px_16px_rgba(120,119,255,0.08)]'
                     : 'border-zinc-800 bg-zinc-950 text-zinc-400'
                 }`}
               >
