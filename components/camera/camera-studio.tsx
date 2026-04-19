@@ -187,8 +187,8 @@ export function CameraStudio({
         audio: mode === 'video',
         video: {
           facingMode,
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
       })
 
@@ -220,8 +220,8 @@ export function CameraStudio({
     if (!video) return
 
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth || 1080
-    canvas.height = video.videoHeight || 1920
+    canvas.width = video.videoWidth || 1920
+    canvas.height = video.videoHeight || 1080
 
     const context = canvas.getContext('2d')
     if (!context) return
@@ -364,7 +364,7 @@ export function CameraStudio({
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-5 px-3 py-3 md:px-5 md:py-5">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -386,8 +386,8 @@ export function CameraStudio({
         ) : null}
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="overflow-hidden rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
-            <div className="relative aspect-[9/16] bg-black">
+          <section className="overflow-hidden rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+            <div className="relative h-[72vh] min-h-[520px] w-full bg-black md:h-[78vh] xl:h-[calc(100vh-140px)] xl:min-h-[680px]">
               {!previewUrl && source === 'camera' ? (
                 <>
                   <video
@@ -395,7 +395,7 @@ export function CameraStudio({
                     autoPlay
                     playsInline
                     muted
-                    className={`h-full w-full object-contain ${
+                    className={`absolute inset-0 h-full w-full object-cover ${
                       facingMode === 'user' ? 'scale-x-[-1]' : ''
                     }`}
                   />
@@ -411,14 +411,14 @@ export function CameraStudio({
                   <img
                     src={previewUrl}
                     alt="Captured preview"
-                    className="h-full w-full object-contain"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
                   <video
                     src={previewUrl}
                     controls
                     playsInline
-                    className="h-full w-full object-contain"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 )
               ) : (
@@ -550,7 +550,7 @@ export function CameraStudio({
                   <button
                     type="button"
                     onClick={handlePublish}
-                    disabled={publishing}
+                    disabled={publishing || (target === 'post' && !categoryId)}
                     className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f3f3ff_100%)] px-6 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
                   >
                     {publishing ? (
@@ -579,7 +579,7 @@ export function CameraStudio({
           </section>
 
           <aside className="space-y-5">
-            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+            <section className="rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                 Capture mode
               </p>
@@ -617,11 +617,11 @@ export function CameraStudio({
               </div>
 
               <p className="mt-4 text-sm leading-7 text-zinc-400">
-                Front camera now previews mirrored like a normal selfie camera, and live preview uses contain instead of aggressive default zoom.
+                Live camera view now fills the frame using cover behavior on both phone and laptop instead of showing a smaller rectangle with black empty space.
               </p>
             </section>
 
-            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+            <section className="rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                 Publish target
               </p>
@@ -674,7 +674,7 @@ export function CameraStudio({
               ) : null}
             </section>
 
-            <section className="rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+            <section className="rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
               <label className="mb-2 block text-sm font-medium text-white">
                 Caption
               </label>
@@ -688,11 +688,11 @@ export function CameraStudio({
               />
 
               <div className="mt-4 rounded-2xl border border-zinc-800 bg-black px-4 py-4">
-                <p className="text-sm font-medium text-white">Capture flow</p>
+                <p className="text-sm font-medium text-white">Camera view behavior</p>
                 <ul className="mt-3 space-y-2 text-sm text-zinc-400">
-                  <li>• Device upload fallback stays active if live camera capture is unstable.</li>
-                  <li>• HEIC and HEIF are blocked cleanly instead of failing unpredictably.</li>
-                  <li>• Wider mobile video variants are accepted across the capture publish flow.</li>
+                  <li>• Front camera stays mirrored like a normal selfie preview.</li>
+                  <li>• Live camera surface now fills the full visible frame.</li>
+                  <li>• Upload fallback still stays available if capture is unstable.</li>
                 </ul>
               </div>
             </section>

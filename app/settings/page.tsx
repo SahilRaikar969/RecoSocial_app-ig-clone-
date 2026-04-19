@@ -54,12 +54,14 @@ export default async function SettingsPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, is_private, theme_preference')
+    .select('id, username, display_name, is_private, theme_preference')
     .eq('id', profileId)
     .maybeSingle()
 
   const currentTheme = profile?.theme_preference === 'light' ? 'light' : 'dark'
   const isPrivate = Boolean(profile?.is_private)
+  const username = String(profile?.username || '').trim()
+  const displayName = String(profile?.display_name || '').trim()
 
   return (
     <PageShell maxWidth="5xl">
@@ -70,7 +72,7 @@ export default async function SettingsPage({
       <SurfaceHero
         eyebrow="Settings"
         title="Account and app controls"
-        description="Profile is the single entry point for settings. This surface now carries cleaner spacing, stronger mobile readability, and the core account controls without clutter."
+        description="Profile remains the single entry point for settings. This stage tightens account controls, recovery access, and session-facing actions without cluttering the main product shell."
         actions={[
           { href: '/profile', label: 'Back to profile', variant: 'secondary' },
           { href: '/feed', label: 'Back to feed', variant: 'secondary' },
@@ -78,7 +80,7 @@ export default async function SettingsPage({
         stats={[
           { label: 'Theme', value: currentTheme === 'light' ? 'Light' : 'Dark', helper: 'saved preference' },
           { label: 'Privacy', value: isPrivate ? 'Private' : 'Public', helper: 'current account visibility' },
-          { label: 'Entry', value: 'Profile', helper: 'settings now live here only' },
+          { label: 'Account', value: username ? `@${username}` : 'Active', helper: displayName || 'current profile' },
         ]}
       />
 
@@ -169,30 +171,27 @@ export default async function SettingsPage({
 
         <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
           <div className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-200">
-            Safety surfaces
+            Security
           </div>
 
           <div className="mt-5 space-y-3">
             <Link
-              href="/profile?tab=hidden"
+              href="/forgot-password"
               className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
-              Hidden posts
+              Reset password by email
             </Link>
 
             <Link
-              href="/profile?tab=reported"
+              href="/profile/edit"
               className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
             >
-              Reported posts
+              Review identity and avatar
             </Link>
 
-            <Link
-              href="/activity"
-              className="block rounded-[20px] border border-zinc-800 bg-zinc-950/90 px-4 py-4 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
-            >
-              Open activity
-            </Link>
+            <div className="rounded-[20px] border border-zinc-800 bg-black px-4 py-4 text-sm text-zinc-400">
+              Recovery opens in the same controlled auth surface used by login and reset, not outside the product shell.
+            </div>
           </div>
         </div>
 
@@ -224,6 +223,50 @@ export default async function SettingsPage({
                 Log out
               </button>
             </form>
+          </div>
+        </div>
+
+        <div className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-5 shadow-[0_14px_32px_rgba(0,0,0,0.20)] xl:col-span-2">
+          <div className="inline-flex rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+            Control summary
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/90 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                Session state
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Active
+              </p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Account controls are being read from the live authenticated profile.
+              </p>
+            </div>
+
+            <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/90 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                Profile entry
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Primary settings source
+              </p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Settings remain profile-driven and do not return to cluttered nav entry patterns.
+              </p>
+            </div>
+
+            <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/90 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                Recovery path
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Ready
+              </p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Password reset now has a direct surface from auth and a clear route from settings.
+              </p>
+            </div>
           </div>
         </div>
       </section>
