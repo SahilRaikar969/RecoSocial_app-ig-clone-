@@ -102,10 +102,10 @@ export async function SearchResults({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
               {resolvedCreators.length} creators
             </span>
-            <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
               {posts.length} posts
             </span>
             {activeCategory ? (
@@ -136,7 +136,7 @@ export async function SearchResults({
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href={activeCategory ? `/explore?category=${encodeURIComponent(activeCategory)}` : '/explore'}
-                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white"
+                className="rounded-2xl border border-white/10 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-white/25 hover:text-white"
               >
                 Clear search
               </Link>
@@ -184,7 +184,7 @@ export async function SearchResults({
                     return (
                       <article
                         key={creator.id}
-                        className="group rounded-[24px] border border-zinc-800 bg-black/65 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-zinc-700 hover:bg-black/80"
+                        className="group rounded-[24px] border border-zinc-800 bg-black/65 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-black/80"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <Link
@@ -194,7 +194,7 @@ export async function SearchResults({
                             <SmartImage
                               src={creator.resolved_avatar_url}
                               alt={creatorDisplayName}
-                              className="h-12 w-12 rounded-full border border-zinc-700 object-cover ring-2 ring-white/5"
+                              className="h-12 w-12 rounded-full border border-white/10 object-cover ring-2 ring-white/5"
                               fallbackClassName="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-950 text-[10px] uppercase tracking-[0.16em] text-zinc-500"
                               fallbackText="User"
                             />
@@ -214,7 +214,7 @@ export async function SearchResults({
                                     Following
                                   </span>
                                 ) : creator.follows_you ? (
-                                  <span className="rounded-full border border-zinc-700 bg-zinc-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
+                                  <span className="rounded-full border border-white/10 bg-zinc-950 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
                                     Follows you
                                   </span>
                                 ) : null}
@@ -239,7 +239,7 @@ export async function SearchResults({
                         </div>
 
                         <div className="mt-4 grid grid-cols-3 gap-2">
-                          <div className="rounded-[18px] border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-center">
+                          <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                               Followers
                             </p>
@@ -248,7 +248,7 @@ export async function SearchResults({
                             </p>
                           </div>
 
-                          <div className="rounded-[18px] border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-center">
+                          <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                               Posts
                             </p>
@@ -257,7 +257,7 @@ export async function SearchResults({
                             </p>
                           </div>
 
-                          <div className="rounded-[18px] border border-zinc-800 bg-zinc-950/80 px-3 py-3 text-center">
+                          <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center">
                             <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                               Action
                             </p>

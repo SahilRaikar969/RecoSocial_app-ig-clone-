@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -161,7 +162,7 @@ export function PostMedia({
     return (
       <div
         ref={containerRef}
-        className="relative flex aspect-[4/5] items-center justify-center bg-zinc-950 text-sm text-zinc-500"
+        className="relative flex aspect-[4/5] items-center justify-center bg-[#08080b] text-sm text-zinc-500"
       >
         <div className="rounded-full border border-zinc-800 bg-black px-4 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
           Media unavailable
@@ -173,7 +174,7 @@ export function PostMedia({
   return (
     <div
       ref={containerRef}
-      className="group relative overflow-hidden border-y border-zinc-900 bg-zinc-950"
+      className="group relative overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
     >
       {priorityLabel ? (
         <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
@@ -248,8 +249,8 @@ export function PostMedia({
         <SmartImage
           src={mediaUrl}
           alt={alt}
-          className="aspect-[4/5] w-full bg-black object-contain"
-          fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-zinc-950 text-sm text-zinc-500"
+          className="aspect-[4/5] w-full bg-black object-cover"
+          fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-[#08080b] text-sm text-zinc-500"
           fallbackText="Media unavailable"
         />
       )}

@@ -60,14 +60,14 @@ export default async function ThreadPage({
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/messages"
-          className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
         >
-          Back to inbox
+          Back
         </Link>
 
         <Link
           href={`/profile/${data.thread.other_profile.id}`}
-          className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          className="rounded-full border border-white/10 bg-white px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
         >
           View profile
         </Link>
@@ -76,13 +76,14 @@ export default async function ThreadPage({
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
       {successMessage ? <FeedbackBanner>{successMessage}</FeedbackBanner> : null}
 
-      <MessageThread
-        viewerProfileId={profileId}
-        otherProfile={data.thread.other_profile}
-        messages={data.messages}
-      />
-
-      <MessageComposer threadId={data.thread.id} />
+      <div className="overflow-hidden rounded-[34px] border border-white/10 bg-black shadow-[0_18px_52px_rgba(0,0,0,0.28)]">
+        <MessageThread
+          viewerProfileId={profileId}
+          otherProfile={data.thread.other_profile}
+          messages={data.messages}
+        />
+        <MessageComposer threadId={data.thread.id} />
+      </div>
     </PageShell>
   )
 }

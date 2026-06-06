@@ -58,7 +58,7 @@ export function InstagramProfileHeader({
     (isOwnProfile ? '/profile' : `/profile/${encodeURIComponent(profile.id)}`)
 
   return (
-    <section className="relative overflow-hidden rounded-[28px] sm:rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] px-4 py-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_34px_rgba(0,0,0,0.18)] sm:px-6 sm:py-7">
+    <section className="relative overflow-hidden rounded-[28px] sm:rounded-[32px] border border-white/10 bg-[#08080b] px-4 py-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_34px_rgba(0,0,0,0.18)] sm:px-6 sm:py-7">
       <div className="pointer-events-none absolute inset-0 hidden sm:block bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(236,72,153,0.07),transparent_24%)]" />
 
       <div className="relative space-y-5">
@@ -75,7 +75,7 @@ export function InstagramProfileHeader({
           {isOwnProfile ? (
             <Link
               href="/settings"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950/85 text-zinc-200 transition hover:border-zinc-500 hover:text-white"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-200 transition hover:border-white/25 hover:text-white"
               aria-label="Open settings"
             >
               <Settings className="h-4.5 w-4.5" />
@@ -89,7 +89,7 @@ export function InstagramProfileHeader({
               <SmartImage
                 src={avatarUrl}
                 alt={profile.display_name}
-                className="h-[88px] w-[88px] rounded-full border border-zinc-700 bg-zinc-950 object-cover ring-4 ring-white/5 shadow-[0_16px_34px_rgba(0,0,0,0.20)] sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
+                className="h-[88px] w-[88px] rounded-full border border-white/10 bg-zinc-950 object-cover ring-4 ring-white/5 shadow-[0_16px_34px_rgba(0,0,0,0.20)] sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
                 fallbackClassName="flex h-[88px] w-[88px] items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-950 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500 sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]"
                 fallbackText="No avatar"
               />
@@ -110,7 +110,7 @@ export function InstagramProfileHeader({
             <div className="grid grid-cols-3 gap-2 text-center md:flex md:items-center md:gap-10 md:text-left">
               <Link
                 href={isOwnProfile ? '/profile' : `/profile/${encodeURIComponent(profile.id)}`}
-                className="rounded-[18px] border border-zinc-800 bg-zinc-950/75 px-2 py-3 transition hover:border-zinc-700 md:border-0 md:bg-transparent md:px-0 md:py-0"
+                className="rounded-[18px] border border-white/10 bg-white/[0.04] px-2 py-3 transition hover:border-white/20 md:border-0 md:bg-transparent md:px-0 md:py-0"
               >
                 <span className="block text-lg font-semibold leading-none text-white">
                   {formatCount(counts.postCount)}
@@ -122,7 +122,7 @@ export function InstagramProfileHeader({
 
               <Link
                 href={getFollowersHref(profile.id, isOwnProfile)}
-                className="rounded-[18px] border border-zinc-800 bg-zinc-950/75 px-2 py-3 transition hover:border-zinc-700 md:border-0 md:bg-transparent md:px-0 md:py-0"
+                className="rounded-[18px] border border-white/10 bg-white/[0.04] px-2 py-3 transition hover:border-white/20 md:border-0 md:bg-transparent md:px-0 md:py-0"
               >
                 <span className="block text-lg font-semibold leading-none text-white">
                   {formatCount(counts.followerCount)}
@@ -134,7 +134,7 @@ export function InstagramProfileHeader({
 
               <Link
                 href={getFollowingHref(profile.id, isOwnProfile)}
-                className="rounded-[18px] border border-zinc-800 bg-zinc-950/75 px-2 py-3 transition hover:border-zinc-700 md:border-0 md:bg-transparent md:px-0 md:py-0"
+                className="rounded-[18px] border border-white/10 bg-white/[0.04] px-2 py-3 transition hover:border-white/20 md:border-0 md:bg-transparent md:px-0 md:py-0"
               >
                 <span className="block text-lg font-semibold leading-none text-white">
                   {formatCount(counts.followingCount)}
@@ -167,7 +167,7 @@ export function InstagramProfileHeader({
                   <>
                     <Link
                       href="/profile/edit"
-                      className="rounded-xl border border-zinc-700 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-zinc-500 hover:bg-zinc-900"
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-zinc-900"
                     >
                       Edit profile
                     </Link>
@@ -191,7 +191,7 @@ export function InstagramProfileHeader({
                     {canMessage ? (
                       <Link
                         href={`/messages?with=${encodeURIComponent(profile.id)}`}
-                        className="rounded-xl border border-zinc-700 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-zinc-500 hover:bg-zinc-900"
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-zinc-900"
                       >
                         Message
                       </Link>
@@ -199,7 +199,7 @@ export function InstagramProfileHeader({
 
                     <Link
                       href="/explore"
-                      className="rounded-xl border border-zinc-700 bg-zinc-950/90 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-zinc-500 hover:bg-zinc-900"
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-zinc-900"
                     >
                       Explore
                     </Link>
@@ -224,7 +224,7 @@ export function InstagramProfileHeader({
                   href={`/explore?category=${encodeURIComponent(category.slug)}`}
                   className="group flex w-[82px] sm:w-[86px] shrink-0 flex-col items-center gap-2"
                 >
-                  <div className="flex h-[74px] w-[74px] sm:h-[78px] sm:w-[78px] items-center justify-center rounded-full border border-zinc-700 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] text-center text-[10px] font-medium leading-4 text-zinc-200 shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition group-hover:border-violet-400/20 group-hover:bg-violet-500/10 group-hover:text-white sm:text-[11px]">
+                  <div className="flex h-[74px] w-[74px] sm:h-[78px] sm:w-[78px] items-center justify-center rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] text-center text-[10px] font-medium leading-4 text-zinc-200 shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition group-hover:border-violet-400/20 group-hover:bg-violet-500/10 group-hover:text-white sm:text-[11px]">
                     <span className="line-clamp-2 px-2 break-words">{category.name}</span>
                   </div>
 

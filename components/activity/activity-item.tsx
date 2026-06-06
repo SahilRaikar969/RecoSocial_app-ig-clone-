@@ -101,11 +101,11 @@ function getNotificationText(notification: NotificationItem) {
   }
 }
 
-function getTypeIcon(type: NotificationItem['type']) {
-  if (type === 'follow') return UserPlus
-  if (type === 'comment') return MessageCircle
-  if (type === 'profile_view') return Eye
-  return Heart
+function NotificationTypeIcon({ type }: { type: NotificationItem['type'] }) {
+  if (type === 'follow') return <UserPlus className="h-3.5 w-3.5" />
+  if (type === 'comment') return <MessageCircle className="h-3.5 w-3.5" />
+  if (type === 'profile_view') return <Eye className="h-3.5 w-3.5" />
+  return <Heart className="h-3.5 w-3.5" />
 }
 
 export async function ActivityItem({ notification }: ActivityItemProps) {
@@ -119,10 +119,8 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
   )
   const postHref = getPostHref(notification.post?.id)
   const text = getNotificationText(notification)
-  const Icon = getTypeIcon(notification.type)
-
   return (
-    <article className="group relative overflow-hidden rounded-[28px] border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_45px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-0.5 hover:border-zinc-700 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_70px_rgba(0,0,0,0.34)]">
+    <article className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] transition duration-300 hover:bg-white/[0.06]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_24%)] opacity-80" />
 
       <div className="relative flex items-start justify-between gap-4 p-4 sm:p-5">
@@ -142,8 +140,8 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-black/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
-                <Icon className="h-3.5 w-3.5" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-300">
+                <NotificationTypeIcon type={notification.type} />
                 {text.eyebrow}
               </div>
 
@@ -162,14 +160,14 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
               {text.primary}
             </p>
 
-            <div className="mt-2 rounded-[20px] border border-zinc-800 bg-black/55 px-4 py-3">
+            <div className="mt-2 rounded-[20px] border border-white/10 bg-black/40 px-4 py-3">
               <p className="text-sm leading-6 text-zinc-300">{text.secondary}</p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
                 href={actorProfileHref}
-                className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-950/85 px-3 py-2 text-xs font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-white/25 hover:text-white"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 View creator
@@ -178,7 +176,7 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
               {notification.post?.id ? (
                 <Link
                   href={postHref}
-                  className="rounded-full border border-zinc-700 bg-zinc-950/85 px-3 py-2 text-xs font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white"
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-white/25 hover:text-white"
                 >
                   Open post
                 </Link>
@@ -190,7 +188,7 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
         {notification.post?.id ? (
           <Link
             href={postHref}
-            className="shrink-0 self-start rounded-[22px] border border-zinc-800 bg-black/65 p-1 transition hover:-translate-y-0.5 hover:border-zinc-600"
+            className="shrink-0 self-start rounded-[22px] border border-white/10 bg-black/60 p-1 transition hover:-translate-y-0.5 hover:border-white/25"
           >
             <SmartImage
               src={postPreviewUrl}

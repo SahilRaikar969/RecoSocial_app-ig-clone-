@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import Link from 'next/link'
 import { Compass, Search, Sparkles, TrendingUp } from 'lucide-react'
 import { FeedList } from '@/components/feed/feed-list'
@@ -10,11 +11,172 @@ import { SurfaceEmpty } from '@/components/ui/surface-empty'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getExploreData } from '@/lib/db/queries/explore'
 
+type FeedListPost = ComponentProps<typeof FeedList>['posts'][number]
+type SearchResultPost = ComponentProps<typeof SearchResults>['posts'][number]
+type ExplorePost = FeedListPost & SearchResultPost
+
+type SearchResultCreator = ComponentProps<typeof SearchResults>['creators'][number]
+type CreatorSpotlightCreator = ComponentProps<
+  typeof CreatorSpotlightList
+>['creators'][number]
+type ExploreCreator = SearchResultCreator & CreatorSpotlightCreator
+
+type RawExploreCategory = {
+  id?: string | null
+  name?: string | null
+  slug?: string | null
+}
+
+type RawExplorePostCategory = {
+  category_id?: string | null
+  categories?: RawExploreCategory | RawExploreCategory[] | null
+}
+
+type RawExplorePost = {
+  id?: string | null
+  author_id?: string | null
+  media_type?: string | null
+  media_path?: string | null
+  caption?: string | null
+  category?: string | null
+  created_at?: string | null
+  like_count?: number | null
+  comment_count?: number | null
+  save_count?: number | null
+  liked_by_me?: boolean | null
+  saved_by_me?: boolean | null
+  author?: {
+    id?: string | null
+    username?: string | null
+    display_name?: string | null
+    avatar_url?: string | null
+  } | null
+  profiles?: {
+    id?: string | null
+    username?: string | null
+    full_name?: string | null
+    display_name?: string | null
+    avatar_url?: string | null
+  } | null
+  post_categories?: RawExplorePostCategory[] | null
+}
+
+type RawExploreCreator = {
+  id?: string | null
+  username?: string | null
+  full_name?: string | null
+  display_name?: string | null
+  avatar_url?: string | null
+  bio?: string | null
+  followed_by_me?: boolean | null
+  follower_count?: number | null
+  post_count?: number | null
+  latest_post_at?: string | null
+  discovery_score?: number | null
+  matched_categories?: {
+    slug?: string | null
+  }[] | null
+}
+
 type ExplorePageProps = {
   searchParams?: Promise<{
     q?: string
     category?: string
   }>
+}
+
+function getCategoryFromRelation(item: RawExplorePostCategory) {
+  return Array.isArray(item.categories)
+    ? item.categories[0] ?? null
+    : item.categories ?? null
+}
+
+function getExploreCategorySlug(item: RawExplorePostCategory) {
+  return getCategoryFromRelation(item)?.slug ?? null
+}
+
+function normalizeExplorePost(post: RawExplorePost): ExplorePost {
+  const profileId = post.profiles?.id || post.author?.id || post.author_id || ''
+  const profileUsername =
+    post.profiles?.username ?? post.author?.username ?? 'unknown'
+  const profileFullName =
+    post.profiles?.full_name ??
+    post.profiles?.display_name ??
+    post.author?.display_name ??
+    profileUsername
+  const profileAvatar = post.profiles?.avatar_url ?? post.author?.avatar_url ?? null
+
+  const postCategories = Array.isArray(post.post_categories)
+    ? post.post_categories.map((item, index) => {
+        const category = getCategoryFromRelation(item)
+        const categoryId =
+          item.category_id || category?.id || `explore-category-${index}`
+        const categorySlug = category?.slug || 'category'
+        const categoryName = category?.name || categorySlug
+
+        return {
+          category_id: categoryId,
+          categories: {
+            id: categoryId,
+            name: categoryName,
+            slug: categorySlug,
+          },
+        }
+      })
+    : []
+
+  return {
+    id: post.id || '',
+    author_id: post.author_id || profileId,
+    media_type: post.media_type || 'image',
+    media_path: post.media_path || '',
+    caption: post.caption ?? null,
+    category: post.category ?? null,
+    created_at: post.created_at || new Date(0).toISOString(),
+    like_count: Number(post.like_count ?? 0),
+    comment_count: Number(post.comment_count ?? 0),
+    save_count: Number(post.save_count ?? 0),
+    liked_by_me: Boolean(post.liked_by_me),
+    saved_by_me: Boolean(post.saved_by_me),
+    profiles: profileId
+      ? {
+          id: profileId,
+          username: profileUsername,
+          full_name: profileFullName,
+          avatar_url: profileAvatar,
+        }
+      : null,
+    author: profileId
+      ? {
+          id: profileId,
+          username: profileUsername,
+          display_name: profileFullName,
+          avatar_url: profileAvatar,
+        }
+      : null,
+    post_categories: postCategories,
+  } as ExplorePost
+}
+
+function normalizeExploreCreator(creator: RawExploreCreator): ExploreCreator {
+  const displayName = creator.display_name ?? creator.full_name ?? null
+
+  return {
+    id: creator.id || '',
+    username: creator.username ?? null,
+    full_name: creator.full_name ?? displayName,
+    display_name: displayName,
+    avatar_url: creator.avatar_url ?? null,
+    bio: creator.bio ?? null,
+    followed_by_me: Boolean(creator.followed_by_me),
+    follower_count: Number(creator.follower_count ?? 0),
+    post_count: Number(creator.post_count ?? 0),
+    latest_post_at: creator.latest_post_at ?? null,
+    discovery_score: Number(creator.discovery_score ?? 0),
+    matched_categories: Array.isArray(creator.matched_categories)
+      ? creator.matched_categories
+      : [],
+  } as ExploreCreator
 }
 
 export default async function ExplorePage({ searchParams }: ExplorePageProps) {
@@ -24,58 +186,56 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const { profileId } = await getDevSession()
 
   const baseData = await getExploreData(profileId)
+  const loweredSearchQuery = searchQuery.toLowerCase()
 
-  const filteredPosts = Array.isArray(baseData.posts)
-    ? baseData.posts.filter((post: any) => {
-        const matchesCategory =
-          !activeCategory ||
-          (Array.isArray(post?.post_categories) &&
-            post.post_categories.some((item: any) => {
-              const category = Array.isArray(item?.categories)
-                ? item.categories[0] ?? null
-                : item?.categories ?? null
-
-              return category?.slug === activeCategory
-            }))
-
-        const matchesSearch =
-          !searchQuery ||
-          String(post?.caption || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          String(post?.author?.username || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          String(post?.author?.display_name || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-
-        return matchesCategory && matchesSearch
-      })
+  const normalizedPosts = Array.isArray(baseData.posts)
+    ? (baseData.posts as RawExplorePost[])
+        .map(normalizeExplorePost)
+        .filter((post) => post.id && post.media_path)
     : []
 
-  const filteredCreators = Array.isArray(baseData.creators)
-    ? baseData.creators.filter((creator: any) => {
-        const matchesSearch =
-          !searchQuery ||
-          String(creator?.username || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          String(creator?.display_name || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          String(creator?.bio || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-
-        const matchesCategory =
-          !activeCategory ||
-          (Array.isArray(creator?.matched_categories) &&
-            creator.matched_categories.some(
-              (category: any) => category?.slug === activeCategory
-            ))
-
-        return matchesSearch && matchesCategory
-      })
+  const normalizedCreators = Array.isArray(baseData.creators)
+    ? (baseData.creators as RawExploreCreator[])
+        .map(normalizeExploreCreator)
+        .filter((creator) => creator.id)
     : []
+
+  const filteredPosts = normalizedPosts.filter((post) => {
+  const matchesCategory =
+    !activeCategory ||
+    (Array.isArray(post.post_categories) &&
+      post.post_categories.some((item) => {
+        const category = Array.isArray(item.categories)
+          ? item.categories[0] ?? null
+          : item.categories ?? null
+
+        return category?.slug === activeCategory
+      }))
+
+  const matchesSearch =
+    !searchQuery ||
+    String(post.caption || '').toLowerCase().includes(loweredSearchQuery) ||
+    String(post.author?.username || '')
+      .toLowerCase()
+      .includes(loweredSearchQuery) ||
+    String(post.author?.display_name || '')
+      .toLowerCase()
+      .includes(loweredSearchQuery)
+
+  return matchesCategory && matchesSearch
+})
+
+const filteredCreators = normalizedCreators.filter((creator) => {
+  const matchesSearch =
+    !searchQuery ||
+    String(creator.username || '').toLowerCase().includes(loweredSearchQuery) ||
+    String(creator.display_name || '')
+      .toLowerCase()
+      .includes(loweredSearchQuery) ||
+    String(creator.bio || '').toLowerCase().includes(loweredSearchQuery)
+
+  return matchesSearch
+})
 
   const data = {
     categories: Array.isArray(baseData.categories) ? baseData.categories : [],
@@ -117,12 +277,16 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
             {
               label: 'Creators',
               value: data.creators.length,
-              helper: hasSearch ? 'matched to the active search' : 'available in discovery',
+              helper: hasSearch
+                ? 'matched to the active search'
+                : 'available in discovery',
             },
             {
               label: 'Posts',
               value: data.posts.length,
-              helper: activeCategory ? 'inside the active topic' : 'ranked in discovery',
+              helper: activeCategory
+                ? 'inside the active topic'
+                : 'ranked in discovery',
             },
             {
               label: 'Topics',
@@ -159,7 +323,8 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
                 </p>
               </div>
               <p className="mt-3 text-sm leading-7 text-zinc-300">
-                Discovery posts stay sorted for wider browsing instead of only follows-based ordering.
+                Discovery posts stay sorted for wider browsing instead of only
+                follows-based ordering.
               </p>
             </div>
 
@@ -171,7 +336,8 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
                 </p>
               </div>
               <p className="mt-3 text-sm leading-7 text-zinc-300">
-                Open creators, posts, reels, saved, and feed from one connected surface.
+                Open creators, posts, reels, saved, and feed from one connected
+                surface.
               </p>
             </div>
           </section>
@@ -201,7 +367,11 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
         ) : (
           <SurfaceEmpty
             eyebrow="Discovery empty"
-            title={activeCategory ? 'No posts in this topic yet' : 'No discovery posts yet'}
+            title={
+              activeCategory
+                ? 'No posts in this topic yet'
+                : 'No discovery posts yet'
+            }
             body={
               activeCategory
                 ? 'Try another topic or reopen the full explore surface to widen discovery.'
@@ -229,7 +399,8 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
               </div>
 
               <p className="mt-4 text-sm leading-7 text-zinc-400">
-                Creator recommendations will appear here once more profiles become available.
+                Creator recommendations will appear here once more profiles become
+                available.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">

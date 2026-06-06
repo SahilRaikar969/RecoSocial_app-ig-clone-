@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Compass, Heart, Home, Mail, PlusSquare, User } from 'lucide-react'
+import { ActivityNotificationDot } from '@/components/activity/activity-notification-dot'
 
 const navItems = [
   { href: '/feed', label: 'Home', icon: Home },
@@ -49,13 +50,16 @@ export function MobileNav() {
               className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2"
             >
               <div
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
                   active
                     ? 'border-violet-400/20 bg-[linear-gradient(180deg,rgba(32,32,40,0.96),rgba(16,16,22,0.96))] text-white shadow-[0_6px_16px_rgba(120,119,255,0.08)]'
                     : 'border-zinc-800 bg-zinc-950 text-zinc-400'
                 }`}
               >
                 <Icon className="h-4.5 w-4.5" />
+                {item.href === '/activity' ? (
+                  <ActivityNotificationDot className="absolute right-1.5 top-1.5 ring-2 ring-black" />
+                ) : null}
               </div>
 
               <span

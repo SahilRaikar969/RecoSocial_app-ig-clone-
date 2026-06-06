@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { PageShell } from '@/components/ui/page-shell'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
-import { SurfaceHero } from '@/components/ui/surface-hero'
 import { ConversationList } from '@/components/messages/conversation-list'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getInboxData, getOrCreateDirectThread } from '@/lib/db/queries/messages'
@@ -50,19 +49,22 @@ export default async function MessagesPage({
     <PageShell maxWidth="5xl">
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
-      <SurfaceHero
-        eyebrow="Messages"
-        title="Mutual-follow inbox"
-        description="Direct conversations stay lightweight and only open between creators who follow each other both ways."
-        actions={[
-          { href: '/feed', label: 'Back to feed', variant: 'secondary' },
-        ]}
-        stats={[
-          { label: 'Conversations', value: conversations.length, helper: 'active direct threads' },
-        ]}
-      />
-
-      <ConversationList conversations={conversations} />
+      <section className="overflow-hidden rounded-[34px] border border-white/10 bg-black shadow-[0_18px_52px_rgba(0,0,0,0.28)]">
+        <div className="border-b border-white/10 px-5 py-5 sm:px-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Direct
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            Messages
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            Mutual-follow conversations in a cleaner social inbox.
+          </p>
+        </div>
+        <div className="p-3 sm:p-5">
+          <ConversationList conversations={conversations} />
+        </div>
+      </section>
     </PageShell>
   )
 }

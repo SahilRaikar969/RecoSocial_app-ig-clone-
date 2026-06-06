@@ -1,3 +1,4 @@
+import { Send } from 'lucide-react'
 import { sendDirectMessage } from '@/actions/messages'
 
 type MessageComposerProps = {
@@ -8,25 +9,26 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
   return (
     <form
       action={sendDirectMessage}
-      className="rounded-[26px] md:rounded-[28px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]"
+      className="border-t border-white/10 bg-black/95 p-3"
     >
       <input type="hidden" name="thread_id" value={threadId} />
       <input type="hidden" name="return_to" value={`/messages/${threadId}`} />
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex items-end gap-2 rounded-[28px] border border-white/10 bg-white/[0.04] p-2">
         <textarea
           name="body"
-          rows={3}
+          rows={1}
           maxLength={1200}
-          placeholder="Write a message..."
-          className="min-h-[100px] flex-1 rounded-[20px] border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm leading-7 text-white outline-none placeholder:text-zinc-500"
+          placeholder="Message..."
+          className="max-h-32 min-h-[46px] flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-500"
         />
 
         <button
           type="submit"
-          className="rounded-[20px] border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f4f4ff_100%)] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 sm:self-end"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white text-black transition hover:opacity-90"
+          aria-label="Send message"
         >
-          Send
+          <Send className="h-4 w-4" />
         </button>
       </div>
     </form>

@@ -101,7 +101,7 @@ export async function CreatorSpotlightList({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
               {resolvedCreators.length} creators
             </span>
             {activeCategory ? (
@@ -137,7 +137,7 @@ export async function CreatorSpotlightList({
           return (
             <article
               key={creator.id}
-              className="group relative overflow-hidden rounded-[30px] border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_20px_60px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_28px_80px_rgba(0,0,0,0.38)]"
+              className="group relative overflow-hidden rounded-[30px] border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_20px_60px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_28px_80px_rgba(0,0,0,0.38)]"
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_26%)] opacity-80" />
 
@@ -150,7 +150,7 @@ export async function CreatorSpotlightList({
                     <SmartImage
                       src={creator.resolved_avatar_url}
                       alt={creatorDisplayName}
-                      className="h-14 w-14 rounded-full border border-zinc-700 object-cover ring-2 ring-white/5"
+                      className="h-14 w-14 rounded-full border border-white/10 object-cover ring-2 ring-white/5"
                       fallbackClassName="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-black text-[10px] uppercase tracking-[0.16em] text-zinc-500"
                       fallbackText="User"
                     />
@@ -187,7 +187,7 @@ export async function CreatorSpotlightList({
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/75 px-3 py-3 text-center transition hover:border-zinc-700">
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center transition hover:border-white/20">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                       Followers
                     </p>
@@ -196,7 +196,7 @@ export async function CreatorSpotlightList({
                     </p>
                   </div>
 
-                  <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/75 px-3 py-3 text-center transition hover:border-zinc-700">
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center transition hover:border-white/20">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                       Posts
                     </p>
@@ -205,7 +205,7 @@ export async function CreatorSpotlightList({
                     </p>
                   </div>
 
-                  <div className="rounded-[20px] border border-zinc-800 bg-zinc-950/75 px-3 py-3 text-center transition hover:border-zinc-700">
+                  <div className="rounded-[20px] border border-white/10 bg-white/[0.04] px-3 py-3 text-center transition hover:border-white/20">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                       Open
                     </p>
@@ -221,7 +221,7 @@ export async function CreatorSpotlightList({
                       <Link
                         key={category.id}
                         href={`/explore?category=${encodeURIComponent(category.slug)}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-black/70 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-violet-400/20 hover:bg-violet-500/10 hover:text-white"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:-translate-y-0.5 hover:border-violet-400/20 hover:bg-violet-500/10 hover:text-white"
                       >
                         <Compass className="h-3 w-3" />
                         {category.name}

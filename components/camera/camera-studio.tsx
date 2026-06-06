@@ -200,12 +200,10 @@ export function CameraStudio({
       }
 
       setCameraReady(true)
-    } catch (error: any) {
-      setCameraReady(false)
-      setCameraError(
-        error?.message || 'Unable to access camera on this device/browser.'
-      )
-    }
+    } catch (error: unknown) {
+  console.error('Camera start failed:', error)
+  setCameraError(error instanceof Error ? error.message : 'Camera access failed.')
+}
   }
 
   function clearCapture() {
@@ -356,15 +354,16 @@ export function CameraStudio({
 
       router.push(payload.redirectTo || payload.redirectUrl || returnTo)
       router.refresh()
-    } catch (error: any) {
+    } catch (error: unknown) {
       setPublishing(false)
-      setCameraError(error?.message || 'Failed to publish captured media.')
+      const message = error instanceof Error ? error.message : 'Failed to publish captured media.'
+      setCameraError(message || 'Failed to publish captured media.')
     }
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-5 px-3 py-3 md:px-5 md:py-5">
+    <main className="min-h-[100svh] bg-black text-white">
+      <div className="mx-auto flex min-h-[100svh] max-w-7xl flex-col gap-3 px-3 py-3 md:gap-5 md:px-5 md:py-5">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -385,9 +384,9 @@ export function CameraStudio({
           </div>
         ) : null}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="overflow-hidden rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
-            <div className="relative h-[72vh] min-h-[520px] w-full bg-black md:h-[78vh] xl:h-[calc(100vh-140px)] xl:min-h-[680px]">
+        <div className="grid flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-5">
+          <section className="overflow-hidden rounded-[26px] border border-zinc-800/90 bg-black shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
+            <div className="relative h-[calc(100svh-116px)] min-h-[560px] w-full overflow-hidden bg-black sm:h-[calc(100svh-120px)] md:h-[calc(100svh-132px)] xl:h-[calc(100vh-116px)] xl:min-h-[680px]">
               {!previewUrl && source === 'camera' ? (
                 <>
                   <video
@@ -395,7 +394,7 @@ export function CameraStudio({
                     autoPlay
                     playsInline
                     muted
-                    className={`absolute inset-0 h-full w-full object-cover ${
+                    className={`absolute inset-0 h-full w-full object-cover object-center [backface-visibility:hidden] ${
                       facingMode === 'user' ? 'scale-x-[-1]' : ''
                     }`}
                   />
@@ -411,14 +410,14 @@ export function CameraStudio({
                   <img
                     src={previewUrl}
                     alt="Captured preview"
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 ) : (
                   <video
                     src={previewUrl}
                     controls
                     playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 )
               ) : (
@@ -617,7 +616,7 @@ export function CameraStudio({
               </div>
 
               <p className="mt-4 text-sm leading-7 text-zinc-400">
-                Live camera view now fills the frame using cover behavior on both phone and laptop instead of showing a smaller rectangle with black empty space.
+                Camera requests portrait or landscape constraints based on the screen and keeps the preview surface filled on phone and desktop.
               </p>
             </section>
 

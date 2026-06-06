@@ -141,10 +141,10 @@ export async function PostCard({
 
   return (
     <AnimatedShellCard>
-      <article className="group relative overflow-hidden rounded-[26px] md:rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(14,14,18,0.98),rgba(5,5,7,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_12px_28px_rgba(0,0,0,0.18)] transition duration-300 md:hover:border-zinc-700/90 md:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_22px_54px_rgba(0,0,0,0.28)]">
+      <article className="group relative overflow-hidden rounded-[30px] border border-white/10 bg-[#08080b] shadow-[0_18px_48px_rgba(0,0,0,0.28)] transition duration-300 md:hover:border-white/20 md:hover:bg-[#101014]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.05),transparent_24%)] opacity-80" />
 
-        <div className="relative flex items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-4 sm:px-5">
+        <div className="relative flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
           <Link
             href={authorProfileHref}
             className="flex min-w-0 items-center gap-3 rounded-2xl transition hover:opacity-90"
@@ -153,7 +153,7 @@ export async function PostCard({
               <img
                 src={authorAvatarUrl}
                 alt={authorDisplayName}
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-zinc-700 object-cover ring-2 ring-white/5"
+                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-white/10 object-cover ring-2 ring-white/5"
               />
             ) : (
               <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
@@ -195,7 +195,7 @@ export async function PostCard({
           {showOpenPostLink ? (
             <Link
               href={openHref}
-              className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+              className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-100 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
             >
               {openLabel}
             </Link>
@@ -229,7 +229,7 @@ export async function PostCard({
           />
 
           {post.caption ? (
-            <div className="mt-3 rounded-[20px] border border-zinc-800 bg-zinc-950/70 px-4 py-3">
+            <div className="mt-3 px-1 py-2">
               <p className="text-[14px] sm:text-[15px] leading-7 text-zinc-200">
                 <Link
                   href={authorProfileHref}
@@ -250,7 +250,7 @@ export async function PostCard({
                     <Link
                       key={category.id}
                       href={`/explore?category=${encodeURIComponent(category.slug)}`}
-                      className="rounded-full border border-zinc-700 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-violet-400/20 hover:bg-violet-500/10 hover:text-white"
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-white"
                     >
                       {category.name}
                     </Link>
@@ -273,7 +273,7 @@ export async function PostCard({
             </div>
 
             {(showAllComments || (post.comments && post.comments.length > 0)) ? (
-              <div className="rounded-[24px] border border-zinc-800 bg-black/35 p-4">
+              <div className="rounded-[24px] border border-white/10 bg-black/40 p-4">
                 <CommentThreadPanel
                   postId={post.id}
                   profileId={devProfileId}

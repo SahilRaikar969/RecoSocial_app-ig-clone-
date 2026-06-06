@@ -96,7 +96,7 @@ export async function ProfilePostGrid({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
             {resolvedPosts.length} posts
           </span>
         </div>
@@ -120,7 +120,7 @@ export async function ProfilePostGrid({
             <Link
               key={post.id}
               href={href}
-              className="group relative block overflow-hidden rounded-[18px] border border-zinc-900 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_36px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_22px_60px_rgba(0,0,0,0.34)]"
+              className="group relative block overflow-hidden rounded-[18px] border border-zinc-900 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_14px_36px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_22px_60px_rgba(0,0,0,0.34)]"
             >
               <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_26%)] opacity-80" />
 
