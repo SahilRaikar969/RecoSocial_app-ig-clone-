@@ -1,14 +1,13 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { areMutualFollowers, getOrCreateDirectThread } from '@/lib/db/queries/messages'
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/messages'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/messages')
 }
 
 export async function startConversation(formData: FormData) {
@@ -83,16 +82,5 @@ export async function sendDirectMessage(formData: FormData) {
     redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(messageError.message) }))
   }
 
-  const { error: threadUpdateError } = await supabase
-    .from('direct_threads')
-    .update({
-      last_message_at: new Date().toISOString(),
-    })
-    .eq('id', threadId)
-
-  if (threadUpdateError) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(threadUpdateError.message) }))
-  }
-
-  redirect(`${returnTo}?sent=1`)
+  redirect(buildRedirectUrl(returnTo, { sent: '1' }))
 }

@@ -2,19 +2,14 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-
-function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/onboarding'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
-}
+import { getDevSession } from '@/lib/auth/get-dev-session'
+import { buildReturnUrl, safeReturnPath } from '@/lib/routes/safe-return-path'
 
 export async function saveOnboardingPreferences(formData: FormData) {
+  // The RPC derives its owner from auth.uid(); never accept a form's profile_id.
+  await getDevSession()
   const supabase = await createClient()
-
-  const profileId = String(formData.get('profile_id') || '').trim()
-  const returnTo = String(formData.get('return_to') || '/onboarding').trim()
-
+  const returnTo = safeReturnPath(String(formData.get('return_to') || ''), '/onboarding')
   const categoryNames = [
     ...new Set(
       formData
@@ -25,12 +20,11 @@ export async function saveOnboardingPreferences(formData: FormData) {
     ),
   ]
 
-  if (!profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'missing_profile_id' }))
-  }
-
   if (categoryNames.length === 0) {
-    redirect(buildRedirectUrl(returnTo, { error: 'no_categories_selected' }))
+    redirect(buildReturnUrl(returnTo, { error: 'no_categories_selected' }))
+  }
+  if (categoryNames.length > 100) {
+    redirect(buildReturnUrl(returnTo, { error: 'too_many_categories' }))
   }
 
   const { data: categoryRows, error: categoriesError } = await supabase
@@ -39,45 +33,20 @@ export async function saveOnboardingPreferences(formData: FormData) {
     .in('name', categoryNames)
 
   if (categoriesError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(categoriesError.message),
-      })
-    )
+    redirect(buildReturnUrl(returnTo, { error: categoriesError.message }))
   }
 
-  if (!categoryRows || categoryRows.length === 0) {
-    redirect(buildRedirectUrl(returnTo, { error: 'categories_not_found' }))
+  if (!categoryRows || categoryRows.length !== categoryNames.length) {
+    redirect(buildReturnUrl(returnTo, { error: 'categories_not_found' }))
   }
 
-  const preferenceRows = categoryRows.map((category) => ({
-    profile_id: profileId,
-    category_id: category.id,
-  }))
+  // One transaction validates every category and replaces only the caller's set.
+  const { error: saveError } = await supabase.rpc('save_profile_category_preferences', {
+    category_ids: categoryRows.map((category) => category.id),
+  })
 
-  const { error: deleteError } = await supabase
-    .from('profile_category_preferences')
-    .delete()
-    .eq('profile_id', profileId)
-
-  if (deleteError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteError.message),
-      })
-    )
-  }
-
-  const { error: insertError } = await supabase
-    .from('profile_category_preferences')
-    .insert(preferenceRows)
-
-  if (insertError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(insertError.message),
-      })
-    )
+  if (saveError) {
+    redirect(buildReturnUrl(returnTo, { error: saveError.message }))
   }
 
   redirect('/feed?onboarding=done')

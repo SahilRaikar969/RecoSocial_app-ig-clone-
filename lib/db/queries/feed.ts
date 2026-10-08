@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
 
 type CategoryPreferenceMap = Map<string, number>
@@ -278,6 +279,11 @@ export async function getFeedData(
   if (likedError) throw new Error(likedError.message)
   if (onboardingError) throw new Error(onboardingError.message)
 
+  const saveCounts = await getVisiblePostSaveCounts(
+    supabase,
+    (allPosts ?? []).map((post: { id: string }) => post.id)
+  )
+
   const followedCreatorIds = new Set(
     (follows ?? []).map((row: any) => row.following_id).filter(Boolean)
   )
@@ -325,7 +331,7 @@ export async function getFeedData(
       const comments = Array.isArray(post.comments) ? post.comments : []
 
       const likeCount = likes.length
-      const saveCount = saves.length
+      const saveCount = saveCounts.get(post.id) ?? 0
       const commentCount = comments.length
       const fromFollowing = followedCreatorIds.has(post.author_id)
       const recencyBoost = getRecencyBoost(post.created_at)

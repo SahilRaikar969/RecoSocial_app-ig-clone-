@@ -2,7 +2,9 @@
 
 import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
+import { assertMediaUpload, isOwnedMediaPath } from '@/lib/media/upload-validation'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { isValidMediaUrl } from '@/lib/media/is-valid-media-url'
 
@@ -20,9 +22,7 @@ const ACCEPTED_AVATAR_TYPES = new Set([
 ])
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/profile/edit'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/profile/edit')
 }
 
 function sanitizeFileName(name: string) {
@@ -63,6 +63,8 @@ function isValidUsername(value: string) {
 
 async function uploadAvatarToMediaBucket(file: File, profileId: string) {
   const supabase = await createClient()
+
+  await assertMediaUpload(file)
 
   const fileExt = getFileExtension(file.name)
   const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, '')) || 'avatar'
@@ -171,7 +173,7 @@ export async function updateProfile(formData: FormData) {
     }
   }
 
-  if (avatarUrlInput && !isValidMediaUrl(avatarUrlInput)) {
+  if (avatarUrlInput && !isOwnedMediaPath(avatarUrlInput, profileId) && !isValidMediaUrl(avatarUrlInput)) {
     redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_url' }))
   }
 
@@ -199,10 +201,10 @@ export async function updateProfile(formData: FormData) {
   if (resolvedAvatarUpload) {
     try {
       resolvedAvatarUrl = await uploadAvatarToMediaBucket(resolvedAvatarUpload, profileId)
-    } catch (error: any) {
+    } catch (error: unknown) {
       redirect(
         buildRedirectUrl(returnTo, {
-          error: encodeURIComponent(error?.message || 'avatar_upload_failed'),
+          error: encodeURIComponent((error instanceof Error ? error.message : 'avatar_upload_failed')),
         })
       )
     }

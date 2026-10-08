@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
@@ -17,9 +18,7 @@ type ToggleFollowInlineResult =
   | { ok: false; error: string }
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/feed'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/feed')
 }
 
 async function revalidateFollowSurfaces(followerId: string, followingId: string) {
@@ -79,17 +78,6 @@ async function performFollowToggle(
       return { ok: false, error: error.message }
     }
 
-    const { error: notificationDeleteError } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('recipient_id', followingId)
-      .eq('actor_id', followerId)
-      .eq('type', 'follow')
-
-    if (notificationDeleteError) {
-      return { ok: false, error: notificationDeleteError.message }
-    }
-
     return { ok: true, followedByMe: false, followerId }
   }
 
@@ -107,21 +95,6 @@ async function performFollowToggle(
 
   if (error) {
     return { ok: false, error: error.message }
-  }
-
-  const { error: notificationInsertError } = await supabase
-    .from('notifications')
-    .insert({
-      recipient_id: followingId,
-      actor_id: followerId,
-      post_id: null,
-      comment_id: null,
-      type: 'follow',
-      read_at: null,
-    })
-
-  if (notificationInsertError && notificationInsertError.code !== '23505') {
-    return { ok: false, error: notificationInsertError.message }
   }
 
   return { ok: true, followedByMe: true, followerId }

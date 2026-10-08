@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
@@ -13,9 +14,7 @@ const ALLOWED_REPORT_REASONS = new Set([
 ])
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/feed'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/feed')
 }
 
 export async function hidePost(formData: FormData) {

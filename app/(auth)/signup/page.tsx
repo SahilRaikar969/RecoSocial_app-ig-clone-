@@ -31,7 +31,7 @@ function getErrorMessage(error?: string) {
     return 'Signup failed. Try again.'
   }
 
-  return decodeURIComponent(value)
+  return value
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {

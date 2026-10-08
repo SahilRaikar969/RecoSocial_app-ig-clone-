@@ -74,7 +74,7 @@ export async function getDevSession() {
   }
 
   const displayName =
-    String(user.user_metadata?.display_name || '').trim() ||
+    String(user.user_metadata?.display_name || '').trim().slice(0, 60) ||
     buildDisplayName(email)
 
   const { data: insertedProfile, error: insertError } = await supabase
@@ -90,6 +90,23 @@ export async function getDevSession() {
     .single()
 
   if (insertError) {
+    // Parallel protected requests can both observe a missing profile. The loser
+    // reads only this verified user's row; it must not overwrite another row.
+    if (insertError.code === '23505') {
+      const { data: concurrentProfile, error: readError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (readError) throw new Error(readError.message)
+      if (concurrentProfile) {
+        return {
+          profileId: String(concurrentProfile.id),
+          username: String(concurrentProfile.username || '').trim() || finalUsername,
+          displayName: String(concurrentProfile.display_name || '').trim() || displayName,
+        }
+      }
+    }
     throw new Error(insertError.message)
   }
 

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
@@ -17,10 +18,7 @@ type ToggleLikeInlineResult =
   | { ok: false; error: string }
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/feed'
-  const search = new URLSearchParams(params).toString()
-
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/feed')
 }
 
 async function revalidateLikeSurfaces(postId: string) {
@@ -68,18 +66,6 @@ async function performLikeToggle(
       return { ok: false, error: error.message }
     }
 
-    const { error: notificationDeleteError } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('recipient_id', postRow.author_id)
-      .eq('actor_id', profileId)
-      .eq('post_id', postId)
-      .eq('type', 'like')
-
-    if (notificationDeleteError) {
-      return { ok: false, error: notificationDeleteError.message }
-    }
-
     return { ok: true, liked: false }
   }
 
@@ -97,23 +83,6 @@ async function performLikeToggle(
 
   if (error) {
     return { ok: false, error: error.message }
-  }
-
-  if (postRow.author_id !== profileId) {
-    const { error: notificationInsertError } = await supabase
-      .from('notifications')
-      .insert({
-        recipient_id: postRow.author_id,
-        actor_id: profileId,
-        post_id: postId,
-        type: 'like',
-        comment_id: null,
-        read_at: null,
-      })
-
-    if (notificationInsertError && notificationInsertError.code !== '23505') {
-      return { ok: false, error: notificationInsertError.message }
-    }
   }
 
   return { ok: true, liked: true }

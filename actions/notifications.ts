@@ -4,12 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
-
-function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/activity'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
-}
+import { buildReturnUrl, safeReturnPath } from '@/lib/routes/safe-return-path'
 
 export async function markNotificationsRead() {
   const supabase = await createClient()
@@ -33,11 +28,11 @@ export async function markNotificationReadAndRedirect(formData: FormData) {
   const { profileId } = await getDevSession()
 
   const notificationId = String(formData.get('notification_id') || '').trim()
-  const targetHref = String(formData.get('target_href') || '/activity').trim()
-  const returnTo = String(formData.get('return_to') || '/activity').trim()
+  const targetHref = safeReturnPath(String(formData.get('target_href') || ''), '/activity')
+  const returnTo = safeReturnPath(String(formData.get('return_to') || ''), '/activity')
 
   if (!notificationId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'missing_notification_id' }))
+    redirect(buildReturnUrl(returnTo, { error: 'missing_notification_id' }))
   }
 
   const { error } = await supabase
@@ -48,9 +43,9 @@ export async function markNotificationReadAndRedirect(formData: FormData) {
     .is('read_at', null)
 
   if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
+    redirect(buildReturnUrl(returnTo, { error: error.message }))
   }
 
   revalidatePath('/activity')
-  redirect(targetHref || '/activity')
+  redirect(targetHref)
 }

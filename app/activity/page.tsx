@@ -57,7 +57,7 @@ function getErrorMessage(value?: string) {
     return 'Missing notification id.'
   }
 
-  return `Action failed: ${decodeURIComponent(error)}`
+  return `Action failed: ${error}`
 }
 
 export default async function ActivityPage({

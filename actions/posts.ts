@@ -2,7 +2,9 @@
 
 import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
+import { assertMediaUpload, isOwnedMediaPath } from '@/lib/media/upload-validation'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { isValidMediaUrl } from '@/lib/media/is-valid-media-url'
 
@@ -122,14 +124,13 @@ function isFileTooLarge(file: File, mediaType: 'image' | 'video') {
 }
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/feed'
-  const search = new URLSearchParams(params).toString()
-
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/feed')
 }
 
 async function uploadToMediaBucket(file: File, folder: string, ownerId: string) {
   const supabase = await createClient()
+
+  await assertMediaUpload(file)
 
   const fileExt = getFileExtension(file.name)
   const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, '')) || 'file'
@@ -261,10 +262,10 @@ export async function createPost(formData: FormData) {
         mediaType === 'video' ? 'videos' : 'images',
         profileId
       )
-    } catch (error: any) {
-      redirect(`/create?error=${encodeURIComponent(error?.message || 'media_upload_failed')}`)
+    } catch (error: unknown) {
+      redirect(`/create?error=${encodeURIComponent((error instanceof Error ? error.message : 'media_upload_failed'))}`)
     }
-  } else if (!isValidMediaUrl(mediaPathInput)) {
+  } else if (!isOwnedMediaPath(mediaPathInput, profileId) && !isValidMediaUrl(mediaPathInput)) {
     redirect('/create?error=invalid_media_url')
   }
 
@@ -286,12 +287,12 @@ export async function createPost(formData: FormData) {
           'thumbnails',
           profileId
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         redirect(
-          `/create?error=${encodeURIComponent(error?.message || 'thumbnail_upload_failed')}`
+          `/create?error=${encodeURIComponent((error instanceof Error ? error.message : 'thumbnail_upload_failed'))}`
         )
       }
-    } else if (thumbnailPathInput && !isValidMediaUrl(thumbnailPathInput)) {
+    } else if (thumbnailPathInput && !isOwnedMediaPath(thumbnailPathInput, profileId) && !isValidMediaUrl(thumbnailPathInput)) {
       redirect('/create?error=invalid_thumbnail_url')
     }
   } else {
@@ -406,14 +407,14 @@ export async function updatePost(formData: FormData) {
         mediaType === 'video' ? 'videos' : 'images',
         profileId
       )
-    } catch (error: any) {
+    } catch (error: unknown) {
       redirect(
         buildRedirectUrl(returnTo, {
-          error: encodeURIComponent(error?.message || 'media_upload_failed'),
+          error: encodeURIComponent((error instanceof Error ? error.message : 'media_upload_failed')),
         })
       )
     }
-  } else if (!isValidMediaUrl(mediaPathInput)) {
+  } else if (!isOwnedMediaPath(mediaPathInput, profileId) && !isValidMediaUrl(mediaPathInput)) {
     redirect(buildRedirectUrl(returnTo, { error: 'invalid_media_url' }))
   }
 
@@ -436,14 +437,14 @@ export async function updatePost(formData: FormData) {
           'thumbnails',
           profileId
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         redirect(
           buildRedirectUrl(returnTo, {
-            error: encodeURIComponent(error?.message || 'thumbnail_upload_failed'),
+            error: encodeURIComponent((error instanceof Error ? error.message : 'thumbnail_upload_failed')),
           })
         )
       }
-    } else if (thumbnailPathInput && !isValidMediaUrl(thumbnailPathInput)) {
+    } else if (thumbnailPathInput && !isOwnedMediaPath(thumbnailPathInput, profileId) && !isValidMediaUrl(thumbnailPathInput)) {
       redirect(buildRedirectUrl(returnTo, { error: 'invalid_thumbnail_url' }))
     }
   } else {
@@ -527,58 +528,6 @@ export async function deletePost(formData: FormData) {
 
   if (!postRow || postRow.author_id !== profileId) {
     redirect(buildRedirectUrl(returnTo, { error: 'post_not_found' }))
-  }
-
-  const { error: deleteCommentsError } = await supabase
-    .from('comments')
-    .delete()
-    .eq('post_id', postId)
-
-  if (deleteCommentsError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteCommentsError.message),
-      })
-    )
-  }
-
-  const { error: deleteLikesError } = await supabase
-    .from('likes')
-    .delete()
-    .eq('post_id', postId)
-
-  if (deleteLikesError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteLikesError.message),
-      })
-    )
-  }
-
-  const { error: deleteSavesError } = await supabase
-    .from('saves')
-    .delete()
-    .eq('post_id', postId)
-
-  if (deleteSavesError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteSavesError.message),
-      })
-    )
-  }
-
-  const { error: deleteCategoriesError } = await supabase
-    .from('post_categories')
-    .delete()
-    .eq('post_id', postId)
-
-  if (deleteCategoriesError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteCategoriesError.message),
-      })
-    )
   }
 
   const { error: deletePostError } = await supabase

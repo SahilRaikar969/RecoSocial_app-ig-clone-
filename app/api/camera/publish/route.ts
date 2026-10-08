@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto'
+import { safeReturnPath } from '@/lib/routes/safe-return-path'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { assertMediaUpload } from '@/lib/media/upload-validation'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
 const ACCEPTED_IMAGE_TYPES = new Set([
@@ -86,6 +88,8 @@ function isHeicLikeFile(file: File) {
 async function uploadToMediaBucket(file: File, folder: string, ownerId: string) {
   const supabase = await createClient()
 
+  await assertMediaUpload(file)
+
   const fileExt = getFileExtension(file.name)
   const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, '')) || 'capture'
   const filePath = `${folder}/${ownerId}/${Date.now()}-${randomUUID()}-${safeName}.${fileExt}`
@@ -125,7 +129,7 @@ export async function POST(request: Request) {
     const mediaType = String(formData.get('media_type') || '').trim()
     const caption = String(formData.get('caption') || '').trim()
     const categoryId = String(formData.get('category_id') || '').trim()
-    const returnTo = String(formData.get('return_to') || '/feed').trim()
+    const returnTo = safeReturnPath(String(formData.get('return_to') || '/feed'))
 
     const mediaFile = formData.get('media_file')
     const upload = mediaFile instanceof File && mediaFile.size > 0 ? mediaFile : null
@@ -274,9 +278,9 @@ export async function POST(request: Request) {
       ok: true,
       redirectTo: returnTo || '/feed',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { ok: false, error: error?.message || 'camera_publish_failed' },
+      { ok: false, error: (error instanceof Error ? error.message : 'camera_publish_failed') },
       { status: 500 }
     )
   }

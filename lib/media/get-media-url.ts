@@ -43,28 +43,6 @@ function encodePathSegments(path: string) {
     .join('/')
 }
 
-function tryExtractMediaPathFromAbsoluteUrl(value: string) {
-  try {
-    const url = new URL(value)
-    const pathname = url.pathname.replace(/^\/+/, '')
-
-    const publicPrefix = 'storage/v1/object/public/media/'
-    const signedPrefix = 'storage/v1/object/sign/media/'
-
-    if (pathname.startsWith(publicPrefix)) {
-      return pathname.slice(publicPrefix.length)
-    }
-
-    if (pathname.startsWith(signedPrefix)) {
-      return pathname.slice(signedPrefix.length)
-    }
-
-    return null
-  } catch {
-    return null
-  }
-}
-
 export async function getMediaUrl(path: string | null | undefined) {
   const trimmed = String(path || '').trim()
 
@@ -76,27 +54,16 @@ export async function getMediaUrl(path: string | null | undefined) {
     return trimmed
   }
 
-  if (isAbsoluteUrl(trimmed)) {
-    const extractedMediaPath = tryExtractMediaPathFromAbsoluteUrl(trimmed)
-
-    if (!extractedMediaPath) {
-      return trimmed
-    }
-
-    const supabaseUrl = String(process.env.NEXT_PUBLIC_SUPABASE_URL || '')
-      .trim()
-      .replace(/\/$/, '')
-
-    if (!supabaseUrl) {
-      return trimmed
-    }
-
-    return `${supabaseUrl}/storage/v1/object/public/media/${encodePathSegments(extractedMediaPath)}`
-  }
+  // Keep signing tokens and foreign origins intact.
+  if (isAbsoluteUrl(trimmed)) return trimmed
 
   const supabaseUrl = String(process.env.NEXT_PUBLIC_SUPABASE_URL || '')
     .trim()
     .replace(/\/$/, '')
+
+  if (/^\/?storage\/v1\/object\/sign\/media\//i.test(trimmed)) {
+    return supabaseUrl ? supabaseUrl + '/' + trimmed.replace(/^\//, '') : null
+  }
 
   const normalizedPath = normalizeStoragePath(trimmed)
 

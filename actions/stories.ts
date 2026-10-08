@@ -3,6 +3,7 @@
 import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { assertMediaUpload, isOwnedMediaPath } from '@/lib/media/upload-validation'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { isValidMediaUrl } from '@/lib/media/is-valid-media-url'
 
@@ -44,6 +45,8 @@ async function uploadToMediaBucket(
   ownerId: string
 ) {
   const supabase = await createClient()
+
+  await assertMediaUpload(file)
 
   const fileExt = getFileExtension(file.name)
   const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, '')) || 'story'
@@ -127,10 +130,10 @@ export async function createStory(formData: FormData) {
         mediaType === 'video' ? 'story-videos' : 'story-images',
         profileId
       )
-    } catch (error: any) {
-      redirect(`/stories/create?error=${encodeURIComponent(error?.message || 'story_media_upload_failed')}`)
+    } catch (error: unknown) {
+      redirect(`/stories/create?error=${encodeURIComponent((error instanceof Error ? error.message : 'story_media_upload_failed'))}`)
     }
-  } else if (!isValidMediaUrl(mediaPathInput)) {
+  } else if (!isOwnedMediaPath(mediaPathInput, profileId) && !isValidMediaUrl(mediaPathInput)) {
     redirect('/stories/create?error=invalid_media_url')
   }
 
@@ -151,10 +154,10 @@ export async function createStory(formData: FormData) {
           'story-thumbnails',
           profileId
         )
-      } catch (error: any) {
-        redirect(`/stories/create?error=${encodeURIComponent(error?.message || 'story_thumbnail_upload_failed')}`)
+      } catch (error: unknown) {
+        redirect(`/stories/create?error=${encodeURIComponent((error instanceof Error ? error.message : 'story_thumbnail_upload_failed'))}`)
       }
-    } else if (thumbnailPathInput && !isValidMediaUrl(thumbnailPathInput)) {
+    } else if (thumbnailPathInput && !isOwnedMediaPath(thumbnailPathInput, profileId) && !isValidMediaUrl(thumbnailPathInput)) {
       redirect('/stories/create?error=invalid_thumbnail_url')
     }
   } else {

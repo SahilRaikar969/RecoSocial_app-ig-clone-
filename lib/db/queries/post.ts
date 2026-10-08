@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
 
 function normalizeNestedCategory(item: any) {
@@ -157,7 +158,7 @@ async function getProfileMap(supabase: any, profileIds: string[]) {
   return profileMap
 }
 
-function normalizePostShape(post: any, viewerProfileId: string) {
+function normalizePostShape(post: any, viewerProfileId: string, saveCount: number) {
   const likes = Array.isArray(post.likes) ? post.likes : []
   const saves = Array.isArray(post.saves) ? post.saves : []
   const comments = Array.isArray(post.comments) ? post.comments : []
@@ -174,7 +175,7 @@ function normalizePostShape(post: any, viewerProfileId: string) {
     ...post,
     like_count: likes.length,
     liked_by_me: likes.some((like: any) => like.profile_id === viewerProfileId),
-    save_count: saves.length,
+    save_count: saveCount,
     saved_by_me: saves.some((save: any) => save.profile_id === viewerProfileId),
     comment_count: comments.length,
     comments,
@@ -236,7 +237,8 @@ export async function getPostPageData(
     return null
   }
 
-  const normalizedPost = normalizePostShape(data, viewerProfileId)
+  const saveCounts = await getVisiblePostSaveCounts(supabase, [data.id])
+  const normalizedPost = normalizePostShape(data, viewerProfileId, saveCounts.get(data.id) ?? 0)
 
   const hiddenPostIds = await getHiddenPostIds(viewerProfileId)
 
@@ -311,8 +313,13 @@ export async function getPostPageData(
     throw new Error(relatedError.message)
   }
 
+  const relatedSaveCounts = await getVisiblePostSaveCounts(
+    supabase,
+    (relatedRows ?? []).map((post: { id: string }) => post.id)
+  )
+
   const normalizedRelatedCandidates = (relatedRows ?? [])
-    .map((post: any) => normalizePostShape(post, viewerProfileId))
+    .map((post: any) => normalizePostShape(post, viewerProfileId, relatedSaveCounts.get(post.id) ?? 0))
     .filter((post: any) => !hiddenPostIds.has(post.id))
     .filter((post: any) => {
       const candidateCategorySlugs = getCategorySlugs(post.post_categories)

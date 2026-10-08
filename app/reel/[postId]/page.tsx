@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { ReelViewer } from '@/components/reels/reel-viewer'
@@ -146,14 +147,14 @@ export default async function ReelPage({
   const authorIds = Array.from(new Set(uniqueReels.map((item) => item.author_id)))
   const reelIds = uniqueReels.map((item) => item.id)
 
-  const [profilesRes, likesRes, savesRes, commentsRes, viewerLikesRes, viewerSavesRes] =
+  const [profilesRes, likesRes, saveCountMap, commentsRes, viewerLikesRes, viewerSavesRes] =
     await Promise.all([
       supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', authorIds),
       supabase.from('likes').select('post_id').in('post_id', reelIds),
-      supabase.from('saves').select('post_id').in('post_id', reelIds),
+      getVisiblePostSaveCounts(supabase, reelIds),
       supabase.from('comments').select('post_id').in('post_id', reelIds),
       supabase
         .from('likes')
@@ -180,7 +181,6 @@ export default async function ReelPage({
   }
 
   const likeCountMap = countMap(likesRes.data)
-  const saveCountMap = countMap(savesRes.data)
   const commentCountMap = countMap(commentsRes.data)
 
   const viewerLikedSet = new Set((viewerLikesRes.data || []).map((row: any) => row.post_id))

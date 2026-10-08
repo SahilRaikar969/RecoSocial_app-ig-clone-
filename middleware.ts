@@ -49,7 +49,9 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          const previousCookies = response.cookies.getAll()
           response = NextResponse.next({ request })
+          previousCookies.forEach((cookie) => response.cookies.set(cookie))
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options)
           })
@@ -62,20 +64,27 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  function redirectWithCookies(url: URL) {
+    const redirectResponse = NextResponse.redirect(url)
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+    redirectResponse.headers.set('Cache-Control', 'private, no-store')
+    return redirectResponse
+  }
+
   const publicPath = isPublicPath(pathname)
 
   if (!user && !publicPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
-    return NextResponse.redirect(url)
+    return redirectWithCookies(url)
   }
 
   if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/')) {
     const url = request.nextUrl.clone()
     url.pathname = '/feed'
     url.search = ''
-    return NextResponse.redirect(url)
+    return redirectWithCookies(url)
   }
 
   response.headers.set('Cache-Control', 'private, no-store')

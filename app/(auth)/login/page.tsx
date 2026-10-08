@@ -64,7 +64,7 @@ function getBannerState(error?: string, message?: string) {
 
   return {
     tone: 'error' as const,
-    text: decodeURIComponent(errorValue),
+    text: errorValue,
   }
 }
 

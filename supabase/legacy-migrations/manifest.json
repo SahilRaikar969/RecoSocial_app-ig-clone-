@@ -1,0 +1,38 @@
+[
+  {
+    "file": "001_initial_schema.sql",
+    "sha256": "d14de7b3a55812f720b3125b6dc856a5181874f27a57688709abe8e1cd572b29"
+  },
+  {
+    "file": "002_rls_policies.sql",
+    "sha256": "727c08ede7b4170f4bd0d8451960c8df6eb0435aba2aace3357d23e6b1bf81f7"
+  },
+  {
+    "file": "003_notifications_and_post_moderation.sql",
+    "sha256": "2acfdd2b883be5b261b4e5f438b95feb358819e747fb97aa96f68cab96104166"
+  },
+  {
+    "file": "003_profiles.sql",
+    "sha256": "629997e5f7a61ab94077e1d36aea9dac571afe5b989642e110e70d2a56ccec8e"
+  },
+  {
+    "file": "004_notifications_rls_and_prfoile_views.sql",
+    "sha256": "df5d4b94229001011401d22b9386774e61d6a5a844f65b1a39036fbbdeeae624"
+  },
+  {
+    "file": "005_stories_and_messages.sql",
+    "sha256": "d1ba3d84d370283fb658de36983612c19254eedbb084de4833008d44b9d9b201"
+  },
+  {
+    "file": "006_expand_categories.sql",
+    "sha256": "1861dc8815b1c81c54b3d3b168a968d62d8160bfec9c486dbc19c2be9367ac7f"
+  },
+  {
+    "file": "007_profile_preferences.sql",
+    "sha256": "db4b11ef0f6bf32cae988d156d1caf42363150f727f706bedccd2586fdfa9023"
+  },
+  {
+    "file": "seed.sql",
+    "sha256": "1dcbcdb18a65d9ba1ef0b5e3e07b23a4fca68a656e5371234dc4917ad4750766"
+  }
+]

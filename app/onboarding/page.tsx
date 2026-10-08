@@ -25,7 +25,7 @@ export default async function OnboardingPage({
         : error === 'categories_not_found'
           ? 'Selected categories were not found.'
           : error
-            ? `Onboarding failed: ${decodeURIComponent(error)}`
+            ? `Onboarding failed: ${error}`
             : ''
 
   return (

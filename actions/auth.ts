@@ -67,6 +67,17 @@ async function ensureProfileForUser(userId: string, username: string, email: str
   })
 
   if (insertError) {
+    // Another authenticated request may have provisioned this same account.
+    // Never resolve a duplicate by updating whichever username collided.
+    if (insertError.code === '23505') {
+      const { data: concurrentProfile, error: readError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle()
+      if (readError) throw new Error(readError.message)
+      if (concurrentProfile) return
+    }
     throw new Error(insertError.message)
   }
 }
@@ -117,8 +128,6 @@ export async function signup(formData: FormData) {
     redirect('/signup?error=signup_failed')
   }
 
-  await ensureProfileForUser(userId, username, email)
-
   /*
     If email confirmation is ON in Supabase, signUp often returns no session.
     In that case the user is not logged in yet, so send them to login with a clear message.
@@ -127,6 +136,10 @@ export async function signup(formData: FormData) {
   if (!data.session) {
     redirect('/login?error=confirm_email_required')
   }
+
+  // The database auth trigger provisions profiles even before confirmation.
+  // This authenticated fallback supports an existing confirmed account.
+  await ensureProfileForUser(userId, username, email)
 
   redirect('/onboarding')
 }
@@ -165,6 +178,7 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut()
+  if (error) throw new Error(error.message)
   redirect('/login')
 }

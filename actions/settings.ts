@@ -1,14 +1,13 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/settings'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/settings')
 }
 
 export async function updateThemePreference(formData: FormData) {
@@ -47,28 +46,8 @@ export async function updateThemePreference(formData: FormData) {
   redirect(buildRedirectUrl(returnTo, { theme: theme }))
 }
 
-export async function updatePrivacyPreference(formData: FormData) {
-  const { profileId } = await getDevSession()
-  const value = String(formData.get('is_private') || '').trim()
-  const returnTo = String(formData.get('return_to') || '/settings').trim()
-
-  if (!profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'missing_profile_id' }))
-  }
-
-  const isPrivate = value === 'true'
-
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      is_private: isPrivate,
-    })
-    .eq('id', profileId)
-
-  if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
-  }
-
-  redirect(buildRedirectUrl(returnTo, { privacy: isPrivate ? 'private' : 'public' }))
+export async function updatePrivacyPreference() {
+  await getDevSession()
+  // Retain an authenticated rejection for stale forms / direct action calls.
+  redirect('/settings?error=private_accounts_unavailable')
 }

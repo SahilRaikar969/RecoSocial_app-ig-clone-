@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep the historical SQL evidence byte-for-byte, including original line endings.
+supabase/legacy-migrations/*.sql -text whitespace=cr-at-eol

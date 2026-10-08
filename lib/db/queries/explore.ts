@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
 
 type ExploreCategory = {
@@ -219,6 +220,11 @@ export async function getExploreData(
     throw new Error(onboardingPreferenceResult.error.message)
   }
 
+  const saveCounts = await getVisiblePostSaveCounts(
+    supabase,
+    (postsResult.data ?? []).map((post: { id: string }) => post.id)
+  )
+
   const followedAuthorIds = new Set(
     (followsResult.data ?? []).map((row: any) => row.following_id).filter(Boolean)
   )
@@ -267,7 +273,7 @@ export async function getExploreData(
     )
 
     const likeCount = likes.length
-    const saveCount = saves.length
+    const saveCount = saveCounts.get(post.id) ?? 0
     const commentCount = comments.length
 
     const engagementScore = saveCount * 4 + likeCount * 2 + commentCount * 3

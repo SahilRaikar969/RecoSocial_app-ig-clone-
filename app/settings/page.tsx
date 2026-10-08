@@ -3,7 +3,7 @@ import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceHero } from '@/components/ui/surface-hero'
 import { logout } from '@/actions/auth'
-import { updatePrivacyPreference, updateThemePreference } from '@/actions/settings'
+import { updateThemePreference } from '@/actions/settings'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { createClient } from '@/lib/supabase/server'
 
@@ -22,6 +22,8 @@ function getErrorMessage(value?: string) {
   switch (error) {
     case 'missing_profile_id':
       return 'Missing profile id.'
+    case 'private_accounts_unavailable':
+      return 'Private accounts are unavailable. Posts and media remain public.'
     case 'invalid_theme':
       return 'Invalid theme.'
     default:
@@ -42,13 +44,6 @@ export default async function SettingsPage({
         ? 'Light theme saved. Full light-surface polish will continue in the next visual batch.'
         : ''
 
-  const privacyFeedback =
-    params?.privacy === 'private'
-      ? 'Account set to private.'
-      : params?.privacy === 'public'
-        ? 'Account set to public.'
-        : ''
-
   const { profileId } = await getDevSession()
   const supabase = await createClient()
 
@@ -59,7 +54,6 @@ export default async function SettingsPage({
     .maybeSingle()
 
   const currentTheme = profile?.theme_preference === 'light' ? 'light' : 'dark'
-  const isPrivate = Boolean(profile?.is_private)
   const username = String(profile?.username || '').trim()
   const displayName = String(profile?.display_name || '').trim()
 
@@ -67,7 +61,6 @@ export default async function SettingsPage({
     <PageShell maxWidth="5xl">
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
       {themeFeedback ? <FeedbackBanner>{themeFeedback}</FeedbackBanner> : null}
-      {privacyFeedback ? <FeedbackBanner>{privacyFeedback}</FeedbackBanner> : null}
 
       <SurfaceHero
         eyebrow="Settings"
@@ -79,7 +72,7 @@ export default async function SettingsPage({
         ]}
         stats={[
           { label: 'Theme', value: currentTheme === 'light' ? 'Light' : 'Dark', helper: 'saved preference' },
-          { label: 'Privacy', value: isPrivate ? 'Private' : 'Public', helper: 'current account visibility' },
+          { label: 'Privacy', value: 'Public', helper: 'private accounts unavailable' },
           { label: 'Account', value: username ? `@${username}` : 'Active', helper: displayName || 'current profile' },
         ]}
       />
@@ -133,39 +126,13 @@ export default async function SettingsPage({
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <form action={updatePrivacyPreference}>
-              <input type="hidden" name="return_to" value="/settings" />
-              <input type="hidden" name="is_private" value="false" />
-              <button
-                type="submit"
-                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
-                  !isPrivate
-                    ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                }`}
-              >
-                Public account
-              </button>
-            </form>
-
-            <form action={updatePrivacyPreference}>
-              <input type="hidden" name="return_to" value="/settings" />
-              <input type="hidden" name="is_private" value="true" />
-              <button
-                type="submit"
-                className={`w-full rounded-[20px] border px-4 py-4 text-left text-sm transition ${
-                  isPrivate
-                    ? 'border-white bg-white text-black'
-                    : 'border-zinc-800 bg-zinc-950/90 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                }`}
-              >
-                Private account
-              </button>
-            </form>
+            <button type="button" disabled className="w-full rounded-[20px] border border-zinc-800 px-4 py-4 text-left text-sm text-zinc-400">
+              Public accounts only
+            </button>
           </div>
 
           <p className="mt-4 text-sm leading-7 text-zinc-400">
-            Private profiles now hide posts and liked content from non-followers.
+            Private accounts are unavailable. Posts and uploaded media are public; do not publish private information.
           </p>
         </div>
 

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 
@@ -32,9 +33,7 @@ type CreateCommentInlineResult =
   | { ok: false; error: string }
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  const cleanReturnTo = returnTo.trim() || '/feed'
-  const search = new URLSearchParams(params).toString()
-  return search ? `${cleanReturnTo}?${search}` : cleanReturnTo
+  return buildReturnUrl(returnTo, params, '/feed')
 }
 
 async function revalidateCommentSurfaces(postId: string) {
@@ -100,23 +99,6 @@ async function performCreateComment(
     .select('id, username, display_name, avatar_url')
     .eq('id', profileId)
     .maybeSingle()
-
-  if (postRow.author_id !== profileId) {
-    const { error: notificationInsertError } = await supabase
-      .from('notifications')
-      .insert({
-        recipient_id: postRow.author_id,
-        actor_id: profileId,
-        post_id: postId,
-        comment_id: insertedComment.id,
-        type: 'comment',
-        read_at: null,
-      })
-
-    if (notificationInsertError) {
-      return { ok: false, error: notificationInsertError.message }
-    }
-  }
 
   return {
     ok: true,
@@ -252,11 +234,6 @@ export async function deleteCommentByOwner(formData: FormData) {
       })
     )
   }
-
-  await supabase
-    .from('notifications')
-    .delete()
-    .eq('comment_id', commentId)
 
   await revalidateCommentSurfaces(postId)
 

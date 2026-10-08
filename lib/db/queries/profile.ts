@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 
 function normalizeNestedCategory(item: any) {
   const nested = Array.isArray(item?.categories)
@@ -137,6 +138,11 @@ export async function getProfilePageData(
   const followsYou = !isOwnProfile && !!followsYouResult?.data
   const canMessage = followedByMe && followsYou
 
+  const saveCounts = await getVisiblePostSaveCounts(
+    supabase,
+    (postsResult.data ?? []).map((post: { id: string }) => post.id)
+  )
+
   const rawPosts = (postsResult.data ?? []).map((post: any) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
@@ -154,7 +160,7 @@ export async function getProfilePageData(
       ...post,
       like_count: likes.length,
       liked_by_me: likes.some((like: any) => like.profile_id === safeViewerId),
-      save_count: saves.length,
+      save_count: saveCounts.get(post.id) ?? 0,
       saved_by_me: saves.some((save: any) => save.profile_id === safeViewerId),
       comment_count: comments.length,
       comments,
