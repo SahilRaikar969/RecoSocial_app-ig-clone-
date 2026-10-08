@@ -18,7 +18,7 @@ export async function getVisiblePostSaveCounts(
 
     if (error) throw new Error(error.message)
 
-    for (const row of (data ?? []) as Array<{ post_id: string; save_count: number | string }>) {
+    for (const row of data ?? []) {
       const count = Number(row.save_count)
       if (!Number.isSafeInteger(count) || count < 0) {
         throw new Error('Invalid post save count')

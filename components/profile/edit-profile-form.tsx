@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useMediaFormAction } from '@/lib/media/use-media-form-action'
 import { useEffect, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { updateProfile } from '@/actions/profile'
@@ -69,6 +70,7 @@ export function EditProfileForm({
   const [avatarCropDataUrl, setAvatarCropDataUrl] = useState('')
   const [removeAvatar, setRemoveAvatar] = useState(false)
   const [clientError, setClientError] = useState('')
+  const submitMedia = useMediaFormAction(updateProfile, 'profile', setClientError, { avatar_file: removeAvatar ? null : avatarFile })
 
   useEffect(() => {
     if (!avatarFile) {
@@ -156,7 +158,7 @@ export function EditProfileForm({
       )}
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <form action={updateProfile} onSubmit={handleSubmit} className="space-y-5">
+        <form action={submitMedia} onSubmit={handleSubmit} className="space-y-5">
           <input type="hidden" name="profile_id" value={profile.id} />
           <input type="hidden" name="remove_avatar" value={removeAvatar ? 'true' : 'false'} />
           <input type="hidden" name="return_to" value="/profile/edit" />
@@ -309,7 +311,7 @@ export function EditProfileForm({
                 <AvatarCropEditor
                   file={avatarFile}
                   onCroppedChange={(value) => setAvatarCropDataUrl(value)}
-                  onErrorChange={(value) => setClientError(value)}
+                  onErrorChange={setClientError}
                 />
               </div>
 

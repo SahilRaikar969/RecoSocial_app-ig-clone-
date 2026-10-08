@@ -101,7 +101,7 @@ export async function signup(formData: FormData) {
     .maybeSingle()
 
   if (existingProfileError) {
-    redirect(`/signup?error=${encodeURIComponent(existingProfileError.message)}`)
+    redirect(`/signup?error=${encodeURIComponent('Signup is temporarily unavailable. Try again later.')}`)
   }
 
   if (existingProfile) {
@@ -119,7 +119,7 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`)
+    redirect(`/signup?error=${encodeURIComponent('Signup failed. Check your details and try again.')}`)
   }
 
   const userId = data.user?.id
@@ -139,7 +139,9 @@ export async function signup(formData: FormData) {
 
   // The database auth trigger provisions profiles even before confirmation.
   // This authenticated fallback supports an existing confirmed account.
-  await ensureProfileForUser(userId, username, email)
+  try { await ensureProfileForUser(userId, username, email) } catch {
+    redirect('/login?error=profile_setup_failed')
+  }
 
   redirect('/onboarding')
 }
@@ -156,7 +158,7 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/login?error=${encodeURIComponent('Unable to sign in. Check your credentials and email confirmation.')}`)
   }
 
   const userId = data.user?.id
@@ -171,7 +173,9 @@ export async function login(formData: FormData) {
     normalizeUsername(email.split('@')[0] || 'user') ||
     'user'
 
-  await ensureProfileForUser(userId, fallbackUsername, email)
+  try { await ensureProfileForUser(userId, fallbackUsername, email) } catch {
+    redirect('/login?error=profile_setup_failed')
+  }
 
   redirect('/feed')
 }
@@ -179,6 +183,6 @@ export async function login(formData: FormData) {
 export async function logout() {
   const supabase = await createClient()
   const { error } = await supabase.auth.signOut()
-  if (error) throw new Error(error.message)
+  if (error) redirect('/settings?error=Sign+out+failed.+Try+again.')
   redirect('/login')
 }

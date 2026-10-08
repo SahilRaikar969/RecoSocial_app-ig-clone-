@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Bookmark, Heart, MessageCircle, Share2 } from 'lucide-react'
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useOptimistic, useState, useTransition } from 'react'
 import { toggleLikeInline } from '@/actions/likes'
 import { toggleSaveInline } from '@/actions/saves'
+import { optimisticEngagement } from '@/lib/mutations/optimistic-engagement'
 
 type PostEngagementPanelProps = {
   postId: string
@@ -45,10 +47,14 @@ export function PostEngagementPanel({
   secondaryHref,
   secondaryAriaLabel = 'Open secondary media route',
 }: PostEngagementPanelProps) {
-  const [likedByMe, setLikedByMe] = useState(initialLikedByMe)
-  const [savedByMe, setSavedByMe] = useState(initialSavedByMe)
-  const [likeCount, setLikeCount] = useState(initialLikeCount)
-  const [saveCount, setSaveCount] = useState(initialSaveCount)
+  const router = useRouter()
+  const [{ active: likedByMe, count: likeCount }, setLikeOptimistic] = useOptimistic(
+    { active: initialLikedByMe, count: initialLikeCount }, optimisticEngagement
+  )
+  const [{ active: savedByMe, count: saveCount }, setSaveOptimistic] = useOptimistic(
+    { active: initialSavedByMe, count: initialSaveCount }, optimisticEngagement
+  )
+  const [mutationError, setMutationError] = useState('')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
   const [isPendingLike, startLikeTransition] = useTransition()
   const [isPendingSave, startSaveTransition] = useTransition()
@@ -79,59 +85,49 @@ export function PostEngagementPanel({
 
   function handleToggleLike() {
     if (isPendingLike) return
-
-    const previousLiked = likedByMe
-    const previousCount = likeCount
-    const nextLiked = !previousLiked
-    const nextCount = Math.max(0, previousCount + (nextLiked ? 1 : -1))
-
-    setLikedByMe(nextLiked)
-    setLikeCount(nextCount)
-
+    const previous = likedByMe
+    setMutationError('')
     startLikeTransition(async () => {
-      const result = await toggleLikeInline({
-        postId,
-        devProfileId,
-        liked: previousLiked,
-        returnTo,
-      })
-
-      if (!result.ok) {
-        setLikedByMe(previousLiked)
-        setLikeCount(previousCount)
-        return
+      setLikeOptimistic(!previous)
+      try {
+        const result = await toggleLikeInline({
+          postId: postId,
+          devProfileId: devProfileId,
+          liked: previous,
+          returnTo: returnTo,
+        })
+        if (!result.ok) {
+          setMutationError('Could not confirm the like change. Refreshing its current state.')
+          router.refresh()
+        }
+      } catch {
+        setMutationError('Could not confirm the like change. Refreshing its current state.')
+        router.refresh()
       }
-
-      setLikedByMe(result.liked)
     })
   }
 
   function handleToggleSave() {
     if (isPendingSave) return
-
-    const previousSaved = savedByMe
-    const previousCount = saveCount
-    const nextSaved = !previousSaved
-    const nextCount = Math.max(0, previousCount + (nextSaved ? 1 : -1))
-
-    setSavedByMe(nextSaved)
-    setSaveCount(nextCount)
-
+    const previous = savedByMe
+    setMutationError('')
     startSaveTransition(async () => {
-      const result = await toggleSaveInline({
-        postId,
-        devProfileId,
-        saved: previousSaved,
-        returnTo,
-      })
-
-      if (!result.ok) {
-        setSavedByMe(previousSaved)
-        setSaveCount(previousCount)
-        return
+      setSaveOptimistic(!previous)
+      try {
+        const result = await toggleSaveInline({
+          postId: postId,
+          devProfileId: devProfileId,
+          saved: previous,
+          returnTo: returnTo,
+        })
+        if (!result.ok) {
+          setMutationError('Could not confirm the save change. Refreshing its current state.')
+          router.refresh()
+        }
+      } catch {
+        setMutationError('Could not confirm the save change. Refreshing its current state.')
+        router.refresh()
       }
-
-      setSavedByMe(result.saved)
     })
   }
 
@@ -140,10 +136,13 @@ export function PostEngagementPanel({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.06),transparent_24%)]" />
 
       <div className="relative">
+        {mutationError ? <p role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
         <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={handleToggleLike}
+            disabled={isPendingLike}
+            aria-pressed={likedByMe}
             className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition ${
               likedByMe
                 ? 'border-pink-400/20 bg-pink-500/12 text-white shadow-[0_14px_30px_rgba(236,72,153,0.12)]'
@@ -166,6 +165,8 @@ export function PostEngagementPanel({
           <button
             type="button"
             onClick={handleToggleSave}
+            disabled={isPendingSave}
+            aria-pressed={savedByMe}
             className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition ${
               savedByMe
                 ? 'border-violet-400/20 bg-violet-500/12 text-white shadow-[0_14px_30px_rgba(120,119,255,0.12)]'

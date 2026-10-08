@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
+import type { MutationResult } from '@/lib/mutations/result'
 
 type ToggleSaveInlineInput = {
   postId: string
@@ -13,9 +14,7 @@ type ToggleSaveInlineInput = {
   returnTo?: string
 }
 
-type ToggleSaveInlineResult =
-  | { ok: true; saved: boolean }
-  | { ok: false; error: string }
+type ToggleSaveInlineResult = MutationResult<{ saved: boolean }>
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
   return buildReturnUrl(returnTo, params, '/feed')
@@ -27,54 +26,60 @@ async function revalidateSaveSurfaces(postId: string) {
   revalidatePath('/saved')
   revalidatePath('/profile')
   revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
 }
 
 async function performSaveToggle(
   postId: string,
   saved: boolean
 ): Promise<ToggleSaveInlineResult> {
-  const supabase = await createClient()
   const { profileId } = await getDevSession()
 
-  if (!postId) {
-    return { ok: false, error: 'missing_post_id' }
-  }
-
-  if (!profileId) {
-    return { ok: false, error: 'missing_dev_profile_id' }
-  }
-
-  if (saved) {
-    const { error } = await supabase
-      .from('saves')
-      .delete()
-      .eq('post_id', postId)
-      .eq('profile_id', profileId)
-
-    if (error) {
-      return { ok: false, error: error.message }
+  try {
+    const supabase = await createClient()
+    if (!postId) {
+      return { ok: false, error: 'missing_post_id' }
     }
 
-    return { ok: true, saved: false }
-  }
+    if (!profileId) {
+      return { ok: false, error: 'missing_dev_profile_id' }
+    }
 
-  const { error } = await supabase
-    .from('saves')
-    .upsert(
-      {
-        post_id: postId,
-        profile_id: profileId,
-      },
-      {
-        onConflict: 'profile_id,post_id',
+    if (saved) {
+      const { error } = await supabase
+        .from('saves')
+        .delete()
+        .eq('post_id', postId)
+        .eq('profile_id', profileId)
+
+      if (error) {
+        return { ok: false, error: 'save_failed' }
       }
-    )
 
-  if (error) {
-    return { ok: false, error: error.message }
+      return { ok: true, saved: false }
+    }
+
+    const { error } = await supabase
+      .from('saves')
+      .upsert(
+        {
+          post_id: postId,
+          profile_id: profileId,
+        },
+        {
+          onConflict: 'profile_id,post_id',
+          ignoreDuplicates: true,
+        }
+      )
+
+    if (error) {
+      return { ok: false, error: 'save_failed' }
+    }
+
+    return { ok: true, saved: true }
+  } catch {
+    return { ok: false, error: 'save_unconfirmed' }
   }
-
-  return { ok: true, saved: true }
 }
 
 export async function toggleSaveInline(

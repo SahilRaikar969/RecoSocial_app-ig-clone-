@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
@@ -24,17 +25,20 @@ export async function updateThemePreference(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data: updatedProfile, error } = await supabase
     .from('profiles')
     .update({
       theme_preference: theme,
     })
     .eq('id', profileId)
+    .select('id')
+    .maybeSingle()
 
-  if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
+  if (error || !updatedProfile) {
+    redirect(buildRedirectUrl(returnTo, { error: 'theme_update_failed' }))
   }
 
+  revalidatePath('/settings')
   const cookieStore = await cookies()
   cookieStore.set('reco_theme', theme, {
     path: '/',

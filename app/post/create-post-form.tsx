@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createPost } from '@/actions/posts'
+import { useMediaFormAction } from '@/lib/media/use-media-form-action'
 
 const CATEGORY_OPTIONS = [
   'Tech',
@@ -17,10 +18,13 @@ const CATEGORY_OPTIONS = [
 ]
 
 export function CreatePostForm() {
+  const [error, setError] = useState('')
+  const submitMedia = useMediaFormAction(createPost, 'post', setError)
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
 
   return (
-    <form action={createPost} className="space-y-6">
+    <form action={submitMedia} className="space-y-6">
+      {error ? <p role="alert">{error}</p> : null}
       <div>
         <label className="mb-2 block text-sm text-zinc-300">Dev Profile ID</label>
         <input

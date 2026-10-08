@@ -1,7 +1,8 @@
+import type { Tables } from '@/lib/supabase/database.types'
 import { createClient } from '@/lib/supabase/server'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 
-function getStoryPreviewPath(story: any) {
+function getStoryPreviewPath(story: Pick<Tables<'stories'>, 'media_type' | 'media_path' | 'thumbnail_path'>) {
   return story.media_type === 'video'
     ? story.thumbnail_path || story.media_path || null
     : story.media_path || story.thumbnail_path || null
@@ -20,7 +21,7 @@ export async function getStoriesRail(viewerProfileId: string) {
 
   const authorIds = [
     viewerProfileId,
-    ...(followRows ?? []).map((row: any) => row.following_id),
+    ...(followRows ?? []).map((row) => row.following_id),
   ].filter(Boolean)
 
   if (authorIds.length === 0) {
@@ -49,7 +50,7 @@ export async function getStoriesRail(viewerProfileId: string) {
     return []
   }
 
-  const authorProfileIds = [...new Set(stories.map((story: any) => story.author_id))]
+  const authorProfileIds = [...new Set(stories.map((story) => story.author_id))]
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url')
@@ -57,7 +58,7 @@ export async function getStoriesRail(viewerProfileId: string) {
 
   if (profilesError) throw new Error(profilesError.message)
 
-  const profileMap = new Map((profiles ?? []).map((row: any) => [row.id, row]))
+  const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]))
 
   const { data: viewedRows, error: viewedError } = await supabase
     .from('story_views')
@@ -66,9 +67,9 @@ export async function getStoriesRail(viewerProfileId: string) {
 
   if (viewedError) throw new Error(viewedError.message)
 
-  const viewedSet = new Set((viewedRows ?? []).map((row: any) => row.story_id))
+  const viewedSet = new Set((viewedRows ?? []).map((row) => row.story_id))
 
-  const grouped = new Map<string, any[]>()
+  const grouped = new Map<string, typeof stories>()
 
   for (const story of stories) {
     const existing = grouped.get(story.author_id) ?? []
@@ -142,15 +143,15 @@ export async function getStoryViewerData(viewerProfileId: string, storyId: strin
     .from('story_views')
     .select('story_id')
     .eq('viewer_id', viewerProfileId)
-    .in('story_id', (authorStories ?? []).map((story: any) => story.id))
+    .in('story_id', (authorStories ?? []).map((story) => story.id))
 
   if (viewedError) throw new Error(viewedError.message)
 
-  const viewedSet = new Set((viewedRows ?? []).map((row: any) => row.story_id))
+  const viewedSet = new Set((viewedRows ?? []).map((row) => row.story_id))
   const avatarUrl = await getMediaUrl(authorProfile?.avatar_url ?? null)
 
   const stories = await Promise.all(
-    (authorStories ?? []).map(async (story: any) => ({
+    (authorStories ?? []).map(async (story) => ({
       id: story.id,
       media_type: story.media_type,
       media_url: await getMediaUrl(story.media_path),

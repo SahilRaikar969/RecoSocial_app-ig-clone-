@@ -40,7 +40,7 @@ export default async function EditProfilePage({
                           : error === 'username_taken'
                             ? 'That username is already taken.'
                             : error
-                              ? `Profile update failed: ${decodeURIComponent(error)}`
+                              ? `Profile update failed: ${error}`
                               : ''
 
   return (

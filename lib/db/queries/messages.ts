@@ -58,7 +58,21 @@ export async function getOrCreateDirectThread(viewerProfileId: string, otherProf
     .select('id, profile_low_id, profile_high_id')
     .single()
 
-  if (insertError) throw new Error(insertError.message)
+  if (insertError) {
+    // A concurrent request for the same canonical pair may win the unique key.
+    // Re-read only that pair; never return a thread from another participant set.
+    if (insertError.code === '23505') {
+      const { data: concurrentThread, error: readError } = await supabase
+        .from('direct_threads')
+        .select('id, profile_low_id, profile_high_id')
+        .eq('profile_low_id', profileLowId)
+        .eq('profile_high_id', profileHighId)
+        .maybeSingle()
+      if (readError) throw new Error(readError.message)
+      if (concurrentThread) return concurrentThread
+    }
+    throw new Error(insertError.message)
+  }
 
   return insertedThread
 }
@@ -75,7 +89,7 @@ export async function getInboxData(viewerProfileId: string) {
   if (threadsError) throw new Error(threadsError.message)
 
   const otherProfileIds = [...new Set(
-    (threads ?? []).map((thread: any) =>
+    (threads ?? []).map((thread) =>
       thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id
     )
   )]
@@ -87,9 +101,9 @@ export async function getInboxData(viewerProfileId: string) {
 
   if (profilesError) throw new Error(profilesError.message)
 
-  const profileMap = new Map((profiles ?? []).map((row: any) => [row.id, row]))
+  const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]))
 
-  const threadIds = (threads ?? []).map((thread: any) => thread.id)
+  const threadIds = (threads ?? []).map((thread) => thread.id)
   const { data: rawMessages, error: messagesError } = await supabase
     .from('direct_messages')
     .select('id, thread_id, sender_id, body, created_at')
@@ -98,7 +112,7 @@ export async function getInboxData(viewerProfileId: string) {
 
   if (messagesError) throw new Error(messagesError.message)
 
-  const firstMessageByThread = new Map<string, any>()
+  const firstMessageByThread = new Map<string, NonNullable<typeof rawMessages>[number]>()
   for (const message of rawMessages ?? []) {
     if (!firstMessageByThread.has(message.thread_id)) {
       firstMessageByThread.set(message.thread_id, message)
@@ -106,7 +120,7 @@ export async function getInboxData(viewerProfileId: string) {
   }
 
   const conversations = await Promise.all(
-    (threads ?? []).map(async (thread: any) => {
+    (threads ?? []).map(async (thread) => {
       const otherProfileId =
         thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id
       const otherProfile = profileMap.get(otherProfileId)
@@ -166,7 +180,7 @@ export async function getThreadPageData(viewerProfileId: string, threadId: strin
 
   if (profilesError) throw new Error(profilesError.message)
 
-  const profileMap = new Map((profiles ?? []).map((row: any) => [row.id, row]))
+  const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]))
 
   const { data: messages, error: messagesError } = await supabase
     .from('direct_messages')

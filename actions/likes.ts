@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
+import type { MutationResult } from '@/lib/mutations/result'
 
 type ToggleLikeInlineInput = {
   postId: string
@@ -13,9 +14,7 @@ type ToggleLikeInlineInput = {
   returnTo?: string
 }
 
-type ToggleLikeInlineResult =
-  | { ok: true; liked: boolean }
-  | { ok: false; error: string }
+type ToggleLikeInlineResult = MutationResult<{ liked: boolean }>
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
   return buildReturnUrl(returnTo, params, '/feed')
@@ -28,64 +27,70 @@ async function revalidateLikeSurfaces(postId: string) {
   revalidatePath('/profile')
   revalidatePath('/activity')
   revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
 }
 
 async function performLikeToggle(
   postId: string,
   liked: boolean
 ): Promise<ToggleLikeInlineResult> {
-  const supabase = await createClient()
   const { profileId } = await getDevSession()
 
-  if (!postId || !profileId) {
-    return { ok: false, error: 'missing_like_ids' }
-  }
-
-  const { data: postRow, error: postLookupError } = await supabase
-    .from('posts')
-    .select('id, author_id')
-    .eq('id', postId)
-    .maybeSingle()
-
-  if (postLookupError) {
-    return { ok: false, error: postLookupError.message }
-  }
-
-  if (!postRow) {
-    return { ok: false, error: 'post_not_found' }
-  }
-
-  if (liked) {
-    const { error } = await supabase
-      .from('likes')
-      .delete()
-      .eq('post_id', postId)
-      .eq('profile_id', profileId)
-
-    if (error) {
-      return { ok: false, error: error.message }
+  try {
+    const supabase = await createClient()
+    if (!postId || !profileId) {
+      return { ok: false, error: 'missing_like_ids' }
     }
 
-    return { ok: true, liked: false }
-  }
+    const { data: postRow, error: postLookupError } = await supabase
+      .from('posts')
+      .select('id, author_id')
+      .eq('id', postId)
+      .maybeSingle()
 
-  const { error } = await supabase
-    .from('likes')
-    .upsert(
-      {
-        post_id: postId,
-        profile_id: profileId,
-      },
-      {
-        onConflict: 'profile_id,post_id',
+    if (postLookupError) {
+      return { ok: false, error: 'like_failed' }
+    }
+
+    if (!postRow) {
+      return { ok: false, error: 'post_not_found' }
+    }
+
+    if (liked) {
+      const { error } = await supabase
+        .from('likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('profile_id', profileId)
+
+      if (error) {
+        return { ok: false, error: 'like_failed' }
       }
-    )
 
-  if (error) {
-    return { ok: false, error: error.message }
+      return { ok: true, liked: false }
+    }
+
+    const { error } = await supabase
+      .from('likes')
+      .upsert(
+        {
+          post_id: postId,
+          profile_id: profileId,
+        },
+        {
+          onConflict: 'profile_id,post_id',
+          ignoreDuplicates: true,
+        }
+      )
+
+    if (error) {
+      return { ok: false, error: 'like_failed' }
+    }
+
+    return { ok: true, liked: true }
+  } catch {
+    return { ok: false, error: 'like_unconfirmed' }
   }
-
-  return { ok: true, liked: true }
 }
 
 export async function toggleLikeInline(

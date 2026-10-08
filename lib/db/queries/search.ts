@@ -1,14 +1,10 @@
+import type { Tables } from '@/lib/supabase/database.types'
+import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { createClient } from '@/lib/supabase/server'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
 
-type RawProfile = {
-  id: string
-  username: string | null
-  display_name: string | null
-  bio: string | null
-  avatar_url: string | null
-}
+type RawProfile = Pick<Tables<'profiles'>, 'id' | 'username' | 'display_name' | 'bio' | 'avatar_url'>
 
 type RawPost = {
   id: string
@@ -69,8 +65,8 @@ function scorePost(post: RawPost, query: string) {
   return score + engagementBoost
 }
 
-function dedupePostsById(posts: any[]) {
-  const map = new Map<string, any>()
+function dedupePostsById<T extends { id: string }>(posts: T[]) {
+  const map = new Map<string, T>()
 
   for (const post of posts) {
     if (!post?.id) continue
@@ -142,14 +138,14 @@ export async function getSearchData(viewerProfileId: string, query: string) {
   if (followsError) throw new Error(followsError.message)
 
   const followedIds = new Set(
-    (follows ?? []).map((row: any) => row.following_id).filter(Boolean)
+    (follows ?? []).map((row) => row.following_id).filter(Boolean)
   )
 
   const matchedCreatorIds = (profiles ?? [])
     .map((profile: RawProfile) => profile.id)
     .filter(Boolean)
 
-  let authorMatchPosts: any[] = []
+  let authorMatchPosts: NonNullable<typeof captionPosts> = []
 
   if (matchedCreatorIds.length > 0) {
     const { data, error } = await supabase
@@ -182,10 +178,12 @@ export async function getSearchData(viewerProfileId: string, query: string) {
   const mergedPosts = dedupePostsById([
     ...(captionPosts ?? []),
     ...authorMatchPosts,
-  ]).filter((post: any) => !hiddenPostIds.has(post.id))
+  ]).filter((post) => !hiddenPostIds.has(post.id))
+
+  const saveCounts = await getVisiblePostSaveCounts(supabase, mergedPosts.map((post) => post.id))
 
   const authorIds = [
-    ...new Set(mergedPosts.map((post: any) => post.author_id).filter(Boolean)),
+    ...new Set(mergedPosts.map((post) => post.author_id).filter(Boolean)),
   ]
 
   let authorMap = new Map<string, RawProfile>()
@@ -198,7 +196,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
 
     if (authorsError) throw new Error(authorsError.message)
 
-    authorMap = new Map((authors ?? []).map((author: any) => [author.id, author]))
+    authorMap = new Map((authors ?? []).map((author) => [author.id, author]))
   }
 
   const creatorIdsForStats = (profiles ?? [])
@@ -230,13 +228,13 @@ export async function getSearchData(viewerProfileId: string, query: string) {
   const postCountMap = new Map<string, number>()
 
   for (const row of followerRowsResult.data ?? []) {
-    const creatorId = (row as any)?.following_id
+    const creatorId = row?.following_id
     if (!creatorId) continue
     followerCountMap.set(creatorId, (followerCountMap.get(creatorId) ?? 0) + 1)
   }
 
   for (const row of creatorPostsResult.data ?? []) {
-    const creatorId = (row as any)?.author_id
+    const creatorId = row?.author_id
     if (!creatorId) continue
     postCountMap.set(creatorId, (postCountMap.get(creatorId) ?? 0) + 1)
   }
@@ -265,11 +263,11 @@ export async function getSearchData(viewerProfileId: string, query: string) {
   })
 
   const postResults = await Promise.all(
-    mergedPosts.map(async (post: any) => {
+    mergedPosts.map(async (post) => {
       const author = authorMap.get(post.author_id) ?? null
       const likeCount = Array.isArray(post.likes) ? post.likes.length : 0
       const commentCount = Array.isArray(post.comments) ? post.comments.length : 0
-      const saveCount = Array.isArray(post.saves) ? post.saves.length : 0
+      const saveCount = saveCounts.get(post.id) ?? 0
 
       return {
         id: post.id,

@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useObjectUrl } from '@/lib/media/use-object-url'
+import { useMediaFormAction } from '@/lib/media/use-media-form-action'
 import { useEffect, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createPost } from '@/actions/posts'
@@ -144,6 +146,10 @@ export function CreatePostForm({
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [clientError, setClientError] = useState('')
+  const submitMedia = useMediaFormAction(createPost, 'post', setClientError, {
+    media_file: mediaSourceMode === 'upload' ? mediaFile : null,
+    thumbnail_file: mediaType === 'video' && thumbnailSourceMode === 'upload' ? thumbnailFile : null,
+  })
 
   useEffect(() => {
     setClientError('')
@@ -162,41 +168,10 @@ export function CreatePostForm({
   const creatorUsername = useMemo(() => `you_${getCompactId(profileId)}`, [profileId])
   const creatorDisplayName = 'Your profile'
 
-  const resolvedMediaPreview =
-    mediaSourceMode === 'upload'
-      ? mediaFile
-        ? URL.createObjectURL(mediaFile)
-        : ''
-      : isDirectPreviewableUrl(mediaPath)
-        ? mediaPath.trim()
-        : ''
-
-  const resolvedThumbnailPreview =
-    mediaType === 'video'
-      ? thumbnailSourceMode === 'upload'
-        ? thumbnailFile
-          ? URL.createObjectURL(thumbnailFile)
-          : ''
-        : isDirectPreviewableUrl(thumbnailPath)
-          ? thumbnailPath.trim()
-          : ''
-      : ''
-
-  useEffect(() => {
-    return () => {
-      if (mediaFile && resolvedMediaPreview.startsWith('blob:')) {
-        URL.revokeObjectURL(resolvedMediaPreview)
-      }
-    }
-  }, [mediaFile, resolvedMediaPreview])
-
-  useEffect(() => {
-    return () => {
-      if (thumbnailFile && resolvedThumbnailPreview.startsWith('blob:')) {
-        URL.revokeObjectURL(resolvedThumbnailPreview)
-      }
-    }
-  }, [thumbnailFile, resolvedThumbnailPreview])
+  const mediaObjectUrl = useObjectUrl(mediaFile)
+  const thumbnailObjectUrl = useObjectUrl(thumbnailFile)
+  const resolvedMediaPreview = mediaSourceMode === 'upload' ? mediaObjectUrl : isDirectPreviewableUrl(mediaPath) ? mediaPath.trim() : ''
+  const resolvedThumbnailPreview = mediaType === 'video' ? thumbnailSourceMode === 'upload' ? thumbnailObjectUrl : isDirectPreviewableUrl(thumbnailPath) ? thumbnailPath.trim() : '' : ''
 
   const selectedCategoryObjects = useMemo(
     () =>
@@ -324,7 +299,7 @@ export function CreatePostForm({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_0.92fr]">
-      <form action={createPost} onSubmit={handleSubmit} className="space-y-6">
+      <form action={submitMedia} onSubmit={handleSubmit} className="space-y-6">
         <input type="hidden" name="profile_id" value={profileId} />
         <input type="hidden" name="media_type" value={mediaType} />
         {selectedCategories.map((name) => (

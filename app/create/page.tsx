@@ -52,7 +52,7 @@ export default async function CreatePage({
                                   : error === 'thumbnail_upload_failed'
                                     ? 'Thumbnail upload failed. Check the storage bucket and policies.'
                                     : error
-                                      ? `Create failed: ${decodeURIComponent(error)}`
+                                      ? `Create failed: ${error}`
                                       : ''
 
   return (

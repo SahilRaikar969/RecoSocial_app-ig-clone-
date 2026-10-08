@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { avatarCropGeometry } from '@/lib/media/avatar-crop'
 
 type AvatarCropEditorProps = {
   file: File | null
@@ -23,101 +24,64 @@ export function AvatarCropEditor({
   const [zoom, setZoom] = useState(1.15)
   const [offsetX, setOffsetX] = useState(0)
   const [offsetY, setOffsetY] = useState(0)
-  const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
-
+  const imageRef = useRef<HTMLImageElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const callbacks = useRef({ onCroppedChange, onErrorChange })
+  useEffect(() => { callbacks.current = { onCroppedChange, onErrorChange } }, [onCroppedChange, onErrorChange])
 
   useEffect(() => {
-    if (!file) {
-      setSourceUrl('')
-      setZoom(1.15)
-      setOffsetX(0)
-      setOffsetY(0)
-      setNaturalSize({ width: 0, height: 0 })
-      onCroppedChange('')
-      return
-    }
-
+    let cancelled = false
+    imageRef.current = null
+    callbacks.current.onCroppedChange('')
+    if (!file) return
     const objectUrl = URL.createObjectURL(file)
     const image = new Image()
-
     image.onload = () => {
+      if (cancelled) return
+      if (!image.naturalWidth || !image.naturalHeight) {
+        callbacks.current.onErrorChange?.('Unable to prepare this avatar image.')
+        return
+      }
+      imageRef.current = image
       setSourceUrl(objectUrl)
       setZoom(1.15)
       setOffsetX(0)
       setOffsetY(0)
-      setNaturalSize({
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-      })
-      onErrorChange?.('')
+      callbacks.current.onErrorChange?.('')
     }
-
     image.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
+      if (cancelled) return
+      imageRef.current = null
       setSourceUrl('')
-      setNaturalSize({ width: 0, height: 0 })
-      onCroppedChange('')
-      onErrorChange?.('Unable to prepare this avatar image.')
+      callbacks.current.onCroppedChange('')
+      callbacks.current.onErrorChange?.('Unable to prepare this avatar image.')
     }
-
     image.src = objectUrl
-
     return () => {
+      cancelled = true
+      image.onload = null
+      image.onerror = null
+      imageRef.current = null
       URL.revokeObjectURL(objectUrl)
     }
-  }, [file, onCroppedChange, onErrorChange])
-
-  const previewTransform = useMemo(
-    () => ({
-      transform: `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`,
-    }),
-    [offsetX, offsetY, zoom]
-  )
+  }, [file])
 
   useEffect(() => {
-    if (!sourceUrl || !canvasRef.current || !naturalSize.width || !naturalSize.height) {
-      return
-    }
-
-    const image = new Image()
-
-    image.onload = () => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-
-      const context = canvas.getContext('2d')
-      if (!context) return
-
+    const image = imageRef.current
+    if (!image || !sourceUrl) return
+    const geometry = avatarCropGeometry(image.naturalWidth, image.naturalHeight, zoom, offsetX, offsetY, OUTPUT_SIZE)
+    // Both canvases use the identical geometry; CSS only scales the preview.
+    for (const canvas of [canvasRef.current, previewCanvasRef.current]) {
+      const context = canvas?.getContext('2d')
+      if (!canvas || !context) continue
       canvas.width = OUTPUT_SIZE
       canvas.height = OUTPUT_SIZE
-
       context.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
-      context.fillStyle = '#000000'
-      context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
-
-      const baseScale = Math.max(
-        OUTPUT_SIZE / naturalSize.width,
-        OUTPUT_SIZE / naturalSize.height
-      )
-
-      const scaledWidth = naturalSize.width * baseScale * zoom
-      const scaledHeight = naturalSize.height * baseScale * zoom
-
-      const drawX = (OUTPUT_SIZE - scaledWidth) / 2 + offsetX * 3
-      const drawY = (OUTPUT_SIZE - scaledHeight) / 2 + offsetY * 3
-
-      context.drawImage(image, drawX, drawY, scaledWidth, scaledHeight)
-
-      onCroppedChange(canvas.toDataURL('image/jpeg', 0.92))
+      context.drawImage(image, geometry.x, geometry.y, geometry.width, geometry.height)
     }
-
-    image.onerror = () => {
-      onErrorChange?.('Unable to prepare this avatar image.')
-    }
-
-    image.src = sourceUrl
-  }, [sourceUrl, naturalSize, zoom, offsetX, offsetY, onCroppedChange, onErrorChange])
+    if (canvasRef.current) callbacks.current.onCroppedChange(canvasRef.current.toDataURL('image/jpeg', 0.92))
+  }, [sourceUrl, zoom, offsetX, offsetY])
 
   if (!file || !sourceUrl) {
     return null
@@ -133,13 +97,7 @@ export function AvatarCropEditor({
         <div className="rounded-[24px] border border-zinc-800 bg-zinc-950 p-4">
           <div className="mx-auto aspect-square max-w-[320px] overflow-hidden rounded-full border border-zinc-800 bg-black">
             <div className="flex h-full w-full items-center justify-center overflow-hidden">
-              <img
-                src={sourceUrl}
-                alt="Avatar crop preview"
-                className="max-h-none max-w-none select-none"
-                style={previewTransform}
-                draggable={false}
-              />
+              <canvas ref={previewCanvasRef} aria-label="Avatar crop preview" className="h-full w-full" />
             </div>
           </div>
 

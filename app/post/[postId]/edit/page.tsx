@@ -85,7 +85,7 @@ export default async function EditPostPage({
                                       : error === 'thumbnail_upload_failed'
                                         ? 'Thumbnail upload failed. Check the storage bucket and policies.'
                                         : error
-                                          ? `Edit failed: ${decodeURIComponent(error)}`
+                                          ? `Edit failed: ${error}`
                                           : ''
 
   return (

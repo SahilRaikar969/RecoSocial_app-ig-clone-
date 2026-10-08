@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test:m1": "node --test tests/m1-auth.test.mjs tests/m1-save-counts.test.mjs tests/m1-media.test.mjs supabase/tests/m1-database.test.mjs",
     "test:m1:db": "node --test supabase/tests/m1-database.test.mjs",
-    "typecheck": "tsc --noEmit --incremental false"
+    "typecheck": "tsc --noEmit --incremental false",
+    "types:generate": "node scripts/generate-database-types.mjs",
+    "types:check": "node scripts/generate-database-types.mjs --check",
+    "test:m2": "node --test tests/m2-*.test.mjs supabase/tests/m2-publication.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -1,232 +1,45 @@
 'use server'
 
-import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
-import { buildReturnUrl } from '@/lib/routes/safe-return-path'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { assertMediaUpload, isOwnedMediaPath } from '@/lib/media/upload-validation'
 import { getDevSession } from '@/lib/auth/get-dev-session'
-import { isValidMediaUrl } from '@/lib/media/is-valid-media-url'
+import { cleanupFreshUploads, fileField, knownDatabaseRejection, MediaMutationError, mediaFailure, resolveMedia, validateMedia, type MediaInput } from '@/lib/media/server-media'
 
-const MAX_DISPLAY_NAME_LENGTH = 60
-const MAX_USERNAME_LENGTH = 30
-const MAX_BIO_LENGTH = 280
-const MAX_AVATAR_FILE_SIZE = 10 * 1024 * 1024
-
-const ACCEPTED_AVATAR_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-])
-
-function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
-  return buildReturnUrl(returnTo, params, '/profile/edit')
-}
-
-function sanitizeFileName(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9.-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-function getFileExtension(name: string) {
-  return name.includes('.')
-    ? name.split('.').pop()?.toLowerCase() || 'bin'
-    : 'bin'
-}
-
-function normalizeUsername(value: string) {
-  return value.trim().toLowerCase().replace(/^@+/, '')
-}
-
-function dataUrlToFile(dataUrl: string, fileName: string) {
-  const [meta, base64] = dataUrl.split(',')
-
-  if (!meta || !base64) {
-    throw new Error('invalid_avatar_crop')
-  }
-
-  const mimeMatch = meta.match(/data:(.*?);base64/)
-  const mime = mimeMatch?.[1] || 'image/jpeg'
-  const buffer = Buffer.from(base64, 'base64')
-
-  return new File([buffer], fileName, { type: mime })
-}
-
-function isValidUsername(value: string) {
-  return /^[a-z0-9._]+$/.test(value)
-}
-
-async function uploadAvatarToMediaBucket(file: File, profileId: string) {
-  const supabase = await createClient()
-
-  await assertMediaUpload(file)
-
-  const fileExt = getFileExtension(file.name)
-  const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, '')) || 'avatar'
-  const filePath = `avatars/${profileId}/${Date.now()}-${randomUUID()}-${safeName}.${fileExt}`
-
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-
-  const { error } = await supabase.storage
-    .from('media')
-    .upload(filePath, buffer, {
-      contentType: file.type || undefined,
-      upsert: false,
-      cacheControl: '3600',
-    })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return filePath
-}
-
-export async function updateProfile(formData: FormData) {
-  const supabase = await createClient()
+export async function updateProfile(form: FormData) {
   const { profileId } = await getDevSession()
-
-  const returnTo = String(
-    formData.get('return_to') || '/profile/edit'
-  ).trim()
-
-  const username = normalizeUsername(
-    String(formData.get('username') || '').trim()
-  )
-
-  const displayName = String(
-    formData.get('display_name') || formData.get('displayName') || ''
-  ).trim()
-
-  const bio = String(formData.get('bio') || '').trim()
-
-  const avatarUrlInput = String(
-    formData.get('avatar_url') || formData.get('avatarUrl') || ''
-  ).trim()
-
-  const avatarFileValue = formData.get('avatar_file') || formData.get('avatar')
-  const avatarFile =
-    avatarFileValue instanceof File && avatarFileValue.size > 0
-      ? avatarFileValue
-      : null
-
-  const avatarCropDataUrl = String(
-    formData.get('avatar_crop_data_url') || ''
-  ).trim()
-
-  let croppedAvatarFile: File | null = null
-
-  if (avatarCropDataUrl) {
-    try {
-      croppedAvatarFile = dataUrlToFile(
-        avatarCropDataUrl,
-        `avatar-crop-${Date.now()}.jpg`
-      )
-    } catch {
-      redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_crop' }))
+  const client = await createClient()
+  const fresh: string[] = []
+  let safeToClean = true
+  try {
+    const username = String(form.get('username') || '').trim().toLowerCase().replace(/^@+/,'')
+    const displayName = String(form.get('display_name') || form.get('displayName') || '').trim()
+    const bio = String(form.get('bio') || '').trim()
+    if (!/^[a-z0-9._]{1,30}$/.test(username)) throw new MediaMutationError('Use a username of 1–30 letters, numbers, dots or underscores.')
+    if (!displayName || displayName.length > 60 || bio.length > 280) throw new MediaMutationError('Use a name of 1–60 characters and a bio of at most 280 characters.')
+    const { data: current, error: readError } = await client.from('profiles').select('id,updated_at').eq('id',profileId).single()
+    if (readError || !current) throw new MediaMutationError('Your profile could not be loaded. Refresh and try again.')
+    let upload = fileField(form,'avatar_file') || fileField(form,'avatar')
+    const crop = String(form.get('avatar_crop_data_url') || '')
+    if (crop) {
+      // Legacy small form support. Browser forms now upload the crop directly.
+      if (crop.length > 14 * 1024 * 1024 || !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(crop)) throw new MediaMutationError('The cropped avatar is invalid or too large.')
+      upload = new File([Buffer.from(crop.split(',')[1],'base64')],'avatar.jpg',{type:'image/jpeg'})
     }
-  }
-
-  const resolvedAvatarUpload = croppedAvatarFile || avatarFile
-
-  if (!profileId) {
-    redirect(buildRedirectUrl(returnTo, { error: 'missing_profile_id' }))
-  }
-
-  if (!username) {
-    redirect(buildRedirectUrl(returnTo, { error: 'username_required' }))
-  }
-
-  if (username.length > MAX_USERNAME_LENGTH) {
-    redirect(buildRedirectUrl(returnTo, { error: 'username_too_long' }))
-  }
-
-  if (!isValidUsername(username)) {
-    redirect(buildRedirectUrl(returnTo, { error: 'invalid_username' }))
-  }
-
-  if (!displayName) {
-    redirect(buildRedirectUrl(returnTo, { error: 'display_name_required' }))
-  }
-
-  if (displayName.length > MAX_DISPLAY_NAME_LENGTH) {
-    redirect(buildRedirectUrl(returnTo, { error: 'display_name_too_long' }))
-  }
-
-  if (bio.length > MAX_BIO_LENGTH) {
-    redirect(buildRedirectUrl(returnTo, { error: 'bio_too_long' }))
-  }
-
-  if (resolvedAvatarUpload) {
-    if (!resolvedAvatarUpload.type || !ACCEPTED_AVATAR_TYPES.has(resolvedAvatarUpload.type)) {
-      redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_file_type' }))
+    const avatar: MediaInput = { file:upload,path:String(form.get('avatar_url') || form.get('avatarUrl') || '').trim(),folder:'avatars',kind:'image',maxBytes:10*1024*1024,optional:true }
+    await validateMedia(avatar,profileId)
+    const path = await resolveMedia(client,profileId,avatar,fresh)
+    safeToClean = false
+    const { data,error } = await client.from('profiles').update({username,display_name:displayName,bio,avatar_url:path}).eq('id',profileId).eq('updated_at',current.updated_at).select('id').maybeSingle()
+    if (error || !data) {
+      safeToClean = !error || knownDatabaseRejection(error)
+      throw new MediaMutationError(error?.code === '23505' ? 'That username is already taken.' : !error ? 'Your profile changed while saving. Reload and try again.' : safeToClean ? 'Your profile could not be saved. The previous avatar was preserved.' : 'The save result could not be confirmed. Refresh before retrying; uploaded media was retained.')
     }
-
-    if (resolvedAvatarUpload.size > MAX_AVATAR_FILE_SIZE) {
-      redirect(buildRedirectUrl(returnTo, { error: 'avatar_file_too_large' }))
-    }
+  } catch (error) {
+    const cleaned = safeToClean ? await cleanupFreshUploads(client,profileId,fresh) : true
+    return {ok:false as const,error:mediaFailure(error,'The save result could not be confirmed. Refresh before retrying.') + (cleaned ? '' : ' Some unlinked uploads could not be removed; cleanup is pending.')}
   }
-
-  if (avatarUrlInput && !isOwnedMediaPath(avatarUrlInput, profileId) && !isValidMediaUrl(avatarUrlInput)) {
-    redirect(buildRedirectUrl(returnTo, { error: 'invalid_avatar_url' }))
-  }
-
-  const { data: existingUsernameRow, error: usernameLookupError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('username', username)
-    .neq('id', profileId)
-    .maybeSingle()
-
-  if (usernameLookupError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(usernameLookupError.message),
-      })
-    )
-  }
-
-  if (existingUsernameRow) {
-    redirect(buildRedirectUrl(returnTo, { error: 'username_taken' }))
-  }
-
-  let resolvedAvatarUrl: string | null = avatarUrlInput || null
-
-  if (resolvedAvatarUpload) {
-    try {
-      resolvedAvatarUrl = await uploadAvatarToMediaBucket(resolvedAvatarUpload, profileId)
-    } catch (error: unknown) {
-      redirect(
-        buildRedirectUrl(returnTo, {
-          error: encodeURIComponent((error instanceof Error ? error.message : 'avatar_upload_failed')),
-        })
-      )
-    }
-  }
-
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({
-      username,
-      display_name: displayName,
-      bio,
-      avatar_url: resolvedAvatarUrl,
-    })
-    .eq('id', profileId)
-
-  if (updateError) {
-    redirect(
-      buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(updateError.message),
-      })
-    )
-  }
-
+  // Retain previous public objects until a race-safe reference lifecycle exists.
+  for (const path of ['/profile','/profile/edit',`/profile/${profileId}`,'/feed']) revalidatePath(path)
   redirect('/profile?profile_updated=1')
 }

@@ -35,7 +35,7 @@ export async function getProfileCategoryPreferenceSlugs(profileId: string) {
   }
 
   const slugs = (data ?? [])
-    .map((row: any) => {
+    .map((row) => {
       const nested = Array.isArray(row?.categories)
         ? row.categories[0] ?? null
         : row?.categories ?? null

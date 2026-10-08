@@ -1,3 +1,4 @@
+import type { CategoryJoin, PublicProfile } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
@@ -24,7 +25,7 @@ function getRecencyBoost(createdAt: string) {
   return 0
 }
 
-function normalizeNestedCategory(item: any) {
+function normalizeNestedCategory(item: CategoryJoin) {
   const nested = Array.isArray(item?.categories)
     ? item.categories[0] ?? null
     : item?.categories ?? null
@@ -43,7 +44,7 @@ function normalizeNestedCategory(item: any) {
 
 function addCategoryWeights(
   target: CategoryPreferenceMap,
-  postCategories: any[] | null | undefined,
+  postCategories: CategoryJoin[] | null | undefined,
   weight: number
 ) {
   const categories = Array.isArray(postCategories) ? postCategories : []
@@ -73,7 +74,7 @@ function addSlugWeights(
 
 function getCategoryBoost(
   preferenceMap: CategoryPreferenceMap,
-  postCategories: any[] | null | undefined
+  postCategories: CategoryJoin[] | null | undefined
 ) {
   const categories = Array.isArray(postCategories) ? postCategories : []
   let boost = 0
@@ -226,13 +227,13 @@ export async function getExploreData(
   )
 
   const followedAuthorIds = new Set(
-    (followsResult.data ?? []).map((row: any) => row.following_id).filter(Boolean)
+    (followsResult.data ?? []).map((row) => row.following_id).filter(Boolean)
   )
 
   const preferenceMap: CategoryPreferenceMap = new Map()
 
   const onboardingSlugs = (onboardingPreferenceResult.data ?? [])
-    .map((row: any) => {
+    .map((row) => {
       const nested = Array.isArray(row?.categories)
         ? row.categories[0] ?? null
         : row?.categories ?? null
@@ -244,22 +245,22 @@ export async function getExploreData(
   addSlugWeights(preferenceMap, onboardingSlugs, 6)
 
   for (const row of savedAffinityResult.data ?? []) {
-    const relatedPost = Array.isArray((row as any)?.posts)
-      ? (row as any).posts[0] ?? null
-      : (row as any)?.posts ?? null
+    const relatedPost = Array.isArray(row?.posts)
+      ? row.posts[0] ?? null
+      : row?.posts ?? null
 
     addCategoryWeights(preferenceMap, relatedPost?.post_categories, 3)
   }
 
   for (const row of likedAffinityResult.data ?? []) {
-    const relatedPost = Array.isArray((row as any)?.posts)
-      ? (row as any).posts[0] ?? null
-      : (row as any)?.posts ?? null
+    const relatedPost = Array.isArray(row?.posts)
+      ? row.posts[0] ?? null
+      : row?.posts ?? null
 
     addCategoryWeights(preferenceMap, relatedPost?.post_categories, 2)
   }
 
-  const rawPosts = (postsResult.data ?? []).map((post: any) => {
+  const rawPosts = (postsResult.data ?? []).map((post) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
     const comments = Array.isArray(post.comments) ? post.comments : []
@@ -268,7 +269,7 @@ export async function getExploreData(
       : []
 
     comments.sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
@@ -286,9 +287,9 @@ export async function getExploreData(
     return {
       ...post,
       like_count: likeCount,
-      liked_by_me: likes.some((like: any) => like.profile_id === devProfileId),
+      liked_by_me: likes.some((like) => like.profile_id === devProfileId),
       save_count: saveCount,
-      saved_by_me: saves.some((save: any) => save.profile_id === devProfileId),
+      saved_by_me: saves.some((save) => save.profile_id === devProfileId),
       comment_count: commentCount,
       comments,
       post_categories: categories,
@@ -307,13 +308,13 @@ export async function getExploreData(
   const profileIds = [
     ...visiblePosts.map((post) => post.author_id),
     ...visiblePosts.flatMap((post) =>
-      (post.comments ?? []).map((comment: any) => comment.author_id)
+      (post.comments ?? []).map((comment) => comment.author_id)
     ),
   ].filter(Boolean)
 
   const uniqueProfileIds = [...new Set(profileIds)]
 
-  let profileMap = new Map<string, any>()
+  let profileMap = new Map<string, PublicProfile>()
 
   if (uniqueProfileIds.length > 0) {
     const { data: profilesData, error: profilesError } = await supabase
@@ -324,14 +325,14 @@ export async function getExploreData(
     if (profilesError) throw new Error(profilesError.message)
 
     profileMap = new Map(
-      (profilesData ?? []).map((profile: any) => [profile.id, profile])
+      (profilesData ?? []).map((profile) => [profile.id, profile])
     )
   }
 
   const posts = visiblePosts.map((post) => ({
     ...post,
     author: profileMap.get(post.author_id) ?? null,
-    comments: (post.comments ?? []).map((comment: any) => ({
+    comments: (post.comments ?? []).map((comment) => ({
       ...comment,
       author: profileMap.get(comment.author_id) ?? null,
     })),
@@ -359,7 +360,7 @@ export async function getExploreData(
   const filteredPosts = categorySlug
     ? posts.filter((post) =>
         (post.post_categories ?? []).some(
-          (item: any) => item?.categories?.slug === categorySlug
+          (item) => item?.categories?.slug === categorySlug
         )
       )
     : posts

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useMediaFormAction } from '@/lib/media/use-media-form-action'
 import { useEffect, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { updatePost } from '@/actions/posts'
@@ -18,7 +19,8 @@ type EditablePost = {
   caption: string
   media_type: 'image' | 'video'
   media_path: string
-  thumbnail_path: string
+  thumbnail_path: string | null
+  updated_at: string
   created_at: string
   post_categories: Array<{
     category_id: string
@@ -125,6 +127,10 @@ export function EditPostForm({
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(existingCategoryNames)
   const [clientError, setClientError] = useState('')
+  const submitMedia = useMediaFormAction(updatePost, 'post', setClientError, {
+    media_file: mediaSourceMode === 'upload' ? mediaFile : null,
+    thumbnail_file: mediaType === 'video' && thumbnailSourceMode === 'upload' ? thumbnailFile : null,
+  })
 
   useEffect(() => {
     if (!mediaFile) {
@@ -303,11 +309,12 @@ export function EditPostForm({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <form
-        action={updatePost}
+        action={submitMedia}
         onSubmit={handleSubmit}
         className="overflow-hidden rounded-[32px] border border-zinc-800/90 bg-black"
       >
         <input type="hidden" name="post_id" value={post.id} />
+        <input type="hidden" name="expected_updated_at" value={post.updated_at} />
         <input type="hidden" name="dev_profile_id" value={profileId} />
         <input type="hidden" name="return_to" value={`/post/${post.id}/edit`} />
         <input type="hidden" name="media_type" value={mediaType} />

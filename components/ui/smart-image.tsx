@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { MediaSkeleton } from '@/components/ui/media-skeleton'
 
 type SmartImageProps = {
@@ -26,7 +26,7 @@ function isProbablyRenderableUrl(value: string) {
   }
 }
 
-export function SmartImage({
+function SmartImageSource({
   src,
   alt,
   className,
@@ -38,7 +38,7 @@ export function SmartImage({
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
-  const normalizedSrc = useMemo(() => String(src || '').trim(), [src])
+  const normalizedSrc = String(src || '').trim()
   const shouldRender = isProbablyRenderableUrl(normalizedSrc)
 
   if (!shouldRender || failed) {
@@ -68,4 +68,8 @@ export function SmartImage({
       />
     </div>
   )
+}
+export function SmartImage(props: SmartImageProps) {
+  const src = String(props.src || '').trim()
+  return <SmartImageSource key={src} {...props} src={src} />
 }

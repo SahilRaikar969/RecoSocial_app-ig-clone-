@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
+import type { MutationResult } from '@/lib/mutations/result'
 
 type CreateCommentInlineInput = {
   postId: string
@@ -28,9 +29,7 @@ type InlineComment = {
   author?: InlineCommentAuthor | null
 }
 
-type CreateCommentInlineResult =
-  | { ok: true; comment: InlineComment }
-  | { ok: false; error: string }
+type CreateCommentInlineResult = MutationResult<{ comment: InlineComment }>
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
   return buildReturnUrl(returnTo, params, '/feed')
@@ -43,72 +42,85 @@ async function revalidateCommentSurfaces(postId: string) {
   revalidatePath('/profile')
   revalidatePath('/activity')
   revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
 }
 
 async function performCreateComment(
   postId: string,
   body: string
 ): Promise<CreateCommentInlineResult> {
-  const supabase = await createClient()
   const { profileId } = await getDevSession()
 
-  if (!postId || !profileId) {
-    return { ok: false, error: 'missing_comment_ids' }
-  }
+  try {
+    const supabase = await createClient()
+    if (!postId || !profileId) {
+      return { ok: false, error: 'missing_comment_ids' }
+    }
 
-  const trimmedBody = body.trim()
+    const trimmedBody = body.trim()
 
-  if (!trimmedBody) {
-    return { ok: false, error: 'comment_body_required' }
-  }
+    if (!trimmedBody) {
+      return { ok: false, error: 'comment_body_required' }
+    }
 
-  if (trimmedBody.length > 280) {
-    return { ok: false, error: 'comment_too_long' }
-  }
+    if (trimmedBody.length > 280) {
+      return { ok: false, error: 'comment_too_long' }
+    }
 
-  const { data: postRow, error: postLookupError } = await supabase
-    .from('posts')
-    .select('id, author_id')
-    .eq('id', postId)
-    .maybeSingle()
+    const { data: postRow, error: postLookupError } = await supabase
+      .from('posts')
+      .select('id, author_id')
+      .eq('id', postId)
+      .maybeSingle()
 
-  if (postLookupError) {
-    return { ok: false, error: postLookupError.message }
-  }
+    if (postLookupError) {
+      return { ok: false, error: 'comment_failed' }
+    }
 
-  if (!postRow) {
-    return { ok: false, error: 'post_not_found' }
-  }
+    if (!postRow) {
+      return { ok: false, error: 'post_not_found' }
+    }
 
-  const { data: insertedComment, error: insertError } = await supabase
-    .from('comments')
-    .insert({
-      post_id: postId,
-      author_id: profileId,
-      body: trimmedBody,
-    })
-    .select('id, author_id, body, created_at')
-    .single()
+    const { data: insertedComment, error: insertError } = await supabase
+      .from('comments')
+      .insert({
+        post_id: postId,
+        author_id: profileId,
+        body: trimmedBody,
+      })
+      .select('id, author_id, body, created_at')
+      .single()
 
-  if (insertError || !insertedComment) {
-    return { ok: false, error: insertError?.message || 'comment_insert_failed' }
-  }
+    if (insertError || !insertedComment) {
+      return { ok: false, error: 'comment_insert_failed' }
+    }
 
-  const { data: authorProfile } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url')
-    .eq('id', profileId)
-    .maybeSingle()
+    // The comment is committed. Optional display enrichment must not turn a
+    // successful insert into a failure that invites the user to post it twice.
+    let authorProfile: InlineCommentAuthor | null = null
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .eq('id', profileId)
+        .maybeSingle()
+      authorProfile = data
+    } catch {
+      // The next server refresh can supply the author presentation.
+    }
 
-  return {
-    ok: true,
-    comment: {
-      id: insertedComment.id,
-      author_id: insertedComment.author_id,
-      body: insertedComment.body,
-      created_at: insertedComment.created_at,
-      author: authorProfile || null,
-    },
+    return {
+      ok: true,
+      comment: {
+        id: insertedComment.id,
+        author_id: insertedComment.author_id,
+        body: insertedComment.body,
+        created_at: insertedComment.created_at,
+        author: authorProfile || null,
+      },
+    }
+  } catch {
+    return { ok: false, error: 'comment_unconfirmed' }
   }
 }
 
@@ -178,7 +190,7 @@ export async function deleteCommentByOwner(formData: FormData) {
   if (commentLookupError) {
     redirect(
       buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(commentLookupError.message),
+        error: 'comment_delete_failed',
       })
     )
   }
@@ -200,7 +212,7 @@ export async function deleteCommentByOwner(formData: FormData) {
   if (postLookupError) {
     redirect(
       buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(postLookupError.message),
+        error: 'comment_delete_failed',
       })
     )
   }
@@ -230,7 +242,7 @@ export async function deleteCommentByOwner(formData: FormData) {
   if (deleteError) {
     redirect(
       buildRedirectUrl(returnTo, {
-        error: encodeURIComponent(deleteError.message),
+        error: 'comment_delete_failed',
       })
     )
   }

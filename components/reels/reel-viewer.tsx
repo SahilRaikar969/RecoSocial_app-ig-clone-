@@ -13,9 +13,10 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from 'react'
 import { toggleLikeInline } from '@/actions/likes'
 import { toggleSaveInline } from '@/actions/saves'
+import { optimisticEngagement } from '@/lib/mutations/optimistic-engagement'
 import { SmartImage } from '@/components/ui/smart-image'
 
 type ReelAuthor = {
@@ -90,10 +91,14 @@ function ReelCard({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  const [likedByMe, setLikedByMe] = useState(reel.liked_by_me)
-  const [savedByMe, setSavedByMe] = useState(reel.saved_by_me)
-  const [likeCount, setLikeCount] = useState(reel.like_count)
-  const [saveCount, setSaveCount] = useState(reel.save_count)
+  const router = useRouter()
+  const [{ active: likedByMe, count: likeCount }, setLikeOptimistic] = useOptimistic(
+    { active: reel.liked_by_me, count: reel.like_count }, optimisticEngagement
+  )
+  const [{ active: savedByMe, count: saveCount }, setSaveOptimistic] = useOptimistic(
+    { active: reel.saved_by_me, count: reel.save_count }, optimisticEngagement
+  )
+  const [mutationError, setMutationError] = useState('')
   const [isMuted, setIsMuted] = useState(true)
   const [isPausedByUser, setIsPausedByUser] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -198,59 +203,49 @@ function ReelCard({
 
   function handleToggleLike() {
     if (isPendingLike) return
-
-    const previousLiked = likedByMe
-    const previousLikeCount = likeCount
-    const nextLiked = !previousLiked
-    const nextLikeCount = Math.max(0, previousLikeCount + (nextLiked ? 1 : -1))
-
-    setLikedByMe(nextLiked)
-    setLikeCount(nextLikeCount)
-
+    const previous = likedByMe
+    setMutationError('')
     startLikeTransition(async () => {
-      const result = await toggleLikeInline({
-        postId: reel.id,
-        devProfileId: viewerProfileId,
-        liked: previousLiked,
-        returnTo: `/reel/${reel.id}`,
-      })
-
-      if (!result.ok) {
-        setLikedByMe(previousLiked)
-        setLikeCount(previousLikeCount)
-        return
+      setLikeOptimistic(!previous)
+      try {
+        const result = await toggleLikeInline({
+          postId: reel.id,
+          devProfileId: viewerProfileId,
+          liked: previous,
+          returnTo: `/reel/${reel.id}`,
+        })
+        if (!result.ok) {
+          setMutationError('Could not confirm the like change. Refreshing its current state.')
+          router.refresh()
+        }
+      } catch {
+        setMutationError('Could not confirm the like change. Refreshing its current state.')
+        router.refresh()
       }
-
-      setLikedByMe(result.liked)
     })
   }
 
   function handleToggleSave() {
     if (isPendingSave) return
-
-    const previousSaved = savedByMe
-    const previousSaveCount = saveCount
-    const nextSaved = !previousSaved
-    const nextSaveCount = Math.max(0, previousSaveCount + (nextSaved ? 1 : -1))
-
-    setSavedByMe(nextSaved)
-    setSaveCount(nextSaveCount)
-
+    const previous = savedByMe
+    setMutationError('')
     startSaveTransition(async () => {
-      const result = await toggleSaveInline({
-        postId: reel.id,
-        devProfileId: viewerProfileId,
-        saved: previousSaved,
-        returnTo: `/reel/${reel.id}`,
-      })
-
-      if (!result.ok) {
-        setSavedByMe(previousSaved)
-        setSaveCount(previousSaveCount)
-        return
+      setSaveOptimistic(!previous)
+      try {
+        const result = await toggleSaveInline({
+          postId: reel.id,
+          devProfileId: viewerProfileId,
+          saved: previous,
+          returnTo: `/reel/${reel.id}`,
+        })
+        if (!result.ok) {
+          setMutationError('Could not confirm the save change. Refreshing its current state.')
+          router.refresh()
+        }
+      } catch {
+        setMutationError('Could not confirm the save change. Refreshing its current state.')
+        router.refresh()
       }
-
-      setSavedByMe(result.saved)
     })
   }
 
@@ -258,6 +253,7 @@ function ReelCard({
 
   return (
     <section className="relative flex h-[100svh] w-full items-center justify-center overflow-hidden bg-black">
+      {mutationError ? <p role="alert" className="absolute left-4 top-20 z-50 rounded bg-black/80 p-3 text-sm text-white">{mutationError}</p> : null}
       {hasPoster ? (
         <img
           src={reel.thumbnail_url!}
@@ -422,6 +418,8 @@ function ReelCard({
             <button
               type="button"
               onClick={handleToggleLike}
+            disabled={isPendingLike}
+            aria-pressed={likedByMe}
               className={`flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur transition ${
                 likedByMe
                   ? 'border-pink-400/20 bg-pink-500/14 text-white shadow-[0_12px_28px_rgba(236,72,153,0.14)]'
@@ -449,6 +447,8 @@ function ReelCard({
             <button
               type="button"
               onClick={handleToggleSave}
+            disabled={isPendingSave}
+            aria-pressed={savedByMe}
               className={`flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur transition ${
                 savedByMe
                   ? 'border-violet-400/20 bg-violet-500/14 text-white shadow-[0_12px_28px_rgba(120,119,255,0.14)]'

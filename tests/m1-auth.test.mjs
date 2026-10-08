@@ -77,6 +77,7 @@ test('return parameters merge and encode once, preserving fragment', () => {
 
 function onboarding(client, session = async () => ({ profileId: 'verified-actor' })) {
   return loadTs('actions/onboarding.ts', {
+    'next/cache': { revalidatePath() {} },
     'next/navigation': navigation,
     '@/lib/supabase/server': { createClient: async () => client },
     '@/lib/auth/get-dev-session': { getDevSession: session },
@@ -128,7 +129,7 @@ test('onboarding propagates RPC failure without a separate delete or insert', as
   }
   await expectRedirect(() => onboarding(client)(form([
     ['categories', 'Cooking'], ['return_to', '/onboarding?tab=topics#form'],
-  ])), '/onboarding?tab=topics&error=invalid+%26+denied#form')
+  ])), '/onboarding?tab=topics&error=preferences_save_failed#form')
 })
 
 test('onboarding enforces empty and bounded preference sets before query', async () => {
@@ -177,7 +178,7 @@ test('authenticated signup uses the existing provisioned profile', async () => {
 })
 
 test('logout does not claim success when signOut fails', async () => {
-  await assert.rejects(() => auth({ auth: { async signOut() { return { error: { message: 'signout failed' } } } } }).logout(), /signout failed/)
+  await expectRedirect(() => auth({ auth: { async signOut() { return { error: { message: 'signout failed' } } } } }).logout(), '/settings?error=Sign+out+failed.+Try+again.')
   await expectRedirect(() => auth({ auth: { async signOut() { return { error: null } } } }).logout(), '/login')
 })
 

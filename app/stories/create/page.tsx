@@ -39,7 +39,7 @@ function getErrorMessage(value?: string) {
     case 'invalid_thumbnail_url':
       return 'Thumbnail URL is invalid.'
     default:
-      return decodeURIComponent(error)
+      return error
   }
 }
 

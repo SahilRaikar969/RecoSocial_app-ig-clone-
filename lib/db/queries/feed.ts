@@ -1,3 +1,4 @@
+import type { CategoryJoin } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
@@ -34,7 +35,7 @@ function getRecencyBoost(createdAt: string) {
   return 0
 }
 
-function normalizeNestedCategory(item: any) {
+function normalizeNestedCategory(item: CategoryJoin) {
   const nested = Array.isArray(item?.categories)
     ? item.categories[0] ?? null
     : item?.categories ?? null
@@ -53,7 +54,7 @@ function normalizeNestedCategory(item: any) {
 
 function addCategoryWeights(
   target: CategoryPreferenceMap,
-  postCategories: any[] | null | undefined,
+  postCategories: CategoryJoin[] | null | undefined,
   weight: number
 ) {
   const categories = Array.isArray(postCategories) ? postCategories : []
@@ -83,7 +84,7 @@ function addSlugWeights(
 
 function getCategoryBoost(
   preferenceMap: CategoryPreferenceMap,
-  postCategories: any[] | null | undefined
+  postCategories: CategoryJoin[] | null | undefined
 ) {
   const categories = Array.isArray(postCategories) ? postCategories : []
   let boost = 0
@@ -165,10 +166,7 @@ function buildReasonLabels(params: {
 
 export async function getFeedData(
   viewerProfileId: string
-): Promise<{
-  posts: any[]
-  summary: FeedSummary
-}> {
+) {
   const supabase = await createClient()
 
   const hiddenPostIds = await getHiddenPostIds(viewerProfileId)
@@ -285,39 +283,39 @@ export async function getFeedData(
   )
 
   const followedCreatorIds = new Set(
-    (follows ?? []).map((row: any) => row.following_id).filter(Boolean)
+    (follows ?? []).map((row) => row.following_id).filter(Boolean)
   )
 
   const preferenceMap: CategoryPreferenceMap = new Map()
 
   for (const row of onboardingRows ?? []) {
-    const category = Array.isArray((row as any)?.categories)
-      ? (row as any).categories[0] ?? null
-      : (row as any)?.categories ?? null
+    const category = Array.isArray(row?.categories)
+      ? row.categories[0] ?? null
+      : row?.categories ?? null
 
     if (!category?.slug) continue
     preferenceMap.set(category.slug, (preferenceMap.get(category.slug) ?? 0) + 8)
   }
 
   for (const row of savedRows ?? []) {
-    const post = Array.isArray((row as any)?.posts)
-      ? (row as any).posts[0] ?? null
-      : (row as any)?.posts ?? null
+    const post = Array.isArray(row?.posts)
+      ? row.posts[0] ?? null
+      : row?.posts ?? null
 
     addCategoryWeights(preferenceMap, post?.post_categories, 5)
   }
 
   for (const row of likedRows ?? []) {
-    const post = Array.isArray((row as any)?.posts)
-      ? (row as any).posts[0] ?? null
-      : (row as any)?.posts ?? null
+    const post = Array.isArray(row?.posts)
+      ? row.posts[0] ?? null
+      : row?.posts ?? null
 
     addCategoryWeights(preferenceMap, post?.post_categories, 3)
   }
 
   const normalizedPosts = (allPosts ?? [])
-    .filter((post: any) => !hiddenPostIds.has(post.id))
-    .map((post: any) => {
+    .filter((post) => !hiddenPostIds.has(post.id))
+    .map((post) => {
       const author = Array.isArray(post.profiles)
         ? post.profiles[0] ?? null
         : post.profiles ?? null
@@ -368,9 +366,9 @@ export async function getFeedData(
         thumbnail_path: post.thumbnail_path,
         created_at: post.created_at,
         like_count: likeCount,
-        liked_by_me: likes.some((like: any) => like.profile_id === viewerProfileId),
+        liked_by_me: likes.some((like) => like.profile_id === viewerProfileId),
         save_count: saveCount,
-        saved_by_me: saves.some((save: any) => save.profile_id === viewerProfileId),
+        saved_by_me: saves.some((save) => save.profile_id === viewerProfileId),
         comment_count: commentCount,
         comments,
         post_categories: postCategories,
@@ -383,7 +381,7 @@ export async function getFeedData(
             : 'trending',
       }
     })
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       if (b.feed_score !== a.feed_score) {
         return b.feed_score - a.feed_score
       }
@@ -427,13 +425,13 @@ export async function getFeedData(
     topInterestCategories,
     recommendationMix: {
       fromFollowing: normalizedPosts.filter(
-        (post: any) => post.source_bucket === 'following'
+        (post) => post.source_bucket === 'following'
       ).length,
       byInterest: normalizedPosts.filter(
-        (post: any) => post.source_bucket === 'interest'
+        (post) => post.source_bucket === 'interest'
       ).length,
       trending: normalizedPosts.filter(
-        (post: any) => post.source_bucket === 'trending'
+        (post) => post.source_bucket === 'trending'
       ).length,
     },
   }

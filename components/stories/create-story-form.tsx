@@ -1,16 +1,33 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
+import { useFormStatus } from 'react-dom'
+import { useMediaFormAction } from '@/lib/media/use-media-form-action'
 import { createStory } from '@/actions/stories'
 
 type CreateStoryFormProps = {
   errorMessage?: string
 }
 
+function StorySubmit() {
+  const { pending } = useFormStatus()
+  return <button type="submit" disabled={pending} className="rounded-2xl border border-white bg-white px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{pending ? 'Publishing...' : 'Publish story'}</button>
+}
+
 export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
+  const [clientError, setClientError] = useState('')
+  const [mediaType, setMediaType] = useState('image')
+  const [caption, setCaption] = useState('')
+  const [mediaPath, setMediaPath] = useState('')
+  const [thumbnailPath, setThumbnailPath] = useState('')
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
+  const submitMedia = useMediaFormAction(createStory, 'story', setClientError, { media_file: mediaFile, thumbnail_file: mediaType === 'video' ? thumbnailFile : null })
+  const effectiveError = clientError || errorMessage
   return (
     <form
-      action={createStory}
+      action={submitMedia}
       className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.28)]"
     >
       <div className="inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-200">
@@ -22,9 +39,9 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
         Upload a lightweight image or video story. Stories automatically expire after 6 hours.
       </p>
 
-      {errorMessage ? (
+      {effectiveError ? (
         <div className="mt-5 rounded-2xl border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-100">
-          {errorMessage}
+          {effectiveError}
         </div>
       ) : null}
 
@@ -36,7 +53,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
           <select
             name="media_type"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none"
-            defaultValue="image"
+            value={mediaType} onChange={event => setMediaType(event.target.value)}
           >
             <option value="image">Image</option>
             <option value="video">Video</option>
@@ -48,7 +65,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
             Caption
           </label>
           <input
-            name="caption"
+            name="caption" value={caption} onChange={event => setCaption(event.target.value)}
             type="text"
             maxLength={180}
             placeholder="Optional short caption"
@@ -61,13 +78,13 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
             Upload media
           </label>
           <input
-            name="media_file"
+            name="media_file" onChange={event => setMediaFile(event.target.files?.[0] || null)}
             type="file"
             accept="image/*,video/*"
             className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
           />
           <p className="mt-2 text-xs text-zinc-500">
-            Use upload first. Direct URL is optional if you already host media elsewhere.
+            {mediaFile ? `Selected: ${mediaFile.name}. Retained for retry.` : 'Use upload first. Direct URL is optional if you already host media elsewhere.'}
           </p>
         </div>
 
@@ -76,7 +93,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
             Media URL fallback
           </label>
           <input
-            name="media_path"
+            name="media_path" value={mediaPath} onChange={event => { setMediaPath(event.target.value); setMediaFile(null) }}
             type="text"
             placeholder="https://example.com/story.jpg"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
@@ -88,7 +105,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
             Thumbnail for video
           </label>
           <input
-            name="thumbnail_file"
+            name="thumbnail_file" onChange={event => setThumbnailFile(event.target.files?.[0] || null)}
             type="file"
             accept="image/*"
             className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
@@ -100,7 +117,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
             Thumbnail URL fallback
           </label>
           <input
-            name="thumbnail_path"
+            name="thumbnail_path" value={thumbnailPath} onChange={event => { setThumbnailPath(event.target.value); setThumbnailFile(null) }}
             type="text"
             placeholder="https://example.com/story-thumb.jpg"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
@@ -116,12 +133,7 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
           Cancel
         </Link>
 
-        <button
-          type="submit"
-          className="rounded-2xl border border-white bg-[linear-gradient(90deg,#ffffff_0%,#f4f4ff_100%)] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90"
-        >
-          Publish story
-        </button>
+        <StorySubmit />
       </div>
     </form>
   )

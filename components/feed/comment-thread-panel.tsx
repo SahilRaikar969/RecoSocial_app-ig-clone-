@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMemo, useOptimistic, useState, useTransition } from 'react'
 import { createCommentInline } from '@/actions/comments'
 
 type CommentAuthor = {
@@ -56,7 +57,12 @@ export function CommentThreadPanel({
   initialComments,
   showAllComments = false,
 }: CommentThreadPanelProps) {
-  const [comments, setComments] = useState<InitialComment[]>(initialComments)
+  const router = useRouter()
+  const [comments, addOptimisticComment] = useOptimistic(
+    initialComments,
+    (current, comment: InitialComment) => [comment, ...current.filter((item) => item.id !== comment.id)]
+  )
+  const [mutationError, setMutationError] = useState('')
   const [value, setValue] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -71,7 +77,6 @@ export function CommentThreadPanel({
     event.preventDefault()
     if (trimmedLength === 0 || isPending) return
 
-    const previousComments = comments
     const optimisticComment: InitialComment = {
       id: `temp-${Date.now()}`,
       author_id: profileId,
@@ -85,27 +90,27 @@ export function CommentThreadPanel({
       },
     }
 
-    setComments((current) => [optimisticComment, ...current])
-    setValue('')
+    setMutationError('')
 
     startTransition(async () => {
-      const result = await createCommentInline({
-        postId,
-        profileId,
-        body: optimisticComment.body,
-        returnTo,
-      })
-
-      if (!result.ok) {
-        setComments(previousComments)
-        setValue(optimisticComment.body)
-        return
+      addOptimisticComment(optimisticComment)
+      try {
+        const result = await createCommentInline({
+          postId,
+          profileId,
+          body: optimisticComment.body,
+          returnTo,
+        })
+        if (!result.ok) {
+          setMutationError('Could not confirm the comment. Check the refreshed comments before posting again.')
+          router.refresh()
+          return
+        }
+        setValue('')
+      } catch {
+        setMutationError('Could not confirm the comment. Check the refreshed comments before posting again.')
+        router.refresh()
       }
-
-      setComments((current) => {
-        const withoutTemp = current.filter((item) => item.id !== optimisticComment.id)
-        return [result.comment, ...withoutTemp]
-      })
     })
   }
 
@@ -155,11 +160,13 @@ export function CommentThreadPanel({
       ) : null}
 
       <div className={visibleComments.length > 0 ? 'mt-4 border-t border-zinc-800/80 pt-4' : ''}>
+        {mutationError ? <p role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
         <form onSubmit={handleSubmit}>
           <div className="rounded-[24px] border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(9,9,12,0.96))] p-3 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
             <div className="flex flex-col gap-3">
               <textarea
                 name="body"
+                disabled={isPending}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Write a comment..."

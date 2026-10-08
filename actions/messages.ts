@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
@@ -50,7 +51,7 @@ export async function sendDirectMessage(formData: FormData) {
     .maybeSingle()
 
   if (threadError) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(threadError.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'message_failed' }))
   }
 
   if (!thread) {
@@ -79,8 +80,10 @@ export async function sendDirectMessage(formData: FormData) {
     })
 
   if (messageError) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(messageError.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'message_failed' }))
   }
 
+  revalidatePath('/messages')
+  revalidatePath(`/messages/${threadId}`)
   redirect(buildRedirectUrl(returnTo, { sent: '1' }))
 }

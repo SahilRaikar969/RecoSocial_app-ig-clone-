@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
@@ -35,7 +36,7 @@ export async function hidePost(formData: FormData) {
     .maybeSingle()
 
   if (postLookupError) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(postLookupError.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'moderation_failed' }))
   }
 
   if (!postRow) {
@@ -55,13 +56,19 @@ export async function hidePost(formData: FormData) {
       },
       {
         onConflict: 'profile_id,post_id',
+        ignoreDuplicates: true,
       }
     )
 
   if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'moderation_failed' }))
   }
 
+  revalidatePath('/feed')
+  revalidatePath('/explore')
+  revalidatePath('/profile')
+  revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
   redirect(buildRedirectUrl(returnTo, { hidden: '1' }))
 }
 
@@ -83,9 +90,14 @@ export async function unhidePost(formData: FormData) {
     .eq('post_id', postId)
 
   if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'moderation_failed' }))
   }
 
+  revalidatePath('/feed')
+  revalidatePath('/explore')
+  revalidatePath('/profile')
+  revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
   redirect(buildRedirectUrl(returnTo, { unhidden: '1' }))
 }
 
@@ -110,7 +122,7 @@ export async function reportPost(formData: FormData) {
     .maybeSingle()
 
   if (postLookupError) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(postLookupError.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'moderation_failed' }))
   }
 
   if (!postRow) {
@@ -136,8 +148,13 @@ export async function reportPost(formData: FormData) {
     )
 
   if (error) {
-    redirect(buildRedirectUrl(returnTo, { error: encodeURIComponent(error.message) }))
+    redirect(buildRedirectUrl(returnTo, { error: 'moderation_failed' }))
   }
 
+  revalidatePath('/feed')
+  revalidatePath('/explore')
+  revalidatePath('/profile')
+  revalidatePath(`/post/${postId}`)
+  revalidatePath(`/reel/${postId}`)
   redirect(buildRedirectUrl(returnTo, { reported: '1' }))
 }

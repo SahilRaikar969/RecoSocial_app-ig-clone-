@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useObjectUrl } from '@/lib/media/use-object-url'
+import { createMediaUploadSession } from '@/lib/media/direct-upload'
 import {
   Camera,
   CameraOff,
@@ -110,6 +112,10 @@ export function CameraStudio({
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const cameraGeneration = useRef(0)
+  const publishBusy = useRef(false)
+  const uploadSession = useRef<ReturnType<typeof createMediaUploadSession> | null>(null)
+  const mutationId = useRef('')
 
   const [mode, setMode] = useState<CaptureMode>('photo')
   const [target, setTarget] = useState<PublishTarget>('post')
@@ -124,7 +130,7 @@ export function CameraStudio({
   const [cameraSupported, setCameraSupported] = useState(true)
 
   const [capturedFile, setCapturedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState('')
+  const previewUrl = useObjectUrl(capturedFile)
 
   const resolvedMediaType = useMemo(
     () => (mode === 'photo' ? 'image' : 'video'),
@@ -145,75 +151,68 @@ export function CameraStudio({
       return
     }
 
-    if (source === 'camera') {
+    if (source === 'camera' && !capturedFile) {
       void startCamera()
     }
 
     return () => {
       stopCamera()
     }
-  }, [facingMode, source, mode])
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [previewUrl])
-
-  function revokePreview() {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-    }
-  }
+  }, [facingMode, source, mode, capturedFile])
 
   function stopCamera() {
+    cameraGeneration.current += 1
+    const recorder = recorderRef.current
     recorderRef.current = null
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
+    if (recorder) {
+      recorder.ondataavailable = null
+      recorder.onstop = null
+      recorder.onerror = null
+      if (recorder.state !== 'inactive') recorder.stop()
     }
-
+    chunksRef.current = []
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
     setCameraReady(false)
     setRecording(false)
   }
 
   async function startCamera() {
+    stopCamera()
+    const generation = cameraGeneration.current
+    setCameraError('')
     try {
-      stopCamera()
-      setCameraError('')
-
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: mode === 'video',
-        video: {
-          facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
       })
-
+      if (generation !== cameraGeneration.current) {
+        stream.getTracks().forEach(track => track.stop())
+        return
+      }
       streamRef.current = stream
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
-
-      setCameraReady(true)
-    } catch (error: unknown) {
-  console.error('Camera start failed:', error)
-  setCameraError(error instanceof Error ? error.message : 'Camera access failed.')
-}
+      if (generation === cameraGeneration.current) setCameraReady(true)
+    } catch {
+      if (generation !== cameraGeneration.current) return
+      stopCamera()
+      setCameraError('Camera access failed. Check browser permissions or use upload.')
+    }
   }
 
   function clearCapture() {
-    revokePreview()
+    if (publishBusy.current) return
+    mutationId.current = ''
     setCapturedFile(null)
-    setPreviewUrl('')
     setPublishing(false)
   }
 
   async function handleTakePhoto() {
+    const generation = cameraGeneration.current
     const video = videoRef.current
     if (!video) return
 
@@ -235,53 +234,70 @@ export function CameraStudio({
       canvas.toBlob(resolve, 'image/jpeg', 0.92)
     )
 
-    if (!blob) return
+    if (!blob || generation !== cameraGeneration.current) return
 
     const file = new File([blob], `camera-photo-${Date.now()}.jpg`, {
       type: 'image/jpeg',
     })
 
-    revokePreview()
+    mutationId.current = ''
     setCapturedFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
   }
 
   function startVideoRecording() {
     const stream = streamRef.current
-    if (!stream) return
+    if (!stream || recording) return
+    if (typeof MediaRecorder === 'undefined') {
+      setCameraError('Video recording is unavailable. Use upload instead.')
+      return
+    }
+    const generation = cameraGeneration.current
 
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : 'video/webm'
+    const mimeType = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(type => MediaRecorder.isTypeSupported(type))
+    if (!mimeType) {
+      setCameraError('Video recording is unavailable. Use upload instead.')
+      return
+    }
 
-    const recorder = new MediaRecorder(stream, { mimeType })
+    let recorder: MediaRecorder
+    try { recorder = new MediaRecorder(stream, { mimeType }) } catch {
+      setCameraError('Video recording could not start. Use upload instead.')
+      return
+    }
     chunksRef.current = []
 
     recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
+      if (generation === cameraGeneration.current && event.data.size > 0) {
         chunksRef.current.push(event.data)
       }
     }
 
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-      const file = new File([blob], `camera-video-${Date.now()}.webm`, {
-        type: 'video/webm',
-      })
+      if (generation !== cameraGeneration.current || recorderRef.current !== recorder) return
+      recorderRef.current = null
+      const type = mimeType.split(';')[0]
+      const blob = new Blob(chunksRef.current, { type })
+      const file = new File([blob], `camera-video-${Date.now()}.${type === 'video/mp4' ? 'mp4' : 'webm'}`, { type })
 
-      revokePreview()
+      mutationId.current = ''
       setCapturedFile(file)
-      setPreviewUrl(URL.createObjectURL(file))
       setRecording(false)
     }
 
     recorderRef.current = recorder
-    recorder.start()
-    setRecording(true)
+    recorder.onerror = () => {
+      if (recorderRef.current !== recorder) return
+      stopCamera()
+      setCameraError('Video recording failed. Use upload instead.')
+    }
+    try { recorder.start(); setRecording(true) } catch {
+      stopCamera()
+      setCameraError('Video recording could not start. Use upload instead.')
+    }
   }
 
   function stopVideoRecording() {
-    recorderRef.current?.stop()
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
   }
 
   function isAcceptedUpload(file: File) {
@@ -321,13 +337,13 @@ export function CameraStudio({
     }
 
     setCameraError('')
-    revokePreview()
+    mutationId.current = ''
     setCapturedFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
   }
 
   async function handlePublish() {
-    if (!capturedFile) return
+    if (!capturedFile || publishBusy.current) return
+    publishBusy.current = true
 
     try {
       setPublishing(true)
@@ -341,9 +357,12 @@ export function CameraStudio({
       formData.set('return_to', returnTo)
       formData.set('media_file', capturedFile)
 
+      uploadSession.current ??= createMediaUploadSession()
+      mutationId.current ||= crypto.randomUUID()
+      const prepared = await uploadSession.current(formData, 'camera', mutationId.current)
       const response = await fetch('/api/camera/publish', {
         method: 'POST',
-        body: formData,
+        body: prepared,
       })
 
       const payload = await response.json()
@@ -357,7 +376,9 @@ export function CameraStudio({
     } catch (error: unknown) {
       setPublishing(false)
       const message = error instanceof Error ? error.message : 'Failed to publish captured media.'
-      setCameraError(message || 'Failed to publish captured media.')
+      setCameraError(message || 'The publication outcome is unknown. Check your profile before retrying.')
+    } finally {
+      publishBusy.current = false
     }
   }
 

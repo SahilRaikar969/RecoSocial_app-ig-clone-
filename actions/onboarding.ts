@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { buildReturnUrl, safeReturnPath } from '@/lib/routes/safe-return-path'
@@ -33,7 +34,7 @@ export async function saveOnboardingPreferences(formData: FormData) {
     .in('name', categoryNames)
 
   if (categoriesError) {
-    redirect(buildReturnUrl(returnTo, { error: categoriesError.message }))
+    redirect(buildReturnUrl(returnTo, { error: 'preferences_save_failed' }))
   }
 
   if (!categoryRows || categoryRows.length !== categoryNames.length) {
@@ -46,8 +47,11 @@ export async function saveOnboardingPreferences(formData: FormData) {
   })
 
   if (saveError) {
-    redirect(buildReturnUrl(returnTo, { error: saveError.message }))
+    redirect(buildReturnUrl(returnTo, { error: 'preferences_save_failed' }))
   }
 
+  revalidatePath('/feed')
+  revalidatePath('/explore')
+  revalidatePath('/onboarding')
   redirect('/feed?onboarding=done')
 }
