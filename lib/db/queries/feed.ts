@@ -1,3 +1,4 @@
+import { compareFeedPosts, selectFeedPage, FEED_CANDIDATE_LIMIT, type FeedBucket, type FeedView } from '@/lib/recommendations/feed-contract'
 import type { CategoryJoin } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
@@ -22,10 +23,10 @@ type FeedSummary = {
   }
 }
 
-function getRecencyBoost(createdAt: string) {
+function getRecencyBoost(createdAt: string, now: number) {
   const ageHours = Math.max(
     1,
-    (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60)
+    (now - new Date(createdAt).getTime()) / (1000 * 60 * 60)
   )
 
   if (ageHours <= 6) return 3
@@ -67,17 +68,6 @@ function addCategoryWeights(
     const slug = nested?.slug
     if (!slug) continue
 
-    target.set(slug, (target.get(slug) ?? 0) + weight)
-  }
-}
-
-function addSlugWeights(
-  target: CategoryPreferenceMap,
-  slugs: string[] | null | undefined,
-  weight: number
-) {
-  for (const slug of Array.isArray(slugs) ? slugs : []) {
-    if (!slug) continue
     target.set(slug, (target.get(slug) ?? 0) + weight)
   }
 }
@@ -142,7 +132,7 @@ function buildReasonLabels(params: {
   }
 
   for (const category of params.matchingCategories.slice(0, 2)) {
-    labels.push(`Because you like ${category.name}`)
+    labels.push(`Matches your interest in ${category.name}`)
   }
 
   if (params.saveCount >= 2) {
@@ -150,7 +140,7 @@ function buildReasonLabels(params: {
   }
 
   if (params.commentCount >= 2) {
-    labels.push('Conversation momentum')
+    labels.push('More comments')
   }
 
   if (params.likeCount >= 4) {
@@ -165,20 +155,28 @@ function buildReasonLabels(params: {
 }
 
 export async function getFeedData(
-  viewerProfileId: string
+  viewerProfileId: string,
+  options: { view?: FeedView; page?: number; now?: number } = {}
 ) {
   const supabase = await createClient()
 
-  const hiddenPostIds = await getHiddenPostIds(viewerProfileId)
+  const view = options.view ?? 'for-you'
+  const now = options.now ?? Date.now()
+  const [hiddenPostIds, { data: follows, error: followsError }] = await Promise.all([
+    getHiddenPostIds(viewerProfileId),
+    supabase.from('follows').select('following_id').eq('follower_id', viewerProfileId),
+  ])
+  if (followsError) throw new Error('Unable to load followed creators.')
+  const followedCreatorIds = new Set((follows ?? []).map(row => row.following_id))
 
   const [
     { data: allPosts, error: postsError },
-    { data: follows, error: followsError },
     { data: savedRows, error: savedError },
     { data: likedRows, error: likedError },
     { data: onboardingRows, error: onboardingError },
   ] = await Promise.all([
-    supabase
+    (async () => {
+      let query = supabase
       .from('posts')
       .select(`
         id,
@@ -218,12 +216,15 @@ export async function getFeedData(
       .eq('status', 'published')
       .eq('visibility', 'public')
       .order('created_at', { ascending: false })
-      .limit(80),
-
-    supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', viewerProfileId),
+      .order('id', { ascending: true })
+      // Exclude hidden/unfollowed rows before the candidate cap, not after it.
+      if (hiddenPostIds.size) query = query.not('id', 'in', '(' + [...hiddenPostIds].join(',') + ')')
+      if (view === 'following') {
+        if (!followedCreatorIds.size) return { data: [], error: null }
+        query = query.in('author_id', [...followedCreatorIds])
+      }
+      return await query.limit(FEED_CANDIDATE_LIMIT)
+    })(),
 
     supabase
       .from('saves')
@@ -272,7 +273,6 @@ export async function getFeedData(
   ])
 
   if (postsError) throw new Error(postsError.message)
-  if (followsError) throw new Error(followsError.message)
   if (savedError) throw new Error(savedError.message)
   if (likedError) throw new Error(likedError.message)
   if (onboardingError) throw new Error(onboardingError.message)
@@ -280,10 +280,6 @@ export async function getFeedData(
   const saveCounts = await getVisiblePostSaveCounts(
     supabase,
     (allPosts ?? []).map((post: { id: string }) => post.id)
-  )
-
-  const followedCreatorIds = new Set(
-    (follows ?? []).map((row) => row.following_id).filter(Boolean)
   )
 
   const preferenceMap: CategoryPreferenceMap = new Map()
@@ -314,7 +310,9 @@ export async function getFeedData(
   }
 
   const normalizedPosts = (allPosts ?? [])
-    .filter((post) => !hiddenPostIds.has(post.id))
+    .filter((post) => !hiddenPostIds.has(post.id) && post.media_path.trim() &&
+      (post.media_type === 'image' || post.media_type === 'video') &&
+      (view !== 'following' || followedCreatorIds.has(post.author_id)))
     .map((post) => {
       const author = Array.isArray(post.profiles)
         ? post.profiles[0] ?? null
@@ -332,20 +330,20 @@ export async function getFeedData(
       const saveCount = saveCounts.get(post.id) ?? 0
       const commentCount = comments.length
       const fromFollowing = followedCreatorIds.has(post.author_id)
-      const recencyBoost = getRecencyBoost(post.created_at)
+      const recencyBoost = getRecencyBoost(post.created_at, now)
       const categoryBoost = getCategoryBoost(preferenceMap, postCategories)
       const matchingCategories = getMatchingCategories(preferenceMap, postCategories)
 
       const followingBoost = fromFollowing ? 22 : 0
       const trendingBoost = likeCount * 2 + saveCount * 4 + commentCount * 3
-      const diversityBoost = fromFollowing ? 0 : 5
+      const discoveryBoost = fromFollowing ? 0 : 5
 
       const feedScore =
         followingBoost +
         categoryBoost +
         trendingBoost +
         recencyBoost +
-        diversityBoost
+        discoveryBoost
 
       const reasonLabels = buildReasonLabels({
         fromFollowing,
@@ -374,29 +372,16 @@ export async function getFeedData(
         post_categories: postCategories,
         feed_score: feedScore,
         reason_labels: reasonLabels,
-        source_bucket: fromFollowing
+        source_bucket: (fromFollowing
           ? 'following'
           : matchingCategories.length > 0
             ? 'interest'
-            : 'trending',
+            : 'trending') as FeedBucket,
       }
     })
-    .sort((a, b) => {
-      if (b.feed_score !== a.feed_score) {
-        return b.feed_score - a.feed_score
-      }
+    .sort(compareFeedPosts)
 
-      if (b.save_count !== a.save_count) {
-        return b.save_count - a.save_count
-      }
-
-      if (b.comment_count !== a.comment_count) {
-        return b.comment_count - a.comment_count
-      }
-
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
-    .slice(0, 24)
+  const { posts, ...pagination } = selectFeedPage(normalizedPosts, view, options.page)
 
   const topInterestCategories = [...preferenceMap.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -437,7 +422,8 @@ export async function getFeedData(
   }
 
   return {
-    posts: normalizedPosts,
+    posts,
     summary,
+    pagination,
   }
 }

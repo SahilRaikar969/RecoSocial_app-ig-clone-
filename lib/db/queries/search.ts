@@ -122,6 +122,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
           profile_id
         )
       `)
+      .eq('status', 'published').eq('visibility', 'public')
       .ilike('caption', `%${safeQuery}%`)
       .limit(24),
 
@@ -168,6 +169,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
           profile_id
         )
       `)
+      .eq('status', 'published').eq('visibility', 'public')
       .in('author_id', matchedCreatorIds)
       .limit(24)
 
@@ -214,6 +216,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
           supabase
             .from('posts')
             .select('author_id')
+            .eq('status', 'published').eq('visibility', 'public')
             .in('author_id', creatorIdsForStats),
         ])
       : [
@@ -312,4 +315,64 @@ export async function getSearchData(viewerProfileId: string, query: string) {
     creators: creatorResults.slice(0, 8),
     posts: postResults.slice(0, 12),
   }
+}
+// Account matching is independent of the six discovery spotlights. Separate
+// filters keep user text out of PostgREST's raw boolean-filter grammar.
+export async function getSearchCreators(
+  viewerProfileId: string,
+  query: string,
+  eligibleAuthorIds?: readonly string[]
+) {
+  const safeQuery = query.trim()
+  if (!safeQuery || eligibleAuthorIds?.length === 0) return []
+  const supabase = await createClient()
+  const literal = safeQuery.replace(/[\\%_]/g, '\\$&')
+  const matches = await Promise.all(
+    (['username', 'display_name', 'bio'] as const).map((column) => {
+      let request = supabase.from('profiles')
+        .select('id, username, display_name, bio, avatar_url')
+        .ilike(column, `%${literal}%`)
+        .order('username', { ascending: true })
+        .limit(40)
+      if (eligibleAuthorIds) request = request.in('id', [...eligibleAuthorIds])
+      return request
+    })
+  )
+  for (const result of matches) {
+    if (result.error) throw new Error(result.error.message)
+  }
+  const candidates = dedupePostsById(matches.flatMap((result) => result.data ?? []))
+    .filter((profile) => profile.id !== viewerProfileId && scoreProfile(profile, safeQuery) > 0)
+  if (!candidates.length) return []
+  const ids = candidates.map((profile) => profile.id)
+  const [follows, followers, posts, hiddenIds] = await Promise.all([
+    supabase.from('follows').select('following_id').eq('follower_id', viewerProfileId),
+    supabase.from('follows').select('following_id').in('following_id', ids),
+    supabase.from('posts').select('id, author_id, media_type, media_path')
+      .eq('status', 'published').eq('visibility', 'public').in('author_id', ids),
+    getHiddenPostIds(viewerProfileId),
+  ])
+  for (const result of [follows, followers, posts]) {
+    if (result.error) throw new Error(result.error.message)
+  }
+  const followed = new Set((follows.data ?? []).map((row) => row.following_id))
+  const followerCounts = new Map<string, number>()
+  const postCounts = new Map<string, number>()
+  for (const row of followers.data ?? []) {
+    followerCounts.set(row.following_id, (followerCounts.get(row.following_id) ?? 0) + 1)
+  }
+  for (const post of posts.data ?? []) {
+    if (hiddenIds.has(post.id) || !post.media_path.trim() ||
+        (post.media_type !== 'image' && post.media_type !== 'video')) continue
+    postCounts.set(post.author_id, (postCounts.get(post.author_id) ?? 0) + 1)
+  }
+  return candidates.map((profile) => ({
+    ...profile,
+    followed_by_me: followed.has(profile.id),
+    follower_count: followerCounts.get(profile.id) ?? 0,
+    post_count: postCounts.get(profile.id) ?? 0,
+    score: scoreProfile(profile, safeQuery),
+  })).sort((a, b) => b.score - a.score ||
+    String(a.username).localeCompare(String(b.username)) || a.id.localeCompare(b.id))
+    .slice(0, 6)
 }

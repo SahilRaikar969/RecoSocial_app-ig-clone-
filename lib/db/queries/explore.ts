@@ -11,10 +11,10 @@ type ExploreCategory = {
 
 type CategoryPreferenceMap = Map<string, number>
 
-function getRecencyBoost(createdAt: string) {
+function getRecencyBoost(createdAt: string, now: number) {
   const ageHours = Math.max(
     1,
-    (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60)
+    (now - new Date(createdAt).getTime()) / (1000 * 60 * 60)
   )
 
   if (ageHours <= 6) return 4
@@ -93,16 +93,16 @@ function getCategoryBoost(
   return boost
 }
 
-function buildFallbackProfile(profileId: string) {
-  const compact = String(profileId || 'unknown').slice(0, 8)
-
-  return {
-    id: profileId,
-    username: compact.toLowerCase(),
-    display_name: `Creator ${String(profileId || 'unknown').slice(0, 6)}`,
-    bio: '',
-    avatar_url: null,
-  }
+export function filterDiscoveryPosts<T extends {
+  caption: string | null
+  author?: { username: string | null; display_name: string | null } | null
+}>(posts: readonly T[], query: string) {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return [...posts]
+  return posts.filter((post) =>
+    [post.caption, post.author?.username, post.author?.display_name]
+      .some((value) => String(value ?? '').toLowerCase().includes(normalized))
+  )
 }
 
 export async function getExploreData(
@@ -110,6 +110,7 @@ export async function getExploreData(
   categorySlug?: string
 ) {
   const supabase = await createClient()
+  const now = Date.now()
 
   const [
     postsResult,
@@ -150,7 +151,9 @@ export async function getExploreData(
           body,
           created_at
         )
-      `),
+      `)
+      .eq('status', 'published').eq('visibility', 'public')
+      .order('created_at', { ascending: false }).order('id', { ascending: true }),
 
     supabase
       .from('follows')
@@ -263,7 +266,7 @@ export async function getExploreData(
   const rawPosts = (postsResult.data ?? []).map((post) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
-    const comments = Array.isArray(post.comments) ? post.comments : []
+    const comments = Array.isArray(post.comments) ? [...post.comments] : []
     const categories = Array.isArray(post.post_categories)
       ? post.post_categories.map(normalizeNestedCategory)
       : []
@@ -280,12 +283,18 @@ export async function getExploreData(
     const engagementScore = saveCount * 4 + likeCount * 2 + commentCount * 3
     const followBoost = followedAuthorIds.has(post.author_id) ? 3 : 0
     const categoryBoost = getCategoryBoost(preferenceMap, categories)
-    const recencyBoost = getRecencyBoost(post.created_at)
+    const recencyBoost = getRecencyBoost(post.created_at, now)
     const exploreScore =
       engagementScore + followBoost + categoryBoost + recencyBoost
 
     return {
-      ...post,
+      id: post.id,
+      author_id: post.author_id,
+      caption: post.caption,
+      media_type: post.media_type,
+      media_path: post.media_path,
+      thumbnail_path: post.thumbnail_path,
+      created_at: post.created_at,
       like_count: likeCount,
       liked_by_me: likes.some((like) => like.profile_id === devProfileId),
       save_count: saveCount,
@@ -303,7 +312,10 @@ export async function getExploreData(
     }
   })
 
-  const visiblePosts = rawPosts.filter((post) => !hiddenPostIds.has(post.id))
+  const visiblePosts = rawPosts.filter((post) =>
+    !hiddenPostIds.has(post.id) && post.id && post.media_path.trim() &&
+    (post.media_type === 'image' || post.media_type === 'video')
+  )
 
   const profileIds = [
     ...visiblePosts.map((post) => post.author_id),
@@ -369,7 +381,8 @@ export async function getExploreData(
     if (b.explore_score !== a.explore_score) return b.explore_score - a.explore_score
     if (b.save_count !== a.save_count) return b.save_count - a.save_count
     if (b.comment_count !== a.comment_count) return b.comment_count - a.comment_count
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() ||
+      a.id.localeCompare(b.id)
   })
 
   const creatorSourcePosts = filteredPosts.filter(
@@ -468,17 +481,18 @@ export async function getExploreData(
     creatorAggregate.set(post.author_id, current)
   }
 
-  const creatorIds = Array.from(creatorAggregate.keys())
+  // Follower totals must not create spotlight candidates with no eligible posts.
+  const creatorIds = [...new Set(creatorSourcePosts.map((post) => post.author_id))]
 
   const creators = creatorIds
     .map((creatorId) => {
-      const profile = profileMap.get(creatorId) ?? buildFallbackProfile(creatorId)
+      const profile = profileMap.get(creatorId)
       const aggregate = creatorAggregate.get(creatorId)
 
-      if (!aggregate) return null
+      if (!aggregate || !profile) return null
 
       const recencyBoost = aggregate.latest_post_at
-        ? getRecencyBoost(aggregate.latest_post_at) * 3
+        ? getRecencyBoost(aggregate.latest_post_at, now) * 3
         : 0
 
       const notFollowingBoost = aggregate.followed_by_me ? 0 : 6

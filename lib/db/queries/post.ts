@@ -101,7 +101,7 @@ function buildRelatedReasonLabels(params: {
 
   if (params.sharedCategories.length > 0) {
     for (const category of params.sharedCategories.slice(0, 2)) {
-      labels.push(`Because you viewed ${category.name}`)
+      labels.push(`Similar category: ${category.name}`)
     }
   }
 
@@ -264,7 +264,8 @@ export async function getPostPageData(
     supabase
       .from('posts')
       .select('id')
-      .eq('author_id', normalizedPost.author_id),
+      .eq('author_id', normalizedPost.author_id)
+      .eq('status', 'published').eq('visibility', 'public'),
 
     supabase
       .from('posts')
@@ -298,6 +299,9 @@ export async function getPostPageData(
         )
       `)
       .neq('id', safePostId)
+      .eq('status', 'published').eq('visibility', 'public')
+      .order('created_at', { ascending: false }).order('id', { ascending: true })
+      .not('id', 'in', '(' + [safePostId, ...hiddenPostIds].join(',') + ')')
       .limit(48),
   ])
 
@@ -390,7 +394,7 @@ export async function getPostPageData(
         return b.comment_count - a.comment_count
       }
 
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || String(a.id).localeCompare(String(b.id))
     })
     .slice(0, 6)
 

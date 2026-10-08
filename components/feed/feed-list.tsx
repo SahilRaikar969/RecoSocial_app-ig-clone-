@@ -1,3 +1,4 @@
+import type { FeedBucket, FeedView } from '@/lib/recommendations/feed-contract'
 import Link from 'next/link'
 import { PostCard } from '@/components/feed/post-card'
 
@@ -50,23 +51,17 @@ type FeedPost = {
   explore_score?: number
   feed_score?: number
   reason_labels?: string[]
-  recommendation_bucket?: string | null
+  source_bucket?: FeedBucket
 }
 
 type FeedListProps = {
   posts: FeedPost[]
   devProfileId: string
   emptyMode?: 'feed' | 'explore'
+  feedView?: FeedView
   title?: string
   subtitle?: string
   returnToBase?: string
-}
-
-function splitFeedBuckets(posts: FeedPost[]) {
-  const following = posts.filter((post) => post.recommendation_bucket === 'following')
-  const recommended = posts.filter((post) => post.recommendation_bucket !== 'following')
-
-  return { following, recommended }
 }
 
 function getEmptyCopy(mode: 'feed' | 'explore') {
@@ -118,23 +113,30 @@ export async function FeedList({
   posts,
   devProfileId,
   emptyMode = 'feed',
+  feedView = 'for-you',
   title,
   subtitle,
   returnToBase,
 }: FeedListProps) {
-  const copy = getEmptyCopy(emptyMode)
+  const followingView = emptyMode === 'feed' && feedView === 'following'
+  // Membership can only narrow this view; never reorder or backfill it.
+  const mainPosts = followingView ? posts.filter(post => post.source_bucket === 'following') : posts
+  const copy = followingView ? {
+    eyebrow: 'Following', title: 'No posts from followed creators yet',
+    body: 'Follow creators to see their public posts here. Broader recommendations are available in For You.',
+  } : getEmptyCopy(emptyMode)
   const resolvedTitle =
     title || (emptyMode === 'explore' ? 'Discovery posts' : 'Recommended posts')
   const resolvedSubtitle =
     subtitle ||
     (emptyMode === 'explore'
       ? 'Ranked content from the current search and category surface.'
-      : 'Personalized content shaped by follows, saves, likes, and conversation signals.')
+      : 'Ranked using follows, selected interests, likes and saves, with aggregate engagement and post recency.')
 
   const baseReturnTo =
     returnToBase || (emptyMode === 'explore' ? '/explore' : '/feed')
 
-  if (!posts.length) {
+  if (!mainPosts.length) {
     return (
       <section className="rounded-[32px] border border-zinc-800/90 bg-black">
         <div className="border-b border-zinc-800/80 px-5 py-5 sm:px-6">
@@ -184,9 +186,6 @@ export async function FeedList({
     )
   }
 
-  const buckets = emptyMode === 'feed' ? splitFeedBuckets(posts) : null
-  const mainPosts = emptyMode === 'feed' && buckets ? buckets.recommended : posts
-
   return (
     <section className="rounded-[32px] border border-zinc-800/90 bg-black">
       <div className="border-b border-zinc-800/80 px-5 py-5 sm:px-6">
@@ -207,14 +206,8 @@ export async function FeedList({
 
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
-              {posts.length} posts
+              {mainPosts.length} posts
             </span>
-
-            {emptyMode === 'feed' && buckets?.following?.length ? (
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white">
-                Following + for you
-              </span>
-            ) : null}
 
             <Link
               href="/saved"
@@ -234,35 +227,13 @@ export async function FeedList({
       </div>
 
       <div className="mx-auto w-full max-w-[720px] px-3 py-5 sm:px-5 sm:py-6">
-        {emptyMode === 'feed' && buckets?.following?.length ? (
-          <section className="mb-10">
-            <SectionHeader
-              eyebrow="Following"
-              title="From creators you follow"
-              body="Posts from your closer creator graph appear first so the feed feels personal before broader recommendations take over."
-              count={buckets.following.length}
-            />
-
-            <div className="space-y-8">
-              {buckets.following.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  devProfileId={devProfileId}
-                  returnTo={baseReturnTo}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         {mainPosts.length ? (
           <section>
             {emptyMode === 'feed' ? (
               <SectionHeader
-                eyebrow="For you"
-                title="Broader recommendations"
-                body="These posts are ranked using your interaction signals, interest categories, and broader discovery weight."
+                eyebrow={followingView ? 'Following' : 'For you'}
+                title={followingView ? 'From creators you follow' : 'Personalized posts'}
+                body={followingView ? 'Only followed creators, in ranked order. No broader fallback posts.' : 'All eligible candidates compete in one ranked list. Follows and category interests influence their order.'}
                 count={mainPosts.length}
               />
             ) : (

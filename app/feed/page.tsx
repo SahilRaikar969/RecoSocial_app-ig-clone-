@@ -16,17 +16,22 @@ type FeedPageProps = {
     reported?: string
     onboarding?: string
     error?: string
+    view?: string
+    page?: string
   }>
 }
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const { profileId } = await getDevSession()
   const params = searchParams ? await searchParams : undefined
-  const [{ posts, summary }, storyRail] = await Promise.all([
-    getFeedData(profileId),
+  const view = params?.view === 'following' ? 'following' : 'for-you'
+  const requestedPage = Number(params?.page ?? 1)
+  const [{ posts, summary, pagination }, storyRail] = await Promise.all([
+    getFeedData(profileId, { view, page: requestedPage }),
     getStoriesRail(profileId),
   ])
 
+  const feedHref = (pageNumber: number) => '/feed?' + new URLSearchParams({ view, page: String(pageNumber) }).toString()
   const feedback =
     params?.post_created === '1'
       ? { tone: 'success' as const, text: 'Post published successfully.' }
@@ -56,7 +61,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             : error === 'cannot_report_own_post'
               ? 'You cannot report your own post.'
               : error
-                ? `Feed action failed: ${decodeURIComponent(error)}`
+                ? `Feed action failed: ${error}`
                 : ''
 
   return (
@@ -72,7 +77,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       <SurfaceHero
         eyebrow="Home"
         title="Your feed"
-        description="Recommendation-ranked content from followed creators, interest matches, lightweight stories, and broader discovery loops inside one cleaner home surface."
+        description="Posts ranked by your follows, selected interests, likes and saves. Stories appear separately below."
         actions={[
           { href: '/create', label: 'Create post', variant: 'primary' },
           { href: '/stories/create', label: 'Add story', variant: 'secondary' },
@@ -111,9 +116,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               </h2>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                This feed combines creator relationships, interest categories,
-                story freshness, and trend signals so discovery still feels alive
-                even when your following graph is small.
+                Post ranking combines follows, category interests, aggregate likes, saves
+                and comments, and post recency. Views and watch time do not affect it.
               </p>
             </div>
 
@@ -150,7 +154,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               Interest match
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Category signals from onboarding keep similar posts closer.
+              Selected interests and categories on your liked and saved posts influence later rankings.
             </p>
           </div>
 
@@ -159,20 +163,33 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               Freshness layer
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Stories and recent media keep the product feeling current instead of static.
+              Newer posts receive a small bonus. With no interaction history, engagement and recency determine the order.
             </p>
           </div>
         </div>
       </section>
 
+      <nav aria-label="Feed views" className="flex gap-3">
+        <Link href="/feed" aria-current={view === 'for-you' ? 'page' : undefined} className="rounded-2xl border border-zinc-700 px-5 py-3">For You</Link>
+        <Link href="/feed?view=following" aria-current={view === 'following' ? 'page' : undefined} className="rounded-2xl border border-zinc-700 px-5 py-3">Following</Link>
+      </nav>
+
       <FeedList
         posts={posts}
         devProfileId={profileId}
         emptyMode="feed"
-        title="Ranked posts"
-        subtitle="Your main home surface for creator and content discovery."
-        returnToBase="/feed"
+        feedView={view}
+        title={view === 'following' ? 'Following' : 'For You'}
+        subtitle="Ranked within the latest eligible candidate window. Refreshing recalculates rankings."
+        returnToBase={feedHref(pagination.page)}
       />
+      {pagination.pageCount > 1 ? (
+        <nav aria-label="Feed pages" className="flex items-center gap-4">
+          {pagination.page > 1 ? <Link href={feedHref(pagination.page - 1)}>Previous</Link> : null}
+          <span>Page {pagination.page} of {pagination.pageCount}</span>
+          {pagination.page < pagination.pageCount ? <Link href={feedHref(pagination.page + 1)}>Next</Link> : null}
+        </nav>
+      ) : null}
     </PageShell>
   )
 }

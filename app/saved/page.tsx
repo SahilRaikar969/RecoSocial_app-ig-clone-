@@ -154,6 +154,7 @@ export default async function SavedPage({
       {postsWithResolvedMedia.length ? (
         <ProfilePostGrid
           posts={postsWithResolvedMedia}
+          openContext={{ source: 'saved' }}
           emptyTitle="No saved posts yet"
           emptyBody="Save posts from feed, post detail, or explore and they will appear here in a cleaner grid."
         />

@@ -302,6 +302,7 @@ export async function SearchResults({
                 {posts.length > 0 ? (
                   <ProfilePostGrid
                     posts={posts}
+                    openContext={{ source: 'explore', category: activeCategory, query }}
                     emptyTitle="No post matches yet"
                     emptyBody="No caption-level post matches were found."
                   />

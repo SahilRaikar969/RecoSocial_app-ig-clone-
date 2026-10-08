@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Bookmark, Heart, MessageCircle, Play } from 'lucide-react'
 import { SmartImage } from '@/components/ui/smart-image'
 import { getMediaUrl } from '@/lib/media/get-media-url'
-import { buildPostOpenHref } from '@/lib/routes/media-links'
+import { buildPostOpenHref, type MediaOpenContext } from '@/lib/routes/media-links'
 
 type ProfilePost = {
   id: string
@@ -20,6 +20,7 @@ type ProfilePost = {
 
 type ProfilePostGridProps = {
   posts: ProfilePost[]
+  openContext?: MediaOpenContext
   emptyTitle?: string
   emptyBody?: string
 }
@@ -40,6 +41,7 @@ function formatCompactNumber(value?: number) {
 
 export async function ProfilePostGrid({
   posts,
+  openContext,
   emptyTitle = 'No posts yet',
   emptyBody = 'Published posts will appear here.',
 }: ProfilePostGridProps) {
@@ -114,6 +116,7 @@ export async function ProfilePostGrid({
             mediaType: post.media_type,
             source: 'profile',
             profileId: post.author_id || null,
+            ...openContext,
           })
 
           return (

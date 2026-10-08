@@ -7,7 +7,7 @@ import { PostViewerControls } from '@/components/post/post-viewer-controls'
 import { AnimatedShellCard } from '@/components/ui/animated-shell-card'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 import { getViewerPostModerationState } from '@/lib/db/queries/post-moderation'
-import { buildPostOpenHref } from '@/lib/routes/media-links'
+import { buildPostOpenHref, mediaContextFromReturnTo } from '@/lib/routes/media-links'
 
 type Category = {
   category_id: string
@@ -126,7 +126,7 @@ export async function PostCard({
   const openHref = buildPostOpenHref({
     postId: post.id,
     mediaType: post.media_type,
-    source: 'feed',
+    ...mediaContextFromReturnTo(returnTo),
   })
 
   const openLabel = post.media_type === 'video' ? 'Watch reel' : 'Open post'

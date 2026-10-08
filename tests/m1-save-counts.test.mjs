@@ -20,6 +20,7 @@ function loadQuery(file, client = {}, hidden = new Set()) {
     '@/lib/db/queries/post-moderation': { getHiddenPostIds: async () => hidden },
   }
   const requireDependency = (name) => {
+    if (name === '@/lib/recommendations/feed-contract') return loadQuery('../../recommendations/feed-contract.ts')
     if (name === '@/lib/db/queries/save-counts') return loadQuery('save-counts.ts')
     if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`)
     return dependencies[name]
@@ -46,6 +47,7 @@ function clientFixture(respond, counts = {}) {
         eq(key, value) { query.filters.push([key, value]); return chain },
         neq(key, value) { query.filters.push([`!${key}`, value]); return chain },
         in() { return chain },
+        not() { return chain },
         order() { return chain },
         limit() { return chain },
         maybeSingle() { query.single = true; return chain },
@@ -199,6 +201,21 @@ function loadReelPage(client) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   })
   const loadedModule = { exports: {} }
+  function loadReels() {
+    const source = readFileSync(resolve(root, 'lib/db/queries/reels.ts'), 'utf8')
+    const { outputText } = ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    })
+    const loaded = { exports: {} }
+    new Function('require', 'module', 'exports', outputText)((name) => {
+      if (name === '@/lib/db/queries/feed') return loadQuery('feed.ts', client)
+      if (name === '@/lib/db/queries/explore') return loadQuery('explore.ts', client)
+      if (name === '@/lib/db/queries/post-moderation') return { getHiddenPostIds: async () => new Set() }
+      if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`)
+      return dependencies[name]
+    }, loaded, loaded.exports)
+    return loaded.exports
+  }
   const dependencies = {
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
     'next/navigation': { notFound: () => { throw new Error('not-found') } },
@@ -209,6 +226,7 @@ function loadReelPage(client) {
     '@/components/reels/reel-viewer': { ReelViewer: 'ReelViewer' },
   }
   new Function('require', 'module', 'exports', outputText)((name) => {
+    if (name === '@/lib/db/queries/reels') return loadReels()
     if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`)
     return dependencies[name]
   }, loadedModule, loadedModule.exports)
@@ -217,7 +235,8 @@ function loadReelPage(client) {
 
 test('active reel page keeps current-first ordering and aggregate counts with private viewer saves', async () => {
   const client = clientFixture(({ table, single, filters }) => {
-    if (table === 'posts') return ok(single ? post('current') : [post('related'), post('current')])
+    if (table === 'posts') return ok(single ? { ...post('current'), media_type: 'video' } :
+      ['related', 'current'].map((id) => ({ ...post(id), media_type: 'video' })))
     if (table === 'saves') {
       assert.ok(filters.some(([key, value]) => key === 'profile_id' && value === viewer), 'Save identities must only be requested for the viewer')
       return ok([{ post_id: 'related' }])
@@ -236,7 +255,7 @@ test('active reel page keeps current-first ordering and aggregate counts with pr
 
 test('active reel page propagates aggregate RPC errors instead of silently reporting viewer-only totals', async () => {
   const client = clientFixture(({ table, single }) => {
-    if (table === 'posts') return ok(single ? post('current') : [])
+    if (table === 'posts') return ok(single ? { ...post('current'), media_type: 'video' } : [])
     return ok([])
   })
   client.rpc = async () => ({ error: { message: 'aggregate unavailable' } })

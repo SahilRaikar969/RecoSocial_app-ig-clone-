@@ -1,12 +1,17 @@
 type ReelSource = 'feed' | 'explore' | 'profile' | 'saved' | 'activity' | 'post'
 
-type BuildPostOpenHrefInput = {
-  postId: string
-  mediaType?: string | null
+export type MediaOpenContext = {
   source?: ReelSource
   profileId?: string | null
   category?: string | null
   query?: string | null
+  feedView?: string | null
+  feedPage?: string | null
+}
+
+type BuildPostOpenHrefInput = MediaOpenContext & {
+  postId: string
+  mediaType?: string | null
 }
 
 export function buildPostOpenHref({
@@ -16,6 +21,8 @@ export function buildPostOpenHref({
   profileId,
   category,
   query,
+  feedView,
+  feedPage,
 }: BuildPostOpenHrefInput) {
   const cleanPostId = String(postId || '').trim()
 
@@ -30,10 +37,20 @@ export function buildPostOpenHref({
     if (profileId) params.set('profileId', String(profileId).trim())
     if (category) params.set('category', String(category).trim())
     if (query) params.set('q', String(query).trim())
+    if (source === 'feed' && feedView === 'following') params.set('view', 'following')
+    if (source === 'feed' && feedPage) params.set('page', feedPage)
 
     const search = params.toString()
     return search ? `/reel/${cleanPostId}?${search}` : `/reel/${cleanPostId}`
   }
 
   return `/post/${cleanPostId}`
+}
+/** Reuse the actual listing scope for media navigation instead of hardcoding feed/profile. */
+export function mediaContextFromReturnTo(returnTo: string): MediaOpenContext {
+  const url = new URL(returnTo, 'http://local.invalid')
+  if (url.origin !== 'http://local.invalid') return { source: 'feed' }
+  if (url.pathname === '/explore') return { source: 'explore', category: url.searchParams.get('category'), query: url.searchParams.get('q') }
+  if (url.pathname === '/saved') return { source: 'saved' }
+  return { source: 'feed', feedView: url.searchParams.get('view'), feedPage: url.searchParams.get('page') }
 }
