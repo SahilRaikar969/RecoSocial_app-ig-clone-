@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 
@@ -16,6 +16,7 @@ export function SearchPanel({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(initialQuery)
+  const [isPending, startTransition] = useTransition()
 
   const hasAnyFilter = useMemo(
     () => Boolean(query.trim() || activeCategory),
@@ -38,17 +39,17 @@ export function SearchPanel({
     }
 
     const finalQuery = params.toString()
-    router.push(finalQuery ? `/explore?${finalQuery}` : '/explore')
+    startTransition(() => router.push(finalQuery ? `/explore?${finalQuery}` : '/explore'))
   }
 
   function handleClear() {
     if (activeCategory) {
-      router.push(`/explore?category=${encodeURIComponent(activeCategory)}`)
+      startTransition(() => router.push(`/explore?category=${encodeURIComponent(activeCategory)}`))
       setQuery('')
       return
     }
 
-    router.push('/explore')
+    startTransition(() => router.push('/explore'))
     setQuery('')
   }
 
@@ -80,11 +81,12 @@ export function SearchPanel({
           ) : null}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5">
+        <form aria-busy={isPending} onSubmit={handleSubmit} className="mt-5">
           <div className="flex flex-col gap-3 md:flex-row">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
               <input
+                aria-label="Search creators and captions"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search creators, captions, topics..."
@@ -97,7 +99,7 @@ export function SearchPanel({
                 type="submit"
                 className="rounded-2xl border border-white bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:opacity-90"
               >
-                Search
+                {isPending ? 'Searching…' : 'Search'}
               </button>
 
               {hasAnyFilter ? (
@@ -112,6 +114,7 @@ export function SearchPanel({
               ) : null}
             </div>
           </div>
+          <span role="status" className="sr-only">{isPending ? 'Loading search results…' : ''}</span>
         </form>
       </div>
     </section>

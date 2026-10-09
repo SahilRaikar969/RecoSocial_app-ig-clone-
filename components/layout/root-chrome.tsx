@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
+import { UnreadNotificationsProvider } from '@/components/activity/unread-notifications-provider'
 
 type RootChromeProps = {
   children: ReactNode
@@ -32,5 +33,5 @@ export function RootChrome({ children }: RootChromeProps) {
     return <>{children}</>
   }
 
-  return <AppShell>{children}</AppShell>
+  return <UnreadNotificationsProvider><AppShell>{children}</AppShell></UnreadNotificationsProvider>
 }

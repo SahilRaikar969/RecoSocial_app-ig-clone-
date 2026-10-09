@@ -1,6 +1,7 @@
 export default function ReelLoading() {
   return (
     <div className="fixed inset-0 z-[100] bg-black text-white">
+      <p role="status" className="sr-only">Loading reel…</p>
       <div className="flex h-[100svh] w-full items-center justify-center bg-black px-3 py-4 sm:px-4">
         <div className="relative h-full w-full max-w-[430px] overflow-hidden rounded-[28px] border border-zinc-800 bg-black">
           <div className="absolute inset-0 animate-pulse bg-[linear-gradient(180deg,#050505_0%,#0a0a0a_100%)]" />

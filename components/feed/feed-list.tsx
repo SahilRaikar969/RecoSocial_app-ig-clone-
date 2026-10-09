@@ -1,6 +1,7 @@
 import type { FeedBucket, FeedView } from '@/lib/recommendations/feed-contract'
 import Link from 'next/link'
 import { PostCard } from '@/components/feed/post-card'
+import { getViewerPostModerationStates } from '@/lib/db/queries/post-moderation'
 
 type FeedPost = {
   id: string
@@ -186,6 +187,11 @@ export async function FeedList({
     )
   }
 
+  const moderationStates = await getViewerPostModerationStates(
+    devProfileId,
+    mainPosts.filter(post => post.author_id !== devProfileId).map(post => post.id)
+  )
+
   return (
     <section className="rounded-[32px] border border-zinc-800/90 bg-black">
       <div className="border-b border-zinc-800/80 px-5 py-5 sm:px-6">
@@ -252,6 +258,7 @@ export async function FeedList({
                   post={post}
                   devProfileId={devProfileId}
                   returnTo={baseReturnTo}
+                  moderationState={moderationStates.get(post.id)}
                 />
               ))}
             </div>

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { FeedList } from '@/components/feed/feed-list'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'

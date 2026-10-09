@@ -1,5 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
 
+export type ViewerPostModerationState = {
+  hiddenByViewer: boolean
+  reportedByViewer: boolean
+}
+
+// Only load state for rendered cards. Keep each request below URL/row limits,
+// scope both tables to the verified viewer, and never cache across requests.
+export async function getViewerPostModerationStates(
+  profileId: string,
+  postIds: string[]
+): Promise<Map<string, ViewerPostModerationState>> {
+  const ids = [...new Set(postIds.filter(Boolean))]
+  const states = new Map(ids.map(id => [id, { hiddenByViewer: false, reportedByViewer: false }]))
+  if (!ids.length) return states
+
+  const supabase = await createClient()
+  for (let offset = 0; offset < ids.length; offset += 200) {
+    const batch = ids.slice(offset, offset + 200)
+    const [hidden, reported] = await Promise.all([
+      supabase.from('hidden_posts').select('post_id').eq('profile_id', profileId).in('post_id', batch),
+      supabase.from('post_reports').select('post_id').eq('reporter_id', profileId).in('post_id', batch),
+    ])
+    if (hidden.error) throw new Error(hidden.error.message)
+    if (reported.error) throw new Error(reported.error.message)
+    for (const row of hidden.data ?? []) {
+      const state = states.get(row.post_id)
+      if (state) state.hiddenByViewer = true
+    }
+    for (const row of reported.data ?? []) {
+      const state = states.get(row.post_id)
+      if (state) state.reportedByViewer = true
+    }
+  }
+  return states
+}
+
 export async function getHiddenPostIds(profileId: string) {
   const supabase = await createClient()
 
@@ -14,7 +50,7 @@ export async function getHiddenPostIds(profileId: string) {
 
   return new Set(
     (data ?? [])
-      .map((row: any) => row.post_id)
+      .map(row => row.post_id)
       .filter(Boolean)
   )
 }

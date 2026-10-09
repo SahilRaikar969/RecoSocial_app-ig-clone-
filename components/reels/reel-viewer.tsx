@@ -258,6 +258,8 @@ function ReelCard({
         <img
           src={reel.thumbnail_url!}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-2xl"
         />
       ) : null}
@@ -276,6 +278,8 @@ function ReelCard({
             <SmartImage
               src={reel.thumbnail_url}
               alt={reel.caption || 'Reel thumbnail'}
+              loading={active ? 'eager' : 'lazy'}
+              fetchPriority={active ? 'high' : 'low'}
               className={`absolute inset-0 h-full w-full object-cover transition duration-300 ${
                 videoReady && !videoFailed ? 'opacity-0' : 'opacity-100'
               }`}
@@ -292,7 +296,7 @@ function ReelCard({
               playsInline
               loop
               muted
-              preload={preload || active ? 'auto' : 'metadata'}
+              preload={active ? 'auto' : preload ? 'metadata' : 'none'}
               className={`absolute inset-0 h-full w-full object-cover transition duration-300 ${
                 videoReady ? 'opacity-100' : 'opacity-0'
               }`}

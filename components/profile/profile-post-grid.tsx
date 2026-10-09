@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { Bookmark, Heart, MessageCircle, Play } from 'lucide-react'
 import { SmartImage } from '@/components/ui/smart-image'
 import { getMediaUrl } from '@/lib/media/get-media-url'

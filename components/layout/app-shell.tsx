@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 'use client'
 
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
@@ -16,7 +16,7 @@ import {
   Sparkles,
   User,
 } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from 'react'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { ActivityNotificationDot } from '@/components/activity/activity-notification-dot'
 import { SwipeCameraGateway } from '@/components/camera/swipe-camera-gateway'
@@ -204,6 +204,7 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
   const router = useRouter()
 
   const [searchValue, setSearchValue] = useState('')
+  const [isSearchPending, startSearchTransition] = useTransition()
 
   useEffect(() => {
     if (pathname.startsWith('/explore')) {
@@ -285,11 +286,11 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
     const trimmed = searchValue.trim()
 
     if (!trimmed) {
-      router.push('/explore')
+      startSearchTransition(() => router.push('/explore'))
       return
     }
 
-    router.push(`/explore?${new URLSearchParams({ q: trimmed }).toString()}`)
+    startSearchTransition(() => router.push(`/explore?${new URLSearchParams({ q: trimmed }).toString()}`))
   }
 
   if (isAuthRoute || isReelRoute || isStoryViewerRoute) {
@@ -327,6 +328,7 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
 
           <form
             onSubmit={handleSearchSubmit}
+            aria-busy={isSearchPending}
             className="hidden min-w-0 flex-1 items-center md:flex"
           >
             <div className="flex w-full items-center gap-3 rounded-full border border-zinc-800/90 bg-zinc-950/90 px-4 py-2.5 shadow-[0_6px_18px_rgba(0,0,0,0.14)] transition focus-within:border-violet-500/20">
@@ -336,6 +338,7 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
                 placeholder={searchPlaceholder}
+                aria-label="Search creators and posts"
                 className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
               />
 
@@ -344,17 +347,18 @@ export function AppShell({ children, rightPanel }: AppShellProps) {
                   type="submit"
                   className="rounded-full bg-[linear-gradient(90deg,#ffffff_0%,#f2f2ff_100%)] px-3 py-1.5 text-xs font-semibold text-black transition hover:opacity-90"
                 >
-                  Search
+                  {isSearchPending ? 'Searching…' : 'Search'}
                 </button>
               ) : (
                 <button
                   type="submit"
                   className="text-xs font-medium text-zinc-500 transition hover:text-zinc-300"
                 >
-                  Explore
+                  {isSearchPending ? 'Loading…' : 'Explore'}
                 </button>
               )}
             </div>
+            <span role="status" className="sr-only">{isSearchPending ? 'Loading search results…' : ''}</span>
           </form>
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">

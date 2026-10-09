@@ -13,7 +13,8 @@
     "types:generate": "node scripts/generate-database-types.mjs",
     "types:check": "node scripts/generate-database-types.mjs --check",
     "test:m2": "node --test tests/m2-*.test.mjs supabase/tests/m2-publication.test.mjs",
-    "test:m3": "node --test tests/m3-*.test.mjs"
+    "test:m3": "node --test tests/m3-*.test.mjs",
+    "test:m4": "node --test tests/m4-*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

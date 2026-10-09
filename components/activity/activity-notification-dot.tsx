@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/browser'
+import { useUnreadCount } from '@/components/activity/unread-notifications-provider'
 
 type ActivityNotificationDotProps = {
   className?: string
@@ -12,77 +11,9 @@ export function ActivityNotificationDot({
   className = '',
   mode = 'dot',
 }: ActivityNotificationDotProps) {
-  const [hasUnread, setHasUnread] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const unreadCount = useUnreadCount()
 
-  useEffect(() => {
-    let isMounted = true
-    const supabase = createClient()
-
-    async function loadUnreadCount() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        if (!isMounted) return
-        setHasUnread(false)
-        setUnreadCount(0)
-        return
-      }
-
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('recipient_id', user.id)
-        .is('read_at', null)
-
-      if (error) return
-      if (!isMounted) return
-
-      const safeCount = Number(count || 0)
-      setUnreadCount(safeCount)
-      setHasUnread(safeCount > 0)
-    }
-
-    void loadUnreadCount()
-
-    const channel = supabase
-      .channel('activity-unread-dot')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-        },
-        () => {
-          void loadUnreadCount()
-        }
-      )
-      .subscribe()
-
-    const interval = window.setInterval(() => {
-      void loadUnreadCount()
-    }, 15000)
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        void loadUnreadCount()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    return () => {
-      isMounted = false
-      document.removeEventListener('visibilitychange', handleVisibility)
-      window.clearInterval(interval)
-      void supabase.removeChannel(channel)
-    }
-  }, [])
-
-  if (!hasUnread) return null
+  if (unreadCount === 0) return null
 
   if (mode === 'count') {
     return (

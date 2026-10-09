@@ -122,11 +122,17 @@ function load(file, context = fixture(), overrides = {}) {
   const dependencies = {
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'Fragment' },
     'next/link': { default: 'Link' },
+    '@/components/ui/navigation-link': { NavigationLink: 'Link' },
     'next/cache': { revalidatePath: path => context.invalidations.push(path) },
     'next/navigation': { redirect: path => { throw new Error(`redirect:${path}`) } },
     '@/lib/supabase/server': { createClient: async () => context.client },
     '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: context.viewer }) },
-    '@/lib/db/queries/post-moderation': { getHiddenPostIds: async () => context.state.hidden },
+    '@/lib/db/queries/post-moderation': {
+      getHiddenPostIds: async () => context.state.hidden,
+      getViewerPostModerationStates: async (_profileId, ids) => new Map(ids.map(id => [id, {
+        hiddenByViewer: context.state.hidden.has(id), reportedByViewer: false,
+      }])),
+    },
     '@/components/feed/post-card': { PostCard: 'PostCard' },
     ...overrides,
   }

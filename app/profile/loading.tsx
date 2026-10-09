@@ -4,6 +4,7 @@ import { MediaSkeleton } from '@/components/ui/media-skeleton'
 export default function ProfileLoading() {
   return (
     <PageShell maxWidth="5xl">
+      <p role="status" className="sr-only">Loading profile…</p>
       <section className="rounded-[32px] border border-zinc-800/90 bg-black p-5 sm:p-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="h-24 w-24 rounded-full bg-zinc-900 sm:h-36 sm:w-36" />

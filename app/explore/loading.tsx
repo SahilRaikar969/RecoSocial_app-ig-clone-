@@ -4,6 +4,7 @@ import { MediaSkeleton } from '@/components/ui/media-skeleton'
 export default function ExploreLoading() {
   return (
     <PageShell maxWidth="5xl">
+      <p role="status" className="sr-only">Loading discovery…</p>
       <section className="rounded-[32px] border border-zinc-800/90 bg-black p-5 sm:p-6">
         <div className="h-6 w-28 rounded-full bg-zinc-900" />
         <div className="mt-4 h-10 w-40 rounded bg-zinc-900" />

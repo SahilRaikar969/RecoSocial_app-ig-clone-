@@ -1,6 +1,7 @@
 export default function Loading() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+      <p role="status" className="sr-only">Loading page…</p>
       <section className="rounded-[32px] border border-zinc-800/90 bg-black p-5 sm:p-6">
         <div className="h-6 w-24 animate-pulse rounded-full bg-zinc-900" />
         <div className="mt-5 h-10 w-full max-w-md animate-pulse rounded-2xl bg-zinc-900" />

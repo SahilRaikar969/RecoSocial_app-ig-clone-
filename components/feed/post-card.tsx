@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { PostEngagementPanel } from '@/components/feed/post-engagement-panel'
 import { CommentThreadPanel } from '@/components/feed/comment-thread-panel'
 import { PostDetailDisclosure } from '@/components/feed/post-detail-disclosure'
@@ -6,7 +6,7 @@ import { PostMedia } from '@/components/feed/post-media'
 import { PostViewerControls } from '@/components/post/post-viewer-controls'
 import { AnimatedShellCard } from '@/components/ui/animated-shell-card'
 import { getMediaUrl } from '@/lib/media/get-media-url'
-import { getViewerPostModerationState } from '@/lib/db/queries/post-moderation'
+import { getViewerPostModerationState, type ViewerPostModerationState } from '@/lib/db/queries/post-moderation'
 import { buildPostOpenHref, mediaContextFromReturnTo } from '@/lib/routes/media-links'
 
 type Category = {
@@ -66,6 +66,7 @@ type PostCardProps = {
   }
   devProfileId: string
   returnTo?: string
+  moderationState?: ViewerPostModerationState
   showAllComments?: boolean
   showOpenPostLink?: boolean
 }
@@ -94,6 +95,7 @@ export async function PostCard({
   post,
   devProfileId,
   returnTo = '/feed',
+  moderationState: suppliedModerationState,
   showAllComments = false,
   showOpenPostLink = true,
 }: PostCardProps) {
@@ -132,7 +134,7 @@ export async function PostCard({
   const openLabel = post.media_type === 'video' ? 'Watch reel' : 'Open post'
 
   const moderationState = !isPostOwner
-    ? await getViewerPostModerationState(devProfileId, post.id)
+    ? suppliedModerationState ?? await getViewerPostModerationState(devProfileId, post.id)
     : { hiddenByViewer: false, reportedByViewer: false }
 
   const resolvedCommentCount = Array.isArray(post.comments)

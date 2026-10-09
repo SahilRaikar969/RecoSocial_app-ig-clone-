@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { usePathname } from 'next/navigation'
 import { Compass, Heart, Home, Mail, PlusSquare, User } from 'lucide-react'
 import { ActivityNotificationDot } from '@/components/activity/activity-notification-dot'

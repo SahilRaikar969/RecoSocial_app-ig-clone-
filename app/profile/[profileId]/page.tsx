@@ -7,6 +7,7 @@ import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
 import { ProfileSurfaceTabs } from '@/components/profile/profile-surface-tabs'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getProfilePageData } from '@/lib/db/queries/profile'
+import { getProfileCollectionCount } from '@/lib/db/queries/profile-collection-counts'
 import { getPublicLikedPosts } from '@/lib/db/queries/public-liked'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 
@@ -121,34 +122,35 @@ export default async function PublicProfilePage({
 
   await createProfileViewNotification(viewerProfileId, viewedProfileId)
 
-  const [{ profile, stats, posts }, likedPosts] = await Promise.all([
+  const [{ profile, stats, posts }, likedPosts, inactiveLikedCount] = await Promise.all([
     getProfilePageData(viewerProfileId, viewedProfileId),
-    getPublicLikedPosts(viewerProfileId, viewedProfileId),
+    activeTab === 'liked' ? getPublicLikedPosts(viewerProfileId, viewedProfileId) : Promise.resolve([]),
+    activeTab === 'liked' ? Promise.resolve(0) : getProfileCollectionCount(viewedProfileId, 'liked'),
   ])
 
   const [avatarUrl, resolvedPosts, resolvedLikedPosts] = await Promise.all([
     getMediaUrl(profile.avatar_url ?? null),
-    resolvePostsWithMedia(posts),
+    resolvePostsWithMedia(activeTab === 'posts' ? posts : []),
     resolvePostsWithMedia(likedPosts),
   ])
 
 
   const currentPosts = activeTab === 'liked' ? resolvedLikedPosts : resolvedPosts
-  const categoryHighlights = buildCategoryHighlights(resolvedPosts)
+  const categoryHighlights = buildCategoryHighlights(posts)
 
   const tabs = [
     {
       key: 'posts',
       label: 'Posts',
       href: `/profile/${viewedProfileId}`,
-      count: resolvedPosts.length,
+      count: posts.length,
       active: activeTab === 'posts',
     },
     {
       key: 'liked',
       label: 'Liked',
       href: `/profile/${viewedProfileId}?tab=liked`,
-      count: resolvedLikedPosts.length,
+      count: activeTab === 'liked' ? resolvedLikedPosts.length : inactiveLikedCount,
       active: activeTab === 'liked',
     },
   ] as const

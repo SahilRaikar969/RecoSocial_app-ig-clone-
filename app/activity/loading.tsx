@@ -21,6 +21,7 @@ function ActivityRowSkeleton() {
 export default function ActivityLoading() {
   return (
     <PageShell maxWidth="5xl">
+      <p role="status" className="sr-only">Loading activity…</p>
       <section className="rounded-[32px] border border-zinc-800/90 bg-black p-5 sm:p-6">
         <div className="h-6 w-24 rounded-full bg-zinc-900" />
         <div className="mt-4 h-10 w-44 rounded bg-zinc-900" />

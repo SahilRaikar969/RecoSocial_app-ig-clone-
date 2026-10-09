@@ -8,6 +8,7 @@ import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getHiddenPosts } from '@/lib/db/queries/hidden'
 import { getLikedPosts } from '@/lib/db/queries/liked'
 import { getProfilePageData } from '@/lib/db/queries/profile'
+import { getProfileCollectionCount, type ProfileCollection } from '@/lib/db/queries/profile-collection-counts'
 import { getReportedPosts } from '@/lib/db/queries/reported'
 import { getSavedPosts } from '@/lib/db/queries/saved'
 import { getMediaUrl } from '@/lib/media/get-media-url'
@@ -112,19 +113,24 @@ export default async function SelfProfilePage({
 
   const { profileId } = await getDevSession()
 
-  const [
-    { profile, stats, posts },
-    savedPosts,
-    likedPosts,
-    hiddenPosts,
-    reportedPosts,
-  ] = await Promise.all([
+  const collectionLoaders = {
+    saved: getSavedPosts,
+    liked: getLikedPosts,
+    hidden: getHiddenPosts,
+    reported: getReportedPosts,
+  }
+  const collectionKeys = Object.keys(collectionLoaders) as ProfileCollection[]
+  const [{ profile, stats, posts }, activeCollection, inactiveCounts] = await Promise.all([
     getProfilePageData(profileId, profileId),
-    getSavedPosts(profileId),
-    getLikedPosts(profileId),
-    getHiddenPosts(profileId),
-    getReportedPosts(profileId),
+    activeTab === 'posts' ? Promise.resolve([]) : collectionLoaders[activeTab](profileId),
+    Promise.all(collectionKeys.filter(key => key !== activeTab).map(async key =>
+      [key, await getProfileCollectionCount(profileId, key)] as const
+    )).then(entries => new Map(entries)),
   ])
+  const savedPosts = activeTab === 'saved' ? activeCollection : []
+  const likedPosts = activeTab === 'liked' ? activeCollection : []
+  const hiddenPosts = activeTab === 'hidden' ? activeCollection : []
+  const reportedPosts = activeTab === 'reported' ? activeCollection : []
 
   const [
     avatarUrl,
@@ -135,7 +141,7 @@ export default async function SelfProfilePage({
     resolvedReportedPosts,
   ] = await Promise.all([
     getMediaUrl(profile.avatar_url ?? null),
-    resolvePostsWithMedia(posts),
+    resolvePostsWithMedia(activeTab === 'posts' ? posts : []),
     resolvePostsWithMedia(savedPosts),
     resolvePostsWithMedia(likedPosts),
     resolvePostsWithMedia(hiddenPosts),
@@ -156,28 +162,28 @@ export default async function SelfProfilePage({
     posts: {
       emptyTitle: 'No posts yet',
       emptyBody: 'Create your first post to build your profile.',
-      count: resolvedOwnPosts.length,
+      count: posts.length,
       posts: resolvedOwnPosts,
       returnTo: '/profile',
     },
     saved: {
       emptyTitle: 'No saved posts yet',
       emptyBody: 'Posts you save will appear here.',
-      count: resolvedSavedPosts.length,
+      count: activeTab === 'saved' ? resolvedSavedPosts.length : inactiveCounts.get('saved') ?? 0,
       posts: resolvedSavedPosts,
       returnTo: '/profile?tab=saved',
     },
     liked: {
       emptyTitle: 'No liked posts yet',
       emptyBody: 'Posts you like will appear here.',
-      count: resolvedLikedPosts.length,
+      count: activeTab === 'liked' ? resolvedLikedPosts.length : inactiveCounts.get('liked') ?? 0,
       posts: resolvedLikedPosts,
       returnTo: '/profile?tab=liked',
     },
     hidden: {
       emptyTitle: 'No hidden posts',
       emptyBody: 'Posts you hide will appear here until you restore them.',
-      count: resolvedHiddenPosts.length,
+      count: activeTab === 'hidden' ? resolvedHiddenPosts.length : inactiveCounts.get('hidden') ?? 0,
       posts: resolvedHiddenPosts,
       returnTo: '/profile?tab=hidden',
       useHiddenGrid: true,
@@ -185,14 +191,14 @@ export default async function SelfProfilePage({
     reported: {
       emptyTitle: 'No reported posts',
       emptyBody: 'Reported posts will appear here.',
-      count: resolvedReportedPosts.length,
+      count: activeTab === 'reported' ? resolvedReportedPosts.length : inactiveCounts.get('reported') ?? 0,
       posts: resolvedReportedPosts,
       returnTo: '/profile?tab=reported',
     },
   }
 
   const currentMeta = tabData[activeTab]
-  const categoryHighlights = buildCategoryHighlights(resolvedOwnPosts)
+  const categoryHighlights = buildCategoryHighlights(posts)
 
   const tabs = [
     {

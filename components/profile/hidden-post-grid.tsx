@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { unhidePost } from '@/actions/post-moderation'
 import { PostCard } from '@/components/feed/post-card'
+import { getViewerPostModerationStates } from '@/lib/db/queries/post-moderation'
 
 type HiddenPostGridProps = {
   posts: any[]
@@ -13,6 +14,10 @@ export async function HiddenPostGrid({
   devProfileId,
   returnTo,
 }: HiddenPostGridProps) {
+  const moderationStates = await getViewerPostModerationStates(
+    devProfileId,
+    posts.filter(post => post.author_id !== devProfileId).map(post => String(post.id))
+  )
   return (
     <div className="space-y-6">
       {posts.map((post) => {
@@ -71,6 +76,7 @@ export async function HiddenPostGrid({
                 post={post}
                 devProfileId={devProfileId}
                 returnTo={returnTo}
+                moderationState={moderationStates.get(post.id)}
               />
             </div>
           </section>
