@@ -12,7 +12,7 @@ type CreateStoryFormProps = {
 
 function StorySubmit() {
   const { pending } = useFormStatus()
-  return <button type="submit" disabled={pending} className="rounded-2xl border border-white bg-white px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{pending ? 'Publishing...' : 'Publish story'}</button>
+  return <button type="submit" disabled={pending} className="rs-button rs-button-primary" aria-live="polite">{pending ? 'Publishing...' : 'Publish story'}</button>
 }
 
 export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
@@ -28,31 +28,27 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
   return (
     <form
       action={submitMedia}
-      className="rounded-[30px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(8,8,10,0.96))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.28)]"
+      className="space-y-5"
     >
-      <div className="inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-violet-200">
-        Story composer
-      </div>
-
       <h1 className="mt-4 text-2xl font-semibold text-white">Create story</h1>
       <p className="mt-3 text-sm leading-7 text-zinc-400">
-        Upload a lightweight image or video story. Stories automatically expire after 6 hours.
+        Stories disappear after 6 hours.
       </p>
 
       {effectiveError ? (
-        <div className="mt-5 rounded-2xl border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-100">
+        <div role="alert" className="mt-5 rounded-xl border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-100">
           {effectiveError}
         </div>
       ) : null}
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label htmlFor="story-media-type" className="mb-2 block text-sm font-medium text-zinc-300">
             Media type
           </label>
           <select
-            name="media_type"
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none"
+            id="story-media-type" name="media_type"
+            className="rs-input"
             value={mediaType} onChange={event => setMediaType(event.target.value)}
           >
             <option value="image">Image</option>
@@ -61,74 +57,74 @@ export function CreateStoryForm({ errorMessage = '' }: CreateStoryFormProps) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label htmlFor="story-caption" className="mb-2 block text-sm font-medium text-zinc-300">
             Caption
           </label>
           <input
-            name="caption" value={caption} onChange={event => setCaption(event.target.value)}
+            id="story-caption" name="caption" value={caption} onChange={event => setCaption(event.target.value)}
             type="text"
             maxLength={180}
             placeholder="Optional short caption"
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+            className="rs-input"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label htmlFor="story-media_file" className="mb-2 block text-sm font-medium text-zinc-300">
             Upload media
           </label>
           <input
-            name="media_file" onChange={event => setMediaFile(event.target.files?.[0] || null)}
+            id="story-media_file" name="media_file" onChange={event => setMediaFile(event.target.files?.[0] || null)}
             type="file"
             accept="image/*,video/*"
-            className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
+            className="rs-input file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-white"
           />
-          <p className="mt-2 text-xs text-zinc-500">
-            {mediaFile ? `Selected: ${mediaFile.name}. Retained for retry.` : 'Use upload first. Direct URL is optional if you already host media elsewhere.'}
+          <p className="mt-2 break-words text-xs text-zinc-400">
+            {mediaFile ? `Selected: ${mediaFile.name}. Retained for retry.` : 'Choose a file, or paste a direct media link below.'}
           </p>
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            Media URL fallback
+          <label htmlFor="story-media_path" className="mb-2 block text-sm font-medium text-zinc-300">
+            Or use a media link
           </label>
           <input
-            name="media_path" value={mediaPath} onChange={event => { setMediaPath(event.target.value); setMediaFile(null) }}
+            id="story-media_path" name="media_path" value={mediaPath} onChange={event => { setMediaPath(event.target.value); setMediaFile(null) }}
             type="text"
             placeholder="https://example.com/story.jpg"
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+            className="rs-input"
           />
         </div>
 
-        <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            Thumbnail for video
+        {mediaType === 'video' ? <><div className="md:col-span-2">
+          <label htmlFor="story-thumbnail_file" className="mb-2 block text-sm font-medium text-zinc-300">
+            Video cover (optional)
           </label>
           <input
-            name="thumbnail_file" onChange={event => setThumbnailFile(event.target.files?.[0] || null)}
+            id="story-thumbnail_file" name="thumbnail_file" onChange={event => setThumbnailFile(event.target.files?.[0] || null)}
             type="file"
             accept="image/*"
-            className="block w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
+            className="rs-input file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-white"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
-            Thumbnail URL fallback
+          <label htmlFor="story-thumbnail_path" className="mb-2 block text-sm font-medium text-zinc-300">
+            Or use a cover link
           </label>
           <input
-            name="thumbnail_path" value={thumbnailPath} onChange={event => { setThumbnailPath(event.target.value); setThumbnailFile(null) }}
+            id="story-thumbnail_path" name="thumbnail_path" value={thumbnailPath} onChange={event => { setThumbnailPath(event.target.value); setThumbnailFile(null) }}
             type="text"
             placeholder="https://example.com/story-thumb.jpg"
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+            className="rs-input"
           />
-        </div>
+        </div></> : null}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/feed"
-          className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          className="rs-button"
         >
           Cancel
         </Link>

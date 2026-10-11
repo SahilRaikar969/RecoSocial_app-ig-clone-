@@ -88,13 +88,13 @@ export function AvatarCropEditor({
   }
 
   return (
-    <div className="rounded-[24px] border border-zinc-800 bg-black p-4">
+    <div className="rounded-xl border border-zinc-800 bg-black p-4">
       <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
         Avatar crop
       </p>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
-        <div className="rounded-[24px] border border-zinc-800 bg-zinc-950 p-4">
+      <div className="mt-4 grid min-w-0 gap-4">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
           <div className="mx-auto aspect-square max-w-[320px] overflow-hidden rounded-full border border-zinc-800 bg-black">
             <div className="flex h-full w-full items-center justify-center overflow-hidden">
               <canvas ref={previewCanvasRef} aria-label="Avatar crop preview" className="h-full w-full" />
@@ -103,26 +103,27 @@ export function AvatarCropEditor({
 
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
-              <span>Zoom</span>
+              <label htmlFor="avatar-crop-zoom">Zoom</label>
               <span>{zoom.toFixed(2)}x</span>
             </div>
 
             <input
+              id="avatar-crop-zoom"
               type="range"
               min={1}
               max={2.5}
               step={0.01}
               value={zoom}
               onChange={(event) => setZoom(Number(event.target.value))}
-              className="w-full accent-white"
+              className="min-h-11 w-full accent-violet-500"
             />
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => setOffsetY((value) => clamp(value - 4, -80, 80))}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Up
             </button>
@@ -134,7 +135,7 @@ export function AvatarCropEditor({
                 setOffsetX(0)
                 setOffsetY(0)
               }}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Reset
             </button>
@@ -142,7 +143,7 @@ export function AvatarCropEditor({
             <button
               type="button"
               onClick={() => setOffsetY((value) => clamp(value + 4, -80, 80))}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Down
             </button>
@@ -150,7 +151,7 @@ export function AvatarCropEditor({
             <button
               type="button"
               onClick={() => setOffsetX((value) => clamp(value - 4, -80, 80))}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Left
             </button>
@@ -158,7 +159,7 @@ export function AvatarCropEditor({
             <button
               type="button"
               onClick={() => setZoom((value) => clamp(value - 0.05, 1, 2.5))}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Zoom -
             </button>
@@ -166,27 +167,28 @@ export function AvatarCropEditor({
             <button
               type="button"
               onClick={() => setOffsetX((value) => clamp(value + 4, -80, 80))}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white"
+              className="rs-button"
             >
               Right
             </button>
           </div>
         </div>
 
-        <div className="rounded-[24px] border border-zinc-800 bg-zinc-950 p-4">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-            Saved output
+            Cropped photo
           </p>
 
           <div className="mt-4 flex items-center justify-center">
             <canvas
               ref={canvasRef}
+              aria-label="Cropped profile photo preview"
               className="h-36 w-36 rounded-full border border-zinc-800 bg-black"
             />
           </div>
 
           <p className="mt-4 text-xs leading-6 text-zinc-500">
-            The cropped result above is what gets uploaded as the final avatar.
+            This crop will be saved as your profile photo.
           </p>
         </div>
       </div>

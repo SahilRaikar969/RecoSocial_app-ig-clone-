@@ -1,5 +1,4 @@
 import { PageShell } from '@/components/ui/page-shell'
-import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { CreateStoryForm } from '@/components/stories/create-story-form'
 
 type CreateStoryPageProps = {
@@ -43,6 +42,8 @@ function getErrorMessage(value?: string) {
   }
 }
 
+export const metadata = { title: "Create story" }
+
 export default async function CreateStoryPage({
   searchParams,
 }: CreateStoryPageProps) {
@@ -51,7 +52,6 @@ export default async function CreateStoryPage({
 
   return (
     <PageShell maxWidth="4xl">
-      {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
       <CreateStoryForm errorMessage={errorMessage} />
     </PageShell>
   )

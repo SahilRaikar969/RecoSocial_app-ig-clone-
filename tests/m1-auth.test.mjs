@@ -342,6 +342,9 @@ function pageMocks() {
     'next/link': { default: 'a' },
     'lucide-react': new Proxy({}, { get(_target, name) { return String(name) } }),
     '@/actions/auth': { login() {}, signup() {} },
+    '@/components/auth/auth-frame': { AuthFrame: 'AuthFrame' },
+    '@/components/auth/auth-submit-button': { AuthSubmitButton: 'AuthSubmitButton' },
+    '@/components/auth/password-field': { PasswordField: 'PasswordField' },
     '@/actions/notifications': { markNotificationsRead() {} },
     '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: 'verified-actor' }) },
     '@/lib/db/queries/onboarding': { getOnboardingCategories: async () => [] },
@@ -350,6 +353,7 @@ function pageMocks() {
     '@/components/activity/activity-list': { ActivityList: 'ActivityList' },
     '@/components/ui/feedback-banner': { FeedbackBanner: 'FeedbackBanner' },
     '@/components/ui/page-shell': { PageShell: 'PageShell' },
+    '@/components/ui/navigation-link': { NavigationLink: 'Link' },
     '@/components/ui/surface-hero': { SurfaceHero: 'SurfaceHero' },
   }
 }
@@ -359,6 +363,12 @@ for (const path of ['app/(auth)/login/page.tsx', 'app/(auth)/signup/page.tsx', '
     const page = loadTs(path, pageMocks()).default
     const error = 'Denied 50% / literal %2F'
     const tree = await page({ searchParams: Promise.resolve({ error }) })
-    assert.ok(JSON.stringify(tree).includes(error))
+    const rendered = JSON.stringify(tree)
+    if (path === 'app/activity/page.tsx') {
+      assert.ok(rendered.includes('Activity could not be updated. Try again.'))
+      assert.ok(!rendered.includes(error), 'activity must not expose raw internal errors')
+    } else {
+      assert.ok(rendered.includes(error))
+    }
   })
 }

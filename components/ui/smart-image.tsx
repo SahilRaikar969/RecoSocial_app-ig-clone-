@@ -60,6 +60,7 @@ function SmartImageSource({
         fetchPriority={fetchPriority}
         decoding="async"
         referrerPolicy="no-referrer"
+        style={{ objectFit: className.includes('object-contain') ? 'contain' : 'cover' }}
         className={`h-full w-full transition duration-200 ${
           loaded ? 'opacity-100' : 'opacity-0'
         }`}

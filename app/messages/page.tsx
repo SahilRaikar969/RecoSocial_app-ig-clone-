@@ -5,6 +5,8 @@ import { ConversationList } from '@/components/messages/conversation-list'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getInboxData, getOrCreateDirectThread } from '@/lib/db/queries/messages'
 
+export const metadata = { title: 'Messages' }
+
 type MessagesPageProps = {
   searchParams?: Promise<{
     with?: string
@@ -22,7 +24,7 @@ function getErrorMessage(value?: string) {
     case 'missing_message_profile_id':
       return 'Missing target profile.'
     default:
-      return decodeURIComponent(error)
+      return 'Messages could not be loaded. Try again.'
   }
 }
 
@@ -45,26 +47,5 @@ export default async function MessagesPage({
   const conversations = await getInboxData(profileId)
   const errorMessage = getErrorMessage(params?.error)
 
-  return (
-    <PageShell maxWidth="5xl">
-      {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
-
-      <section className="overflow-hidden rounded-[34px] border border-white/10 bg-black shadow-[0_18px_52px_rgba(0,0,0,0.28)]">
-        <div className="border-b border-white/10 px-5 py-5 sm:px-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Direct
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            Messages
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Mutual-follow conversations in a cleaner social inbox.
-          </p>
-        </div>
-        <div className="p-3 sm:p-5">
-          <ConversationList conversations={conversations} />
-        </div>
-      </section>
-    </PageShell>
-  )
+  return <PageShell maxWidth="4xl"><h1 className="text-2xl font-semibold">Messages</h1>{errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}<p className="text-sm text-zinc-400">Message people who follow you back.</p><ConversationList conversations={conversations} /></PageShell>
 }

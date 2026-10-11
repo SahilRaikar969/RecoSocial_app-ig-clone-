@@ -13,14 +13,14 @@ export default function RouteError({
   const [isPending, startTransition] = useTransition()
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-4 py-12">
-      <section className="w-full rounded-[36px] border border-zinc-800/90 bg-black p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-10">
-        <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-900/50 bg-amber-950/30 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
+    <div className="mx-auto w-full max-w-2xl py-10">
+      <section className="w-full rounded-xl border border-zinc-800/90 bg-black p-8 text-center  sm:p-10">
+        <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-900/50 bg-amber-950/30 px-4 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-amber-200">
           <AlertTriangle className="h-3.5 w-3.5" />
-          App error
+          Unable to load
         </div>
 
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-white ">
           This page could not load
         </h1>
 
@@ -33,7 +33,7 @@ export default function RouteError({
             type="button"
             onClick={() => startTransition(() => unstable_retry())}
             disabled={isPending}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white bg-white px-5 py-4 text-sm font-semibold text-black transition hover:opacity-90"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-white bg-white px-5 py-4 text-sm font-semibold text-black transition hover:opacity-90"
           >
             <RefreshCcw className="h-4 w-4" />
             {isPending ? 'Retrying…' : 'Try again'}
@@ -41,20 +41,20 @@ export default function RouteError({
 
           <Link
             href="/feed"
-            className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-4 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 bg-zinc-950 px-5 py-4 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
           >
             Back to feed
           </Link>
 
           <Link
             href="/explore"
-            className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-4 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            className="rounded-lg border border-zinc-700 bg-zinc-950 px-5 py-4 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
           >
             Open explore
           </Link>
         </div>
         <p role="status" className="sr-only">{isPending ? 'Reloading this page…' : ''}</p>
       </section>
-    </main>
+    </div>
   )
 }

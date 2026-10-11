@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
-import { InstagramProfileHeader } from '@/components/profile/instagram-profile-header'
+import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
 import { ProfileSurfaceTabs } from '@/components/profile/profile-surface-tabs'
@@ -45,7 +45,7 @@ function getErrorMessage(value?: string) {
     case 'cannot_follow_self':
       return 'You cannot follow your own profile.'
     default:
-      return decodeURIComponent(error)
+      return 'Something went wrong. Please try again.'
   }
 }
 
@@ -105,6 +105,8 @@ async function createProfileViewNotification(viewerProfileId: string, viewedProf
   }
 }
 
+export const metadata = { title: "Profile" }
+
 export default async function PublicProfilePage({
   params,
   searchParams,
@@ -159,11 +161,11 @@ export default async function PublicProfilePage({
     activeTab === 'liked'
       ? {
           emptyTitle: 'No liked posts visible yet',
-          emptyBody: 'Once this creator likes content, it will appear here.',
+          emptyBody: 'Liked posts will appear here.',
         }
       : {
           emptyTitle: 'No posts yet',
-          emptyBody: 'Once this creator publishes content, it will appear here.',
+          emptyBody: 'Published posts will appear here.',
         }
 
   const feedback =
@@ -176,11 +178,11 @@ export default async function PublicProfilePage({
   const errorMessage = getErrorMessage(resolvedSearchParams?.error)
 
   return (
-    <main className="mx-auto w-full max-w-[935px] px-4 py-4 sm:px-6 sm:py-6">
+    <div className="mx-auto w-full max-w-4xl py-2">
       {feedback ? <FeedbackBanner>{feedback}</FeedbackBanner> : null}
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
-      <InstagramProfileHeader
+      <ProfileHeader
         profile={profile}
         viewerProfileId={viewerProfileId}
         counts={{
@@ -214,6 +216,6 @@ export default async function PublicProfilePage({
           )}
         </div>
       </>
-    </main>
+    </div>
   )
 }

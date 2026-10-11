@@ -88,6 +88,8 @@ function buildViewerQueryString({
   return params.toString()
 }
 
+export const metadata = { title: "Reels" }
+
 export default async function ReelPage({
   params,
   searchParams,

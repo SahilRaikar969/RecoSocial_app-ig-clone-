@@ -1,45 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
-type CopyPostLinkButtonProps = {
-  postId: string
-}
-
-export function CopyPostLinkButton({ postId }: CopyPostLinkButtonProps) {
-  const [copied, setCopied] = useState(false)
-
-  const postUrl = useMemo(() => {
-    if (typeof window === 'undefined') return ''
-    return `${window.location.origin}/post/${postId}`
-  }, [postId])
-
+export function CopyPostLinkButton({ postId }: { postId: string }) {
+  const [message, setMessage] = useState('')
   async function handleCopy() {
     try {
-      if (!postUrl) return
-
-      await navigator.clipboard.writeText(postUrl)
-      setCopied(true)
-
-      window.setTimeout(() => {
-        setCopied(false)
-      }, 1800)
+      await navigator.clipboard.writeText(window.location.origin + '/post/' + encodeURIComponent(postId))
+      setMessage('Post link copied.')
     } catch {
-      setCopied(false)
+      setMessage('Could not copy the link. Please try again.')
     }
   }
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-        copied
-          ? 'border-white bg-white text-black'
-          : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500 hover:text-white'
-      }`}
-    >
-      {copied ? 'Link copied' : 'Copy link'}
-    </button>
-  )
+  return <>
+    <button type="button" onClick={handleCopy} className="inline-flex min-h-11 items-center rounded-lg border border-zinc-700 px-4 text-sm text-zinc-200 hover:bg-zinc-800">Copy link</button>
+    {message ? <p role="status" className="basis-full text-sm text-zinc-300">{message}</p> : null}
+  </>
 }

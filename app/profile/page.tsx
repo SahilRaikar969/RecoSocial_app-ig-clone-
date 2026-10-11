@@ -1,5 +1,5 @@
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
-import { InstagramProfileHeader } from '@/components/profile/instagram-profile-header'
+import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { HiddenPostGrid } from '@/components/profile/hidden-post-grid'
 import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
@@ -56,7 +56,7 @@ function getErrorMessage(value?: string) {
     case 'cannot_report_own_post':
       return 'You cannot report your own post.'
     default:
-      return decodeURIComponent(error)
+      return 'Something went wrong. Please try again.'
   }
 }
 
@@ -104,6 +104,8 @@ async function resolvePostsWithMedia(posts: any[]) {
     }))
   )
 }
+
+export const metadata = { title: "Your profile" }
 
 export default async function SelfProfilePage({
   searchParams,
@@ -252,7 +254,7 @@ export default async function SelfProfilePage({
               : resolvedSearchParams?.hidden === '1'
                 ? 'Post hidden from your feed and explore.'
                 : resolvedSearchParams?.unhidden === '1'
-                  ? 'Post restored to your surfaces.'
+                  ? 'Post restored to your feed and Explore.'
                   : resolvedSearchParams?.reported === '1'
                     ? 'Post reported.'
                     : resolvedSearchParams?.deleted === '1'
@@ -262,11 +264,11 @@ export default async function SelfProfilePage({
   const errorMessage = getErrorMessage(resolvedSearchParams?.error)
 
   return (
-    <main className="mx-auto w-full max-w-[935px] px-4 py-4 sm:px-6 sm:py-6">
+    <div className="mx-auto w-full max-w-4xl py-2">
       {feedback ? <FeedbackBanner>{feedback}</FeedbackBanner> : null}
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
 
-      <InstagramProfileHeader
+      <ProfileHeader
         profile={profile}
         viewerProfileId={profileId}
         counts={{
@@ -305,6 +307,6 @@ export default async function SelfProfilePage({
           />
         )}
       </div>
-    </main>
+    </div>
   )
 }

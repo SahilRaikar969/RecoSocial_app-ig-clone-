@@ -9,6 +9,8 @@ type StoryViewerPageProps = {
   }>
 }
 
+export const metadata = { title: "Stories" }
+
 export default async function StoryViewerPage({ params }: StoryViewerPageProps) {
   const { storyId } = await params
   const { profileId } = await getDevSession()

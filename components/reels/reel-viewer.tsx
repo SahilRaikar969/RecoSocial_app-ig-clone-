@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   Bookmark,
-  ChevronDown,
   Heart,
   MessageCircle,
   Pause,
@@ -252,239 +251,61 @@ function ReelCard({
   const unavailable = !hasVideo && !hasPoster
 
   return (
-    <section className="relative flex h-[100svh] w-full items-center justify-center overflow-hidden bg-black">
-      {mutationError ? <p role="alert" className="absolute left-4 top-20 z-50 rounded bg-black/80 p-3 text-sm text-white">{mutationError}</p> : null}
-      {hasPoster ? (
-        <img
-          src={reel.thumbnail_url!}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-2xl"
-        />
-      ) : null}
-
-      <div className="pointer-events-none absolute inset-0 bg-black/50" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(120,119,255,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_24%)]" />
-
-      <div className="relative h-[100svh] w-full max-w-[430px] overflow-hidden bg-black ring-1 ring-white/8">
-        <button
-          type="button"
-          onClick={handleVideoToggle}
-          className="absolute inset-0 z-0 block h-full w-full bg-black"
-          aria-label={isPlaying ? 'Pause reel' : 'Play reel'}
-        >
-          {hasPoster ? (
-            <SmartImage
-              src={reel.thumbnail_url}
-              alt={reel.caption || 'Reel thumbnail'}
-              loading={active ? 'eager' : 'lazy'}
-              fetchPriority={active ? 'high' : 'low'}
-              className={`absolute inset-0 h-full w-full object-cover transition duration-300 ${
-                videoReady && !videoFailed ? 'opacity-0' : 'opacity-100'
-              }`}
-              fallbackClassName="absolute inset-0 flex h-full w-full items-center justify-center bg-black text-sm text-zinc-500"
-              fallbackText="Loading reel"
-            />
-          ) : null}
-
-          {hasVideo && !videoFailed ? (
-            <video
-              ref={videoRef}
-              src={reel.media_url!}
-              poster={reel.thumbnail_url || undefined}
-              playsInline
-              loop
-              muted
-              preload={active ? 'auto' : preload ? 'metadata' : 'none'}
-              className={`absolute inset-0 h-full w-full object-cover transition duration-300 ${
-                videoReady ? 'opacity-100' : 'opacity-0'
-              }`}
-              onLoadedData={() => setVideoReady(true)}
-              onCanPlay={() => setVideoReady(true)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onError={() => {
-                setVideoFailed(true)
-                setIsPlaying(false)
-              }}
-            />
-          ) : null}
-
-          {unavailable || videoFailed ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-black">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 px-5 py-4 text-center">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                  Reel unavailable
-                </div>
-                <div className="mt-2 text-sm text-zinc-500">
-                  Video source could not be loaded
-                </div>
-              </div>
-            </div>
-          ) : null}
+    <section className="relative flex h-[100svh] w-full items-center justify-center overflow-hidden bg-black" inert={!active} aria-label={'Reel ' + currentIndex + ' of ' + totalCount}>
+      {mutationError ? <p role="alert" className="absolute left-4 right-4 top-20 z-50 rounded-lg bg-black/90 p-3 text-sm text-white">{mutationError}</p> : null}
+      <div className="relative h-[100svh] w-full max-w-[480px] overflow-hidden bg-black">
+        <button type="button" onClick={handleVideoToggle}
+          className="absolute inset-0 z-0 block h-full w-full bg-black focus-visible:outline-offset-[-4px]"
+          aria-label={isPlaying ? 'Pause reel' : 'Play reel'} disabled={unavailable || videoFailed}>
+          {hasPoster ? <SmartImage src={reel.thumbnail_url} alt={reel.caption || 'Reel thumbnail'}
+            loading={active ? 'eager' : 'lazy'} fetchPriority={active ? 'high' : 'low'}
+            className={'absolute inset-0 h-full w-full object-cover ' + (videoReady && !videoFailed ? 'opacity-0' : 'opacity-100')}
+            fallbackClassName="absolute inset-0 flex h-full w-full items-center justify-center bg-black text-sm text-zinc-400" fallbackText="Loading reel" /> : null}
+          {hasVideo && !videoFailed ? <video ref={videoRef} src={reel.media_url!} poster={reel.thumbnail_url || undefined}
+            playsInline loop muted preload={active ? 'auto' : preload ? 'metadata' : 'none'}
+            className={'absolute inset-0 h-full w-full object-contain ' + (videoReady ? 'opacity-100' : 'opacity-0')}
+            onLoadedData={() => setVideoReady(true)} onCanPlay={() => setVideoReady(true)}
+            onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)}
+            onError={() => { setVideoFailed(true); setIsPlaying(false) }} /> : null}
+          {unavailable || videoFailed ? <div className="absolute inset-0 flex items-center justify-center bg-zinc-950 px-8">
+            <div className="text-center"><p className="text-base font-semibold text-white">Reel unavailable</p><p className="mt-2 text-sm text-zinc-400">This video could not be loaded.</p></div>
+          </div> : null}
         </button>
-
-        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/92 via-black/15 to-black/45" />
-
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-4 pt-4">
-          <Link
-            href={backHref}
-            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-black/65"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <div className="rounded-full border border-white/10 bg-black/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
-              Reel {currentIndex}/{totalCount}
-            </div>
-
-            <Link
-              href={buildPostDetailHref(reel.id)}
-              className="pointer-events-auto rounded-full border border-white/10 bg-[linear-gradient(90deg,#ffffff_0%,#f4f4ff_100%)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black backdrop-blur transition hover:opacity-90"
-            >
-              Open post
-            </Link>
-          </div>
+        <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/95 via-transparent to-black/50" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-3 pt-[max(12px,env(safe-area-inset-top))]">
+          <Link href={backHref} className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg bg-black/65 px-3 text-sm font-medium text-white hover:bg-black/85"><ArrowLeft className="h-4 w-4" />Back</Link>
+          <p className="text-sm font-medium text-white">Reels <span className="text-zinc-300">{currentIndex}/{totalCount}</span></p>
+          <Link href={buildPostDetailHref(reel.id)} className="pointer-events-auto inline-flex min-h-11 items-center rounded-lg bg-black/65 px-3 text-sm font-medium text-white hover:bg-black/85">Open post</Link>
         </div>
-
-        {showCenterIndicator && !videoFailed && !unavailable ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur">
-              {isPlaying ? <Play className="h-6 w-6" /> : <Pause className="h-6 w-6" />}
-            </div>
-          </div>
-        ) : null}
-
-        {!videoFailed && !unavailable && !isPlaying && !showCenterIndicator ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur">
-              <Play className="h-6 w-6" />
-            </div>
-          </div>
-        ) : null}
-
-        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-end justify-between gap-4 px-4 pb-8 pt-24">
-          <div className="min-w-0 max-w-[72%] text-white">
-            <Link
-              href={getProfileHref(reel.author?.id ?? reel.author_id, viewerProfileId)}
-              className="pointer-events-auto inline-flex max-w-full items-center gap-3 rounded-2xl bg-black/35 px-3 py-2 backdrop-blur"
-            >
-              {reel.author?.avatar_url ? (
-                <SmartImage
-                  src={reel.author.avatar_url}
-                  alt={reel.author.display_name || reel.author.username || 'Creator'}
-                  className="h-10 w-10 rounded-full object-cover"
-                  fallbackClassName="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-[10px] uppercase tracking-[0.16em] text-white"
-                  fallbackText="U"
-                />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-[10px] uppercase tracking-[0.16em] text-white">
-                  U
-                </div>
-              )}
-
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">
-                  {reel.author?.username || 'creator'}
-                </p>
-                <p className="truncate text-xs text-zinc-300">
-                  {reel.author?.display_name || 'Creator'}
-                </p>
-              </div>
+        {!videoFailed && !unavailable && (showCenterIndicator || !isPlaying) ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" aria-hidden="true">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/65 text-white">{isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}</div>
+        </div> : null}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end gap-3 px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-16">
+          <div className="min-w-0 flex-1 text-white">
+            <Link href={getProfileHref(reel.author?.id ?? reel.author_id, viewerProfileId)} className="pointer-events-auto inline-flex max-w-full items-center gap-2 rounded-lg bg-black/50 px-2 py-2">
+              <SmartImage src={reel.author?.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover"
+                fallbackClassName="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm text-white"
+                fallbackText={(reel.author?.username || 'U').slice(0, 1).toUpperCase()} />
+              <span className="truncate text-sm font-semibold">{reel.author?.username || 'Creator'}</span>
             </Link>
-
-            {reel.caption ? (
-              <div className="mt-4 rounded-[22px] border border-white/10 bg-black/30 px-4 py-3 backdrop-blur">
-                <p className="text-sm leading-7 text-zinc-100">{reel.caption}</p>
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-300">
-              <Link
-                href={buildPostDetailHref(reel.id, true)}
-                className="pointer-events-auto rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur transition hover:bg-black/55"
-              >
-                Comments
-              </Link>
-              <Link
-                href={buildPostDetailHref(reel.id)}
-                className="pointer-events-auto rounded-full border border-white/10 bg-black/35 px-3 py-2 backdrop-blur transition hover:bg-black/55"
-              >
-                Details
-              </Link>
-            </div>
+            {reel.caption ? <p className="mt-3 line-clamp-4 break-words text-sm leading-6 text-white">{reel.caption}</p> : null}
+            <Link href={buildPostDetailHref(reel.id)} className="pointer-events-auto mt-1 inline-flex min-h-11 items-center text-sm text-zinc-300 underline underline-offset-4 hover:text-white">View post details</Link>
           </div>
-
-          <div className="pointer-events-auto flex shrink-0 flex-col items-center gap-4">
-            <button
-              type="button"
-              onClick={handleToggleLike}
-            disabled={isPendingLike}
-            aria-pressed={likedByMe}
-              className={`flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur transition ${
-                likedByMe
-                  ? 'border-pink-400/20 bg-pink-500/14 text-white shadow-[0_12px_28px_rgba(236,72,153,0.14)]'
-                  : 'border-white/10 bg-black/35 text-white hover:bg-black/55'
-              }`}
+          <div className="pointer-events-auto flex w-12 shrink-0 flex-col items-center gap-3 text-white">
+            <div className="text-center"><button type="button" onClick={handleToggleLike} disabled={isPendingLike} aria-pressed={likedByMe}
               aria-label={likedByMe ? 'Unlike reel' : 'Like reel'}
-            >
-              <Heart className="h-5 w-5" />
-            </button>
-            <span className="text-xs font-medium text-white">
-              {formatCompactNumber(likeCount)}
-            </span>
-
-            <Link
-              href={buildPostDetailHref(reel.id, true)}
-              className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
-              aria-label="Open comments"
-            >
-              <MessageCircle className="h-5 w-5" />
-            </Link>
-            <span className="text-xs font-medium text-white">
-              {formatCompactNumber(reel.comment_count)}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleToggleSave}
-            disabled={isPendingSave}
-            aria-pressed={savedByMe}
-              className={`flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur transition ${
-                savedByMe
-                  ? 'border-violet-400/20 bg-violet-500/14 text-white shadow-[0_12px_28px_rgba(120,119,255,0.14)]'
-                  : 'border-white/10 bg-black/35 text-white hover:bg-black/55'
-              }`}
+              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (likedByMe ? 'text-violet-300' : 'text-white')}><Heart className={'h-6 w-6 ' + (likedByMe ? 'fill-current' : '')} /></button>
+              <span className="mt-1 block text-xs"><span className="sr-only">Likes: </span>{formatCompactNumber(likeCount)}</span></div>
+            <div className="text-center"><Link href={buildPostDetailHref(reel.id, true)} aria-label="Open comments" className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85"><MessageCircle className="h-6 w-6" /></Link>
+              <span className="mt-1 block text-xs"><span className="sr-only">Comments: </span>{formatCompactNumber(reel.comment_count)}</span></div>
+            <div className="text-center"><button type="button" onClick={handleToggleSave} disabled={isPendingSave} aria-pressed={savedByMe}
               aria-label={savedByMe ? 'Remove save' : 'Save reel'}
-            >
-              <Bookmark className="h-5 w-5" />
-            </button>
-            <span className="text-xs font-medium text-white">
-              {formatCompactNumber(saveCount)}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setIsMuted((current) => !current)}
-              className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
-              aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
-            >
-              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
+              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (savedByMe ? 'text-violet-300' : 'text-white')}><Bookmark className={'h-6 w-6 ' + (savedByMe ? 'fill-current' : '')} /></button>
+              <span className="mt-1 block text-xs"><span className="sr-only">Saves: </span>{formatCompactNumber(saveCount)}</span></div>
+            <button type="button" onClick={() => setIsMuted(current => !current)} aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85">{isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}</button>
           </div>
         </div>
-
-        {active && totalCount > 1 ? (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur">
-              <ChevronDown className="h-3.5 w-3.5" />
-              Scroll for more reels
-            </div>
-          </div>
-        ) : null}
       </div>
     </section>
   )
@@ -519,7 +340,7 @@ export function ReelViewer({
 
     const boundedIndex = Math.max(0, Math.min(reels.length - 1, nextIndex))
     const target = container.children.item(boundedIndex) as HTMLElement | null
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
   }
 
   useEffect(() => {
@@ -649,6 +470,7 @@ export function ReelViewer({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof HTMLElement && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)))) return
       if (event.key === 'ArrowDown' || event.key === 'PageDown' || event.key.toLowerCase() === 'j') {
         event.preventDefault()
         scrollToIndex(activeIndex + 1)
@@ -675,14 +497,14 @@ export function ReelViewer({
   }, [activeIndex, backHref, router])
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black text-white">
+    <main className="fixed inset-0 z-[100] bg-black text-white" aria-label="Reels">
       <div
         ref={containerRef}
         className="h-[100svh] snap-y snap-mandatory overflow-y-auto overscroll-none"
-        style={{ scrollBehavior: 'smooth' }}
+        aria-label="Reels. Use up and down arrows to browse."
       >
         {reels.map((reel, index) => (
-          <div key={reel.id} data-post-id={reel.id} className="h-[100svh]">
+          <div key={reel.id} data-post-id={reel.id} className="h-[100svh] snap-start">
             <ReelCard
               reel={reel}
               viewerProfileId={viewerProfileId}
@@ -695,6 +517,6 @@ export function ReelViewer({
           </div>
         ))}
       </div>
-    </div>
+    </main>
   )
 }

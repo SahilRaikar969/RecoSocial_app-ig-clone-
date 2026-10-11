@@ -4,7 +4,6 @@ import { CommentThreadPanel } from '@/components/feed/comment-thread-panel'
 import { PostDetailDisclosure } from '@/components/feed/post-detail-disclosure'
 import { PostMedia } from '@/components/feed/post-media'
 import { PostViewerControls } from '@/components/post/post-viewer-controls'
-import { AnimatedShellCard } from '@/components/ui/animated-shell-card'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 import { getViewerPostModerationState, type ViewerPostModerationState } from '@/lib/db/queries/post-moderation'
 import { buildPostOpenHref, mediaContextFromReturnTo } from '@/lib/routes/media-links'
@@ -101,21 +100,9 @@ export async function PostCard({
 }: PostCardProps) {
   const categories = normalizeCategories(post.post_categories)
 
-  const isRecommended =
-    typeof post.explore_score === 'number' && post.explore_score > 0
-
-  const isPersonalized =
-    typeof post.feed_score === 'number' && post.feed_score > 0
-
   const mediaUrl = await getMediaUrl(post.media_path)
   const thumbnailUrl = await getMediaUrl(post.thumbnail_path ?? null)
   const authorAvatarUrl = await getMediaUrl(post.author?.avatar_url ?? null)
-
-  const priorityLabel = isRecommended
-    ? 'Recommended'
-    : isPersonalized
-      ? 'For you'
-      : null
 
   const authorDisplayName = post.author?.display_name || 'Creator'
   const authorUsername = post.author?.username || 'creator'
@@ -142,165 +129,40 @@ export async function PostCard({
     : post.comment_count
 
   return (
-    <AnimatedShellCard>
-      <article className="group relative overflow-hidden rounded-[30px] border border-white/10 bg-[#08080b] shadow-[0_18px_48px_rgba(0,0,0,0.28)] transition duration-300 md:hover:border-white/20 md:hover:bg-[#101014]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.05),transparent_24%)] opacity-80" />
-
-        <div className="relative flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
-          <Link
-            href={authorProfileHref}
-            className="flex min-w-0 items-center gap-3 rounded-2xl transition hover:opacity-90"
-          >
-            {authorAvatarUrl ? (
-              <img
-                src={authorAvatarUrl}
-                alt={authorDisplayName}
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border border-white/10 object-cover ring-2 ring-white/5"
-              />
-            ) : (
-              <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                User
-              </div>
-            )}
-
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-sm font-semibold text-white">
-                  {authorUsername}
-                </p>
-
-                {priorityLabel ? (
-                  <span
-                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                      isRecommended
-                        ? 'border-violet-400/20 bg-violet-500/10 text-violet-100'
-                        : 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100'
-                    }`}
-                  >
-                    {priorityLabel}
-                  </span>
-                ) : null}
-
-                {isPostOwner ? (
-                  <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-                    Your post
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="mt-1 truncate text-xs text-zinc-400">
-                {authorDisplayName} · {formatDate(post.created_at)}
-              </p>
-            </div>
-          </Link>
-
-          {showOpenPostLink ? (
-            <Link
-              href={openHref}
-              className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-100 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-            >
-              {openLabel}
-            </Link>
+    <article className="min-w-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+      <header className="flex items-center justify-between gap-3 p-3 sm:p-4">
+        <Link href={authorProfileHref} className="flex min-w-0 items-center gap-3 rounded-lg">
+          {authorAvatarUrl ? (
+            <img src={authorAvatarUrl} alt="" loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-full border border-zinc-700 object-cover" />
+          ) : (
+            <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-zinc-300">{authorDisplayName.slice(0, 1).toUpperCase()}</span>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{authorUsername}</p>
+            <p className="mt-0.5 truncate text-xs text-zinc-400"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time>{isPostOwner ? ' · Your post' : ''}</p>
+          </div>
+        </Link>
+        {showOpenPostLink ? <Link href={openHref} className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white">{openLabel}</Link> : null}
+      </header>
+      <PostMedia mediaType={post.media_type} mediaUrl={mediaUrl} thumbnailUrl={thumbnailUrl} alt={post.caption || 'Post by ' + authorUsername} />
+      <div className="p-3 sm:p-4">
+        <PostEngagementPanel postId={post.id} devProfileId={devProfileId} returnTo={returnTo} initialLikedByMe={post.liked_by_me} initialSavedByMe={post.saved_by_me} initialLikeCount={post.like_count} initialSaveCount={post.save_count ?? 0} commentCount={resolvedCommentCount} commentsHref={'/post/' + post.id} commentsLabel={resolvedCommentCount ? 'View comments' : 'Add a comment'} secondaryHref={openHref} secondaryAriaLabel={post.media_type === 'video' ? 'Watch reel' : 'Open post'} />
+        {post.caption ? (
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-200">
+            <Link href={authorProfileHref} className="mr-2 font-semibold text-white hover:underline">{authorUsername}</Link>
+            {post.caption}
+          </p>
+        ) : null}
+        <PostDetailDisclosure defaultOpen={showAllComments}>
+          {categories.length > 0 ? (
+            <nav aria-label="Post topics" className="flex flex-wrap gap-2">
+              {categories.map(category => <Link key={category.id} href={'/explore?category=' + encodeURIComponent(category.slug)} className="inline-flex min-h-11 items-center rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 hover:bg-zinc-800">{category.name}</Link>)}
+            </nav>
           ) : null}
-        </div>
-
-        <div className="relative">
-          <PostMedia
-            mediaType={post.media_type}
-            mediaUrl={mediaUrl}
-            thumbnailUrl={thumbnailUrl}
-            alt={post.caption ?? 'Post media'}
-            priorityLabel={priorityLabel}
-          />
-        </div>
-
-        <div className="relative px-4 pb-5 pt-4 sm:px-5">
-          <PostEngagementPanel
-            postId={post.id}
-            devProfileId={devProfileId}
-            returnTo={returnTo}
-            initialLikedByMe={post.liked_by_me}
-            initialSavedByMe={post.saved_by_me}
-            initialLikeCount={post.like_count}
-            initialSaveCount={post.save_count ?? 0}
-            commentCount={resolvedCommentCount}
-            commentsHref={`/post/${post.id}`}
-            commentsLabel=""
-            secondaryHref={openHref}
-            secondaryAriaLabel={post.media_type === 'video' ? 'Watch reel' : 'Open post'}
-          />
-
-          {post.caption ? (
-            <div className="mt-3 px-1 py-2">
-              <p className="text-[14px] sm:text-[15px] leading-7 text-zinc-200">
-                <Link
-                  href={authorProfileHref}
-                  className="mr-2 font-semibold text-white transition hover:text-zinc-300"
-                >
-                  {authorUsername}
-                </Link>
-                {post.caption}
-              </p>
-            </div>
-          ) : null}
-
-          <PostDetailDisclosure defaultOpen={showAllComments}>
-            <div className="space-y-4">
-              {categories.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <Link
-                      key={category.id}
-                      href={`/explore?category=${encodeURIComponent(category.slug)}`}
-                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-white"
-                    >
-                      {category.name}
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-
-              {post.reason_labels && post.reason_labels.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {post.reason_labels.slice(0, 3).map((label) => (
-                    <span
-                      key={label}
-                      className="rounded-full border border-emerald-900/60 bg-emerald-950/40 px-3 py-1.5 text-[11px] font-medium text-emerald-200"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            {(showAllComments || (post.comments && post.comments.length > 0)) ? (
-              <div className="rounded-[24px] border border-white/10 bg-black/40 p-4">
-                <CommentThreadPanel
-                  postId={post.id}
-                  profileId={devProfileId}
-                  returnTo={returnTo}
-                  initialComments={post.comments ?? []}
-                  showAllComments={showAllComments}
-                  postOwnerId={post.author_id}
-                />
-              </div>
-            ) : null}
-
-            {!isPostOwner ? (
-              <PostViewerControls
-                postId={post.id}
-                devProfileId={devProfileId}
-                returnTo={returnTo}
-                hiddenByViewer={moderationState.hiddenByViewer}
-                reportedByViewer={moderationState.reportedByViewer}
-                authorProfileHref={authorProfileHref}
-                authorUsername={authorUsername}
-              />
-            ) : null}
-          </PostDetailDisclosure>
-        </div>
-      </article>
-    </AnimatedShellCard>
+          <CommentThreadPanel postId={post.id} profileId={devProfileId} returnTo={returnTo} initialComments={post.comments ?? []} showAllComments={showAllComments} postOwnerId={post.author_id} />
+          {!isPostOwner ? <PostViewerControls postId={post.id} devProfileId={devProfileId} returnTo={returnTo} hiddenByViewer={moderationState.hiddenByViewer} reportedByViewer={moderationState.reportedByViewer} authorProfileHref={authorProfileHref} authorUsername={authorUsername} /> : null}
+        </PostDetailDisclosure>
+      </div>
+    </article>
   )
 }

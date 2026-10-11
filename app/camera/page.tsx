@@ -7,6 +7,8 @@ type CameraPageProps = {
   }>
 }
 
+export const metadata = { title: "Camera" }
+
 export default async function CameraPage({
   searchParams,
 }: CameraPageProps) {

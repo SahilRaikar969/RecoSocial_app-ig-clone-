@@ -1,30 +1,11 @@
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 
 export default function PostNotFound() {
   return (
-    <main className="mx-auto max-w-3xl">
-      <section className="rounded-[32px] border border-zinc-800/90 bg-zinc-950/90 px-6 py-8">
-        <div className="inline-flex rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
-          Post
-        </div>
-
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white">
-          Post not found
-        </h1>
-
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-          The requested post does not exist or is no longer available in the current dataset.
-        </p>
-
-        <div className="mt-6">
-          <Link
-            href="/feed"
-            className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
-          >
-            Return to Feed
-          </Link>
-        </div>
-      </section>
-    </main>
+    <section className="mx-auto max-w-xl py-12 text-center">
+      <h1 className="text-2xl font-semibold text-white">Post not found</h1>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">This post is no longer available.</p>
+      <Link href="/feed" className="rs-button rs-button-primary mt-6">Back to feed</Link>
+    </section>
   )
 }

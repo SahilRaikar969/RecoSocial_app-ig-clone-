@@ -33,9 +33,11 @@ function getErrorMessage(value?: string) {
     case 'mutual_follow_required':
       return 'Only mutual followers can message each other.'
     default:
-      return decodeURIComponent(error)
+      return 'Your message could not be sent. Try again.'
   }
 }
+
+export const metadata = { title: "Conversation" }
 
 export default async function ThreadPage({
   params,
@@ -60,7 +62,7 @@ export default async function ThreadPage({
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/messages"
-          className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+          className="rounded-lg border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
         >
           Back
         </Link>
@@ -76,7 +78,7 @@ export default async function ThreadPage({
       {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
       {successMessage ? <FeedbackBanner>{successMessage}</FeedbackBanner> : null}
 
-      <div className="overflow-hidden rounded-[34px] border border-white/10 bg-black shadow-[0_18px_52px_rgba(0,0,0,0.28)]">
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-black ">
         <MessageThread
           viewerProfileId={profileId}
           otherProfile={data.thread.other_profile}

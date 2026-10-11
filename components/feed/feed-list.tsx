@@ -1,5 +1,5 @@
 import type { FeedBucket, FeedView } from '@/lib/recommendations/feed-contract'
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { PostCard } from '@/components/feed/post-card'
 import { getViewerPostModerationStates } from '@/lib/db/queries/post-moderation'
 
@@ -65,124 +65,19 @@ type FeedListProps = {
   returnToBase?: string
 }
 
-function getEmptyCopy(mode: 'feed' | 'explore') {
-  if (mode === 'explore') {
-    return {
-      eyebrow: 'Discovery empty',
-      title: 'No discovery posts yet',
-      body: 'Try a different search or category to reopen a wider discovery surface.',
-    }
-  }
 
-  return {
-    eyebrow: 'Feed empty',
-    title: 'No feed posts yet',
-    body: 'Follow creators, publish posts, and interact with content to give the home feed stronger ranking signals.',
-  }
-}
-
-function SectionHeader({
-  eyebrow,
-  title,
-  body,
-  count,
-}: {
-  eyebrow: string
-  title: string
-  body: string
-  count: number
-}) {
-  return (
-    <div className="mb-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
-          {eyebrow}
-        </div>
-
-        <div className="rounded-full border border-zinc-800 bg-black px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
-          {count} posts
-        </div>
-      </div>
-
-      <h3 className="mt-4 text-xl font-semibold tracking-tight text-white">{title}</h3>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">{body}</p>
-    </div>
-  )
-}
-
-export async function FeedList({
-  posts,
-  devProfileId,
-  emptyMode = 'feed',
-  feedView = 'for-you',
-  title,
-  subtitle,
-  returnToBase,
-}: FeedListProps) {
+export async function FeedList({ posts, devProfileId, emptyMode = 'feed', feedView = 'for-you', title, subtitle, returnToBase }: FeedListProps) {
   const followingView = emptyMode === 'feed' && feedView === 'following'
   // Membership can only narrow this view; never reorder or backfill it.
   const mainPosts = followingView ? posts.filter(post => post.source_bucket === 'following') : posts
-  const copy = followingView ? {
-    eyebrow: 'Following', title: 'No posts from followed creators yet',
-    body: 'Follow creators to see their public posts here. Broader recommendations are available in For You.',
-  } : getEmptyCopy(emptyMode)
-  const resolvedTitle =
-    title || (emptyMode === 'explore' ? 'Discovery posts' : 'Recommended posts')
-  const resolvedSubtitle =
-    subtitle ||
-    (emptyMode === 'explore'
-      ? 'Ranked content from the current search and category surface.'
-      : 'Ranked using follows, selected interests, likes and saves, with aggregate engagement and post recency.')
-
-  const baseReturnTo =
-    returnToBase || (emptyMode === 'explore' ? '/explore' : '/feed')
+  const baseReturnTo = returnToBase || (emptyMode === 'explore' ? '/explore' : '/feed')
 
   if (!mainPosts.length) {
     return (
-      <section className="rounded-[32px] border border-zinc-800/90 bg-black">
-        <div className="border-b border-zinc-800/80 px-5 py-5 sm:px-6">
-          <div className="inline-flex rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
-            {copy.eyebrow}
-          </div>
-
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            {copy.title}
-          </h2>
-
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-            {copy.body}
-          </p>
-        </div>
-
-        <div className="px-5 py-8 sm:px-6">
-          <div className="flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-dashed border-zinc-800 bg-zinc-950/80 px-6 text-center">
-            <div className="rounded-full border border-zinc-800 bg-black px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Nothing yet
-            </div>
-
-            <p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">
-              {emptyMode === 'explore'
-                ? 'Try a different search or category to widen the discovery surface.'
-                : 'Explore more content, follow creators, and save posts to improve your home feed.'}
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/explore"
-                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-              >
-                Explore
-              </Link>
-
-              <Link
-                href="/profile"
-                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-              >
-                Open profile
-              </Link>
-            </div>
-          </div>
-        </div>
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-10 text-center">
+        <h2 className="text-lg font-semibold text-white">{followingView ? 'No posts from people you follow yet' : emptyMode === 'explore' ? 'No posts found' : 'No posts yet'}</h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-400">{followingView ? 'Find creators to follow in Explore.' : emptyMode === 'explore' ? 'Try another search or topic.' : 'Find creators to follow or share your first post.'}</p>
+        <Link href="/explore" className="mt-5 inline-flex min-h-11 items-center rounded-lg border border-zinc-700 px-4 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">Explore</Link>
       </section>
     )
   }
@@ -193,77 +88,11 @@ export async function FeedList({
   )
 
   return (
-    <section className="rounded-[32px] border border-zinc-800/90 bg-black">
-      <div className="border-b border-zinc-800/80 px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="inline-flex rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
-              {emptyMode === 'explore' ? 'Discovery' : 'Feed'}
-            </div>
-
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-              {resolvedTitle}
-            </h2>
-
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-              {resolvedSubtitle}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
-              {mainPosts.length} posts
-            </span>
-
-            <Link
-              href="/saved"
-              className="rounded-full border border-zinc-700 bg-black px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-            >
-              Saved
-            </Link>
-
-            <Link
-              href="/activity"
-              className="rounded-full border border-zinc-700 bg-black px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-            >
-              Activity
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-[720px] px-3 py-5 sm:px-5 sm:py-6">
-        {mainPosts.length ? (
-          <section>
-            {emptyMode === 'feed' ? (
-              <SectionHeader
-                eyebrow={followingView ? 'Following' : 'For you'}
-                title={followingView ? 'From creators you follow' : 'Personalized posts'}
-                body={followingView ? 'Only followed creators, in ranked order. No broader fallback posts.' : 'All eligible candidates compete in one ranked list. Follows and category interests influence their order.'}
-                count={mainPosts.length}
-              />
-            ) : (
-              <SectionHeader
-                eyebrow="Explore results"
-                title={resolvedTitle}
-                body={resolvedSubtitle}
-                count={mainPosts.length}
-              />
-            )}
-
-            <div className="space-y-8">
-              {mainPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  devProfileId={devProfileId}
-                  returnTo={baseReturnTo}
-                  moderationState={moderationStates.get(post.id)}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
+    <section aria-label={title || (emptyMode === 'explore' ? 'Discover posts' : 'Feed posts')} className="mx-auto w-full max-w-[640px]">
+      {emptyMode === 'explore' ? <h2 className="mb-4 text-lg font-semibold text-white">{title || 'Discover posts'}</h2> : null}
+      {subtitle ? <p className="mb-4 text-sm text-zinc-400">{subtitle}</p> : null}
+      <div className="space-y-5">
+        {mainPosts.map((post) => <PostCard key={post.id} post={post} devProfileId={devProfileId} returnTo={baseReturnTo} moderationState={moderationStates.get(post.id)} />)}
       </div>
     </section>
   )

@@ -635,10 +635,6 @@ export function CameraStudio({
                   Video
                 </button>
               </div>
-
-              <p className="mt-4 text-sm leading-7 text-zinc-400">
-                Camera requests portrait or landscape constraints based on the screen and keeps the preview surface filled on phone and desktop.
-              </p>
             </section>
 
             <section className="rounded-[26px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(18,18,24,0.98),rgba(8,8,10,0.98))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.20)]">
@@ -706,15 +702,6 @@ export function CameraStudio({
                 placeholder="Write a caption..."
                 className="w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
               />
-
-              <div className="mt-4 rounded-2xl border border-zinc-800 bg-black px-4 py-4">
-                <p className="text-sm font-medium text-white">Camera view behavior</p>
-                <ul className="mt-3 space-y-2 text-sm text-zinc-400">
-                  <li>• Front camera stays mirrored like a normal selfie preview.</li>
-                  <li>• Live camera surface now fills the full visible frame.</li>
-                  <li>• Upload fallback still stays available if capture is unstable.</li>
-                </ul>
-              </div>
             </section>
           </aside>
         </div>

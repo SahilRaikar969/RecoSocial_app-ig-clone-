@@ -55,14 +55,14 @@ for (const index of [0, 6, 12]) test(`only the active reel fully preloads and im
   }
 })
 
-test('current poster has eager high priority; distant and decorative images stay lazy', () => {
+test('current poster has eager high priority; distant posters stay lazy without decorative duplicates', () => {
   const images = tags(render(6), 'img')
-  assert.equal(images.length, 26)
+  assert.equal(images.length, 13)
   const eager = images.filter(image => attribute(image, 'loading') === 'eager')
   assert.equal(eager.length, 1)
   assert.equal(attribute(eager[0], 'fetchPriority'), 'high')
   assert.match(attribute(eager[0], 'src'), /thumb-6\.png/)
-  for (const image of images.filter(image => attribute(image, 'alt') === '')) {
+  for (const image of images.filter(image => attribute(image, 'loading') !== 'eager')) {
     assert.equal(attribute(image, 'loading'), 'lazy')
     assert.equal(attribute(image, 'decoding'), 'async')
   }

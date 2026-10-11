@@ -1,53 +1,24 @@
 'use client'
 
-import { useRef, useTransition } from 'react'
+import { useFormStatus } from 'react-dom'
 import { toggleFollow } from '@/actions/follows'
 
-type FollowButtonProps = {
-  followerId: string
-  followingId: string
-  followedByMe: boolean
-  returnTo: string
+type FollowButtonProps = { followerId: string; followingId: string; followedByMe: boolean; returnTo: string }
+
+function FollowSubmit({ followedByMe }: { followedByMe: boolean }) {
+  const { pending } = useFormStatus()
+  return <button type="submit" disabled={pending} aria-pressed={followedByMe}
+    className={'inline-flex min-h-11 items-center justify-center rounded-lg border px-4 text-sm font-semibold disabled:opacity-60 ' + (followedByMe ? 'border-zinc-700 bg-zinc-900 text-white hover:bg-zinc-800' : 'border-violet-500 bg-violet-600 text-white hover:bg-violet-500')}>
+    {pending ? 'Updating…' : followedByMe ? 'Following' : 'Follow'}
+  </button>
 }
 
-export function FollowButton({
-  followerId,
-  followingId,
-  followedByMe,
-  returnTo,
-}: FollowButtonProps) {
-  const formRef = useRef<HTMLFormElement | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  function handleClick() {
-    if (!formRef.current) return
-
-    startTransition(() => {
-      formRef.current?.requestSubmit()
-    })
-  }
-
-  return (
-    <>
-      <form ref={formRef} action={toggleFollow} className="hidden">
-        <input type="hidden" name="follower_id" value={followerId} />
-        <input type="hidden" name="following_id" value={followingId} />
-        <input type="hidden" name="followed" value={followedByMe ? 'true' : 'false'} />
-        <input type="hidden" name="return_to" value={returnTo} />
-      </form>
-
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-          followedByMe
-            ? 'border-zinc-700 bg-zinc-950/85 text-white hover:-translate-y-0.5 hover:border-zinc-500 hover:bg-zinc-900'
-            : 'border-white bg-[linear-gradient(90deg,#ffffff_0%,#f4f4ff_100%)] !text-black shadow-[0_14px_32px_rgba(255,255,255,0.08)] hover:-translate-y-0.5 hover:opacity-90'
-        } disabled:cursor-not-allowed disabled:opacity-70`}
-      >
-        {isPending ? (followedByMe ? 'Updating...' : 'Following...') : followedByMe ? 'Following' : 'Follow'}
-      </button>
-    </>
-  )
+export function FollowButton({ followerId, followingId, followedByMe, returnTo }: FollowButtonProps) {
+  return <form action={toggleFollow}>
+    <input type="hidden" name="follower_id" value={followerId} />
+    <input type="hidden" name="following_id" value={followingId} />
+    <input type="hidden" name="followed" value={followedByMe ? 'true' : 'false'} />
+    <input type="hidden" name="return_to" value={returnTo} />
+    <FollowSubmit followedByMe={followedByMe} />
+  </form>
 }

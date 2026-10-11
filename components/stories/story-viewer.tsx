@@ -70,11 +70,10 @@ export function StoryViewer({
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(120,119,255,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_24%)]" />
+    <main className="relative min-h-[100svh] overflow-hidden bg-black text-white">
 
-      <div className="relative mx-auto flex min-h-screen max-w-[520px] items-center justify-center px-4 py-6">
-        <div className="relative w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
+      <div className="relative mx-auto flex min-h-[100svh] max-w-[520px] items-center justify-center px-0 py-0 sm:px-4 sm:py-4">
+        <div className="relative w-full overflow-hidden bg-black sm:rounded-xl sm:border sm:border-zinc-800">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex gap-1 px-4 pt-4">
             {stories.map((story, storyIndex) => (
               <div
@@ -86,7 +85,7 @@ export function StoryViewer({
                     storyIndex < index
                       ? 'w-full bg-white'
                       : storyIndex === index
-                        ? 'w-full bg-pink-400'
+                        ? 'w-full bg-violet-400'
                         : 'w-0 bg-transparent'
                   }`}
                 />
@@ -94,11 +93,12 @@ export function StoryViewer({
             ))}
           </div>
 
-          <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between gap-3 px-4 pt-7">
+          <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between gap-3 px-4 pt-[max(28px,env(safe-area-inset-top))]">
             <div className="flex min-w-0 items-center gap-3">
               <Link
                 href="/feed"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white transition hover:bg-black/75"
+                aria-label="Back to feed"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white transition hover:bg-black/75"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
@@ -113,14 +113,15 @@ export function StoryViewer({
               <button
                 type="button"
                 onClick={() => setMuted((current) => !current)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white transition hover:bg-black/75"
+                aria-label={muted ? 'Unmute story' : 'Mute story'}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white transition hover:bg-black/75"
               >
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </button>
             ) : null}
           </div>
 
-          <div className="relative aspect-[9/16] bg-black">
+          <div className="relative h-[100svh] bg-black sm:aspect-[9/16] sm:h-auto sm:max-h-[calc(100svh-32px)]">
             {currentStory.media_type === 'video' ? (
               <video
                 ref={videoRef}
@@ -146,8 +147,9 @@ export function StoryViewer({
             <button
               type="button"
               onClick={goPrevious}
+              aria-label="Previous story"
               disabled={!previousStoryId}
-              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/55 p-2 text-white transition hover:bg-black/75 disabled:opacity-30"
+              className="absolute left-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 p-2 text-white transition hover:bg-black/75 disabled:opacity-30"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -155,15 +157,16 @@ export function StoryViewer({
             <button
               type="button"
               onClick={goNext}
+              aria-label="Next story"
               disabled={!nextStoryId}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/55 p-2 text-white transition hover:bg-black/75 disabled:opacity-30"
+              className="absolute right-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 p-2 text-white transition hover:bg-black/75 disabled:opacity-30"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
 
             {currentStory.caption ? (
-              <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/92 via-black/20 to-transparent px-5 pb-5 pt-24">
-                <p className="rounded-[22px] border border-white/10 bg-black/35 px-4 py-3 text-sm leading-7 text-zinc-100">
+              <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/92 via-black/20 to-transparent px-4 pb-[max(20px,env(safe-area-inset-bottom))] pt-16">
+                <p className="max-h-40 overflow-y-auto rounded-lg bg-black/65 px-3 py-2 text-sm leading-6 text-zinc-100">
                   {currentStory.caption}
                 </p>
               </div>

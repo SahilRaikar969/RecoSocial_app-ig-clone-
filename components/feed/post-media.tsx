@@ -164,7 +164,7 @@ export function PostMedia({
         ref={containerRef}
         className="relative flex aspect-[4/5] items-center justify-center bg-[#08080b] text-sm text-zinc-500"
       >
-        <div className="rounded-full border border-zinc-800 bg-black px-4 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+        <div className="rounded-full border border-zinc-800 bg-black px-4 py-1 text-sm font-medium text-zinc-400">
           Media unavailable
         </div>
       </div>
@@ -174,24 +174,24 @@ export function PostMedia({
   return (
     <div
       ref={containerRef}
-      className="group relative overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+      className="group relative overflow-hidden border-y border-zinc-800 bg-black"
     >
       {priorityLabel ? (
-        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-xs font-medium text-white">
           {priorityLabel}
         </div>
       ) : null}
 
       {isVideo ? (
         <>
-          {!isVideoLoaded ? <MediaSkeleton className="aspect-[4/5] w-full" /> : null}
 
           <button
             type="button"
             onClick={handleVideoClick}
-            className="relative block w-full cursor-pointer bg-black"
+            className="relative block aspect-[4/5] w-full cursor-pointer bg-black"
             aria-label={isActuallyPlaying ? 'Pause video' : 'Play video'}
           >
+            {!isVideoLoaded ? <MediaSkeleton className="pointer-events-none absolute inset-0 aspect-[4/5] w-full" /> : null}
             <video
               ref={videoRef}
               src={mediaUrl}
@@ -201,7 +201,7 @@ export function PostMedia({
               muted
               preload="metadata"
               className={`aspect-[4/5] w-full bg-black object-contain transition duration-300 ${
-                isVideoLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
+                isVideoLoaded ? 'opacity-100' : 'opacity-0'
               }`}
               onLoadedData={() => setIsVideoLoaded(true)}
               onCanPlay={() => setIsVideoLoaded(true)}
@@ -216,9 +216,9 @@ export function PostMedia({
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/88 via-black/12 to-transparent px-4 pb-4 pt-16">
             <div className="flex items-end justify-between gap-3">
-              <div className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+              <div className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-medium text-white">
                 {isMobileViewport
-                  ? 'Tap to play'
+                  ? isActuallyPlaying ? 'Playing' : 'Tap to play'
                   : feedLikeMode
                     ? isActuallyPlaying
                       ? 'Playing'
@@ -232,13 +232,13 @@ export function PostMedia({
                 <button
                   type="button"
                   onClick={() => setIsMuted((current) => !current)}
-                  className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
+                  className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
                   aria-label={isMuted ? 'Unmute video' : 'Mute video'}
                 >
                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </button>
 
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white">
                   {isActuallyPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </div>
               </div>
@@ -249,7 +249,7 @@ export function PostMedia({
         <SmartImage
           src={mediaUrl}
           alt={alt}
-          className="aspect-[4/5] w-full bg-black object-cover"
+          className="aspect-[4/5] w-full bg-black object-contain"
           fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-[#08080b] text-sm text-zinc-500"
           fallbackText="Media unavailable"
         />

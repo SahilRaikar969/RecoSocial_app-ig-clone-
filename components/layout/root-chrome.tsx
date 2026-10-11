@@ -15,12 +15,14 @@ export function RootChrome({ children }: RootChromeProps) {
   const isAuthRoute =
     pathname === '/login' ||
     pathname === '/signup' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
     pathname.startsWith('/login/') ||
     pathname.startsWith('/signup/')
 
   const isLandingRoute = pathname === '/'
   const isReelRoute = pathname.startsWith('/reel/')
-  const isStoryViewerRoute = /^\/stories\/[^/]+$/.test(pathname)
+  const isStoryViewerRoute = pathname !== '/stories/create' && /^\/stories\/[^/]+$/.test(pathname)
   const isCameraRoute = pathname.startsWith('/camera')
 
   if (

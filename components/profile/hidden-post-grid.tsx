@@ -27,31 +27,31 @@ export async function HiddenPostGrid({
         return (
           <section
             key={post.id}
-            className="overflow-hidden rounded-[32px] border border-zinc-800/90 bg-black"
+            className="overflow-hidden rounded-xl border border-zinc-800/90 bg-black"
           >
             <div className="border-b border-zinc-800/80 px-5 py-4 sm:px-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <div className="inline-flex rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
-                    Hidden from your loop
+                    Hidden post
                   </div>
 
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                    This post is currently removed from your feed and explore surfaces, but the full card remains available here until you restore it.
+                    Hidden from your feed and Explore.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href={authorHref}
-                    className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
                   >
-                    View creator
+                    View profile
                   </Link>
 
                   <Link
                     href={`/post/${post.id}`}
-                    className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
                   >
                     Open post
                   </Link>
@@ -62,9 +62,9 @@ export async function HiddenPostGrid({
                     <input type="hidden" name="return_to" value={returnTo} />
                     <button
                       type="submit"
-                      className="rounded-2xl border border-white bg-white px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                      className="rounded-lg border border-white bg-white px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                     >
-                      Restore to surfaces
+                      Restore post
                     </button>
                   </form>
                 </div>

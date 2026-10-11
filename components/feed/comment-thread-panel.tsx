@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useOptimistic, useState, useTransition } from 'react'
+import { useId, useMemo, useOptimistic, useState, useTransition } from 'react'
 import { createCommentInline } from '@/actions/comments'
 
 type CommentAuthor = {
@@ -58,6 +58,9 @@ export function CommentThreadPanel({
   showAllComments = false,
 }: CommentThreadPanelProps) {
   const router = useRouter()
+  const inputId = useId()
+  const countId = inputId + "-count"
+  const errorId = inputId + "-error"
   const [comments, addOptimisticComment] = useOptimistic(
     initialComments,
     (current, comment: InitialComment) => [comment, ...current.filter((item) => item.id !== comment.id)]
@@ -115,80 +118,35 @@ export function CommentThreadPanel({
   }
 
   return (
-    <>
+    <section aria-label="Comments">
+      <h3 className="mb-3 text-sm font-semibold text-white">Comments</h3>
       {visibleComments.length > 0 ? (
-        <div className="space-y-3">
-          {visibleComments.map((comment) => {
-            const commentAuthorName = comment.author?.display_name || 'User'
-            const commentAuthorUsername = comment.author?.username || 'user'
-            const commentProfileHref = getProfileHref(
-              comment.author?.id ?? comment.author_id,
-              profileId
-            )
-
+        <ul className="space-y-4">
+          {visibleComments.map(comment => {
+            const username = comment.author?.username || 'user'
+            const profileHref = getProfileHref(comment.author?.id ?? comment.author_id, profileId)
             return (
-              <div
-                key={comment.id}
-                className="rounded-[22px] border border-zinc-800 bg-zinc-950/80 px-4 py-4 transition hover:border-zinc-700"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-[10px] uppercase tracking-[0.16em] text-zinc-500 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-                    User
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-7 text-zinc-200">
-                      <Link
-                        href={commentProfileHref}
-                        className="mr-2 font-semibold text-white transition hover:text-zinc-300"
-                      >
-                        {commentAuthorUsername}
-                      </Link>
-                      {comment.body}
-                    </p>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-                      <span>{formatDateStable(comment.created_at)}</span>
-                      <span>{commentAuthorName}</span>
-                    </div>
-                  </div>
+              <li key={comment.id} className="flex items-start gap-3">
+                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-medium text-zinc-300">{username.slice(0, 1).toUpperCase()}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-200"><Link href={profileHref} className="mr-2 font-semibold text-white hover:underline">{username}</Link>{comment.body}</p>
+                  <time dateTime={comment.created_at} className="mt-1 block text-xs text-zinc-400">{formatDateStable(comment.created_at)}</time>
                 </div>
-              </div>
+              </li>
             )
           })}
+        </ul>
+      ) : <p className="text-sm text-zinc-400">No comments yet.</p>}
+      <form onSubmit={handleSubmit} aria-busy={isPending} className="mt-4 border-t border-zinc-800 pt-4">
+        <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-zinc-200">Add a comment</label>
+        {mutationError ? <p id={errorId} role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
+        <textarea id={inputId} name="body" disabled={isPending} value={value} onChange={event => setValue(event.target.value)} placeholder="Write a comment…" maxLength={280} rows={2} aria-describedby={countId + (mutationError ? ' ' + errorId : '')} className="min-h-24 w-full resize-y rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-base leading-6 text-white placeholder:text-zinc-400 disabled:opacity-60" />
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p id={countId} className="text-xs text-zinc-400">{value.length}/280 characters</p>
+          <button type="submit" disabled={isPending || trimmedLength === 0} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-400">{isPending ? 'Posting…' : 'Post'}</button>
         </div>
-      ) : null}
-
-      <div className={visibleComments.length > 0 ? 'mt-4 border-t border-zinc-800/80 pt-4' : ''}>
-        {mutationError ? <p role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
-        <form onSubmit={handleSubmit}>
-          <div className="rounded-[24px] border border-zinc-800 bg-[linear-gradient(180deg,rgba(18,18,24,0.96),rgba(9,9,12,0.96))] p-3 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
-            <div className="flex flex-col gap-3">
-              <textarea
-                name="body"
-                disabled={isPending}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Write a comment..."
-                maxLength={280}
-                rows={2}
-                className="min-h-[88px] w-full resize-none rounded-2xl border border-zinc-700 bg-black/80 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-500 focus:border-violet-500/30 focus:shadow-[0_0_0_1px_rgba(120,119,255,0.12)]"
-              />
-
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-zinc-500">{value.length}/280</p>
-                <button
-                  type="submit"
-                  disabled={isPending || trimmedLength === 0}
-                  className="rounded-full bg-[linear-gradient(90deg,#ffffff_0%,#f4f4ff_100%)] px-4 py-2.5 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:opacity-90 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-700"
-                >
-                  {isPending ? 'Posting...' : 'Post'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
-      </div>
-    </>
+        <span role="status" className="sr-only">{isPending ? 'Posting comment…' : ''}</span>
+      </form>
+    </section>
   )
 }

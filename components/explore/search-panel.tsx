@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 
 type SearchPanelProps = {
   initialQuery?: string
@@ -17,11 +17,6 @@ export function SearchPanel({
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(initialQuery)
   const [isPending, startTransition] = useTransition()
-
-  const hasAnyFilter = useMemo(
-    () => Boolean(query.trim() || activeCategory),
-    [query, activeCategory]
-  )
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -54,69 +49,17 @@ export function SearchPanel({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(16,16,22,0.96),rgba(8,8,10,0.98))] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_18px_60px_rgba(0,0,0,0.24)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,255,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_26%)]" />
-
-      <div className="relative px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-100">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Discovery controls
-            </div>
-
-            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-              Search and refine
-            </h2>
-
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">
-              Search creators and captions while keeping the current discovery route intact.
-            </p>
-          </div>
-
-          {activeCategory ? (
-            <div className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white">
-              Active topic: {activeCategory}
-            </div>
-          ) : null}
+    <form role="search" aria-label="Explore search" aria-busy={isPending} onSubmit={handleSubmit}>
+      <label htmlFor="explore-search" className="sr-only">Search creators and captions</label>
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-0 flex-1 basis-44">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+          <input id="explore-search" name="q" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search creators and captions" className="min-h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 py-3 pl-10 pr-3 text-base text-white placeholder:text-zinc-400" />
         </div>
-
-        <form aria-busy={isPending} onSubmit={handleSubmit} className="mt-5">
-          <div className="flex flex-col gap-3 md:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <input
-                aria-label="Search creators and captions"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search creators, captions, topics..."
-                className="w-full rounded-2xl border border-zinc-700 bg-black/75 px-11 py-3.5 text-sm text-white shadow-[0_12px_30px_rgba(0,0,0,0.18)] outline-none placeholder:text-zinc-500 transition focus:border-violet-500/30 focus:bg-black focus:shadow-[0_0_0_1px_rgba(120,119,255,0.12),0_18px_45px_rgba(120,119,255,0.08)]"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="rounded-2xl border border-white bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:opacity-90"
-              >
-                {isPending ? 'Searching…' : 'Search'}
-              </button>
-
-              {hasAnyFilter ? (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950/85 px-5 py-3.5 text-sm font-semibold text-zinc-200 transition hover:-translate-y-0.5 hover:border-zinc-500 hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                  Clear
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <span role="status" className="sr-only">{isPending ? 'Loading search results…' : ''}</span>
-        </form>
+        <button type="submit" disabled={isPending} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-60">{isPending ? 'Searching…' : 'Search'}</button>
+        {query.trim() ? <button type="button" onClick={handleClear} aria-label="Clear search" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-zinc-700 px-3 text-zinc-300 hover:bg-zinc-800"><X aria-hidden="true" className="h-5 w-5" /></button> : null}
       </div>
-    </section>
+      <span role="status" className="sr-only">{isPending ? 'Loading search results…' : ''}</span>
+    </form>
   )
 }

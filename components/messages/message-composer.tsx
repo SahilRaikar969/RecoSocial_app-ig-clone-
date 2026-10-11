@@ -14,13 +14,15 @@ export function MessageComposer({ threadId }: MessageComposerProps) {
       <input type="hidden" name="thread_id" value={threadId} />
       <input type="hidden" name="return_to" value={`/messages/${threadId}`} />
 
-      <div className="flex items-end gap-2 rounded-[28px] border border-white/10 bg-white/[0.04] p-2">
+      <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-2">
         <textarea
           name="body"
+          aria-label="Message"
+          required
           rows={1}
           maxLength={1200}
           placeholder="Message..."
-          className="max-h-32 min-h-[46px] flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-zinc-500"
+          className="max-h-32 min-h-[46px] flex-1 resize-none bg-transparent px-3 py-3 text-base leading-6 text-white outline-none placeholder:text-zinc-500"
         />
 
         <button
