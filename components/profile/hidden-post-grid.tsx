@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { unhidePost } from '@/actions/post-moderation'
-import { PostCard } from '@/components/feed/post-card'
+import { PostCard, type PostCardPost } from '@/components/feed/post-card'
 import { getViewerPostModerationStates } from '@/lib/db/queries/post-moderation'
 
 type HiddenPostGridProps = {
-  posts: any[]
+  posts: PostCardPost[]
   devProfileId: string
   returnTo: string
 }

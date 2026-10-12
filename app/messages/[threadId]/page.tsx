@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { PageShell } from '@/components/ui/page-shell'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { MessageThread } from '@/components/messages/message-thread'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getThreadPageData } from '@/lib/db/queries/messages'
 
 type ThreadPageProps = {
@@ -44,7 +44,7 @@ export default async function ThreadPage({
 }: ThreadPageProps) {
   const { threadId } = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const data = await getThreadPageData(profileId, String(threadId || '').trim())
 

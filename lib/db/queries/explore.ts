@@ -1,3 +1,4 @@
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { getPublicExplore } from '@/lib/db/queries/public-content'
 import type { CategoryJoin, PublicProfile } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
@@ -24,23 +25,6 @@ function getRecencyBoost(createdAt: string, now: number) {
   if (ageHours <= 168) return 1
 
   return 0
-}
-
-function normalizeNestedCategory(item: CategoryJoin) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
 }
 
 function addCategoryWeights(

@@ -46,6 +46,7 @@ function hooks({ pending = false } = {}) {
     begin() { cursor = 0 }, transitions, optimistic,
     react: {
       useId: () => 'test-unique-id',
+      useSyncExternalStore(_subscribe, _snapshot, serverSnapshot) { return serverSnapshot() },
       useState(initial) {
         const slot = cursor++
         if (!(slot in state)) state[slot] = initial
@@ -183,6 +184,7 @@ test('media preserves metadata preload and a full play target while loading; ima
     'next/navigation': { usePathname: () => '/feed' },
     '@/components/ui/media-skeleton': { MediaSkeleton: 'Skeleton' },
     '@/components/ui/smart-image': { SmartImage: 'Image' },
+    '@/lib/media/use-muted-preference': { useMutedPreference: () => [true, () => {}] },
   })
   const output = nodes(PostMedia({ mediaType: 'video', mediaUrl: 'https://media.example/post.mp4', thumbnailUrl: 'https://media.example/post.jpg' }))
   const video = output.find(node => node.type === 'video')
@@ -206,7 +208,7 @@ const serverMocks = {
   '@/components/explore/search-panel': { SearchPanel: 'SearchPanel' },
   '@/components/explore/search-results': { SearchResults: 'SearchResults' },
   '@/components/explore/creator-spotlight-list': { CreatorSpotlightList: 'Creators' },
-  '@/lib/auth/get-dev-session': { getOptionalSession: async () => ({ profileId: 'viewer' }) },
+  '@/lib/auth/session': { getOptionalSession: async () => ({ profileId: 'viewer' }) },
   '@/lib/db/queries/feed': { getFeedData: async () => ({ posts: [], summary: {}, pagination: { page: 1, pageCount: 1 } }) },
   '@/lib/db/queries/stories': { getStoriesRail: async () => [] },
   '@/lib/db/queries/explore': { getExploreData: async () => ({ posts: [], creators: [], categories: [{ id: 'travel', name: 'Travel', slug: 'travel' }] }), filterDiscoveryPosts: posts => posts },

@@ -81,7 +81,7 @@ function onboarding(client, session = async () => ({ profileId: 'verified-actor'
     'next/cache': { revalidatePath() {} },
     'next/navigation': navigation,
     '@/lib/supabase/server': { createClient: async () => client },
-    '@/lib/auth/get-dev-session': { getDevSession: session },
+    '@/lib/auth/session': { requireSession: session },
     '@/lib/routes/safe-return-path': routes,
   }).saveOnboardingPreferences
 }
@@ -194,7 +194,7 @@ test('notification marking remains owner-scoped and sanitizes navigation', async
     'next/navigation': navigation,
     'next/cache': { revalidatePath() {} },
     '@/lib/supabase/server': { createClient: async () => ({ from: () => query }) },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: 'verified-actor' }) },
+    '@/lib/auth/session': { requireSession: async () => ({ profileId: 'verified-actor' }) },
     '@/lib/routes/safe-return-path': routes,
   }).markNotificationReadAndRedirect
   await expectRedirect(() => action(form([
@@ -210,14 +210,14 @@ for (const [pathname, user, destination] of [
   ['/feed', null, null], ['/login', { id: 'actor' }, '/feed'], ['/feed', { id: 'actor' }, null],
 ]) {
   test(`middleware preserves refreshed cookie batches and private caching for ${pathname} ${user ? 'signed in' : 'signed out'}`, async () => {
-    const middleware = loadTs('middleware.ts', {
+    const middleware = loadTs('proxy.ts', {
       'next/server': { NextResponse },
       '@supabase/ssr': { createServerClient(_url, _key, options) { return { auth: { async getUser() {
         options.cookies.setAll([{ name: 'session.0', value: 'first', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } }])
         options.cookies.setAll([{ name: 'session.1', value: 'second', options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true } }])
         return { data: { user } }
       } } } } },
-    }).middleware
+    }).proxy
     const request = new NextRequest(`https://recosocial.invalid${pathname}?test=1`)
     const response = await middleware(request)
     assert.equal(response.headers.get('Cache-Control'), 'private, no-store')
@@ -255,10 +255,10 @@ function profileSessionClient({ user = { id: 'verified-actor', email: 'actor@exa
       }
     },
   }
-  const session = loadTs('lib/auth/get-dev-session.ts', {
+  const session = loadTs('lib/auth/session.ts', {
     'next/navigation': navigation,
     '@/lib/supabase/server': { createClient: async () => client },
-  }).getDevSession
+  }).requireSession
   return { session, reads, writes }
 }
 
@@ -348,7 +348,7 @@ function pageMocks() {
     '@/components/auth/auth-submit-button': { AuthSubmitButton: 'AuthSubmitButton' },
     '@/components/auth/password-field': { PasswordField: 'PasswordField' },
     '@/actions/notifications': { markNotificationsRead() {} },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: 'verified-actor' }) },
+    '@/lib/auth/session': { requireSession: async () => ({ profileId: 'verified-actor' }) },
     '@/lib/db/queries/onboarding': { getOnboardingCategories: async () => [] },
     '@/lib/db/queries/notifications': { getNotificationsPageData: async () => ({ notifications: [], summary: { total: 0, unread: 0, follow: 0, like: 0, comment: 0 } }) },
     '@/components/onboarding/onboarding-form': { OnboardingForm: 'OnboardingForm' },

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceHero } from '@/components/ui/surface-hero'
 import { OnboardingForm } from '@/components/onboarding/onboarding-form'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getOnboardingCategories } from '@/lib/db/queries/onboarding'
 
 type OnboardingPageProps = {
@@ -17,7 +17,7 @@ export default async function OnboardingPage({
   searchParams,
 }: OnboardingPageProps) {
   const params = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const categories = await getOnboardingCategories()
   const supabase=await createClient()
   const preferences=await supabase.from('profile_category_preferences').select('category_id').eq('profile_id',profileId)

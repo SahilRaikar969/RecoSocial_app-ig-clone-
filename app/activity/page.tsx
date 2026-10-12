@@ -4,7 +4,7 @@ import { ActivityList } from '@/components/activity/activity-list'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getNotificationsPageData } from '@/lib/db/queries/notifications'
 
 export const metadata = { title: 'Activity' }
@@ -67,7 +67,7 @@ export default async function ActivityPage({
 }: ActivityPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const filter = normalizeFilter(resolvedSearchParams?.filter)
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const { notifications } = await getNotificationsPageData(profileId, filter)
   const errorMessage = getErrorMessage(resolvedSearchParams?.error)

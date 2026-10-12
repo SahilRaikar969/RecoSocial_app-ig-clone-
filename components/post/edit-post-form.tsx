@@ -3,8 +3,9 @@
 import { SmartImage } from '@/components/ui/smart-image'
 
 import Link from 'next/link'
+import { useObjectUrl } from '@/lib/media/use-object-url'
 import { useMediaFormAction } from '@/lib/media/use-media-form-action'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { updatePost } from '@/actions/posts'
 
@@ -95,7 +96,7 @@ export function EditPostForm({
     () =>
       post.post_categories
         .map((item) => item.categories?.name)
-        .filter(Boolean) as string[],
+        .filter((name): name is string => Boolean(name)),
     [post.post_categories]
   )
 
@@ -107,13 +108,14 @@ export function EditPostForm({
   const [mediaType, setMediaType] = useState<'image' | 'video'>(post.media_type)
   const [caption, setCaption] = useState(post.caption || '')
   const [mediaUrl, setMediaUrl] = useState(post.media_path || '')
-  const [thumbnailUrl, setThumbnailUrl] = useState(post.thumbnail_path || '')
+  const [enteredThumbnailUrl, setThumbnailUrl] = useState(post.thumbnail_path || '')
+  const thumbnailUrl = mediaType === 'video' ? enteredThumbnailUrl || post.thumbnail_path || '' : ''
 
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
 
-  const [mediaPreviewUrl, setMediaPreviewUrl] = useState('')
-  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState('')
+  const mediaPreviewUrl = useObjectUrl(mediaFile)
+  const thumbnailPreviewUrl = useObjectUrl(thumbnailFile)
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(existingCategoryNames)
   const [clientError, setClientError] = useState('')
@@ -122,52 +124,14 @@ export function EditPostForm({
     thumbnail_file: mediaType === 'video' && thumbnailSourceMode === 'upload' ? thumbnailFile : null,
   })
 
-  useEffect(() => {
-    if (!mediaFile) {
-      setMediaPreviewUrl('')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(mediaFile)
-    setMediaPreviewUrl(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [mediaFile])
-
-  useEffect(() => {
-    if (!thumbnailFile) {
-      setThumbnailPreviewUrl('')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(thumbnailFile)
-    setThumbnailPreviewUrl(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [thumbnailFile])
-
-  useEffect(() => {
+  function changeMediaType(nextType: 'image' | 'video') {
     setClientError('')
-  }, [
-    mediaSourceMode,
-    thumbnailSourceMode,
-    mediaType,
-    caption,
-    mediaUrl,
-    thumbnailUrl,
-    mediaFile,
-    thumbnailFile,
-    selectedCategories,
-  ])
-
-  useEffect(() => {
-    if (mediaType === 'image') {
+    setMediaType(nextType)
+    if (nextType === 'image') {
       setThumbnailFile(null)
       setThumbnailUrl('')
-    } else if (!thumbnailUrl && post.thumbnail_path) {
-      setThumbnailUrl(post.thumbnail_path)
     }
-  }, [mediaType, post.thumbnail_path, thumbnailUrl])
+  }
 
   const isPreviewableUrl = useMemo(() => isDirectPreviewableUrl(mediaUrl), [mediaUrl])
   const isPreviewableThumbnailUrl = useMemo(
@@ -256,7 +220,7 @@ export function EditPostForm({
   }
 
   return (
-    <form action={submitMedia} onSubmit={handleSubmit} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+    <form action={submitMedia} onSubmit={handleSubmit} onChangeCapture={() => setClientError('')} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
       <input type="hidden" name="post_id" value={post.id} />
       <input type="hidden" name="expected_updated_at" value={post.updated_at} />
       <input type="hidden" name="dev_profile_id" value={profileId} />
@@ -270,12 +234,12 @@ export function EditPostForm({
         <fieldset className="min-w-0 space-y-4 rounded-xl border border-zinc-800 p-4 sm:p-5">
           <legend className="px-1 text-base font-semibold text-white">Media</legend>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Media type">
-            <button type="button" aria-pressed={mediaType === 'image'} onClick={() => setMediaType('image')} className={`rs-button ${mediaType === 'image' ? 'rs-button-primary' : ''}`}>Image</button>
-            <button type="button" aria-pressed={mediaType === 'video'} onClick={() => setMediaType('video')} className={`rs-button ${mediaType === 'video' ? 'rs-button-primary' : ''}`}>Video</button>
+            <button type="button" aria-pressed={mediaType === 'image'} onClick={() => changeMediaType('image')} className={`rs-button ${mediaType === 'image' ? 'rs-button-primary' : ''}`}>Image</button>
+            <button type="button" aria-pressed={mediaType === 'video'} onClick={() => changeMediaType('video')} className={`rs-button ${mediaType === 'video' ? 'rs-button-primary' : ''}`}>Video</button>
           </div>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Media source">
-            <button type="button" aria-pressed={mediaSourceMode === 'upload'} onClick={() => setMediaSourceMode('upload')} className={`rs-button ${mediaSourceMode === 'upload' ? 'border-violet-400 text-violet-200' : ''}`}>Upload replacement</button>
-            <button type="button" aria-pressed={mediaSourceMode === 'url'} onClick={() => setMediaSourceMode('url')} className={`rs-button ${mediaSourceMode === 'url' ? 'border-violet-400 text-violet-200' : ''}`}>Keep or change link</button>
+            <button type="button" aria-pressed={mediaSourceMode === 'upload'} onClick={() => { setClientError(''); setMediaSourceMode('upload') }} className={`rs-button ${mediaSourceMode === 'upload' ? 'border-violet-400 text-violet-200' : ''}`}>Upload replacement</button>
+            <button type="button" aria-pressed={mediaSourceMode === 'url'} onClick={() => { setClientError(''); setMediaSourceMode('url') }} className={`rs-button ${mediaSourceMode === 'url' ? 'border-violet-400 text-violet-200' : ''}`}>Keep or change link</button>
           </div>
           {mediaSourceMode === 'upload' ? (
             <div>
@@ -294,8 +258,8 @@ export function EditPostForm({
             <fieldset className="min-w-0 space-y-3 border-t border-zinc-800 pt-4">
               <legend className="text-sm font-medium text-zinc-200">Cover image (optional)</legend>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Cover image source">
-                <button type="button" aria-pressed={thumbnailSourceMode === 'upload'} onClick={() => setThumbnailSourceMode('upload')} className="rs-button">Upload cover</button>
-                <button type="button" aria-pressed={thumbnailSourceMode === 'url'} onClick={() => setThumbnailSourceMode('url')} className="rs-button">Use cover link</button>
+                <button type="button" aria-pressed={thumbnailSourceMode === 'upload'} onClick={() => { setClientError(''); setThumbnailSourceMode('upload') }} className="rs-button">Upload cover</button>
+                <button type="button" aria-pressed={thumbnailSourceMode === 'url'} onClick={() => { setClientError(''); setThumbnailSourceMode('url') }} className="rs-button">Use cover link</button>
               </div>
               {thumbnailSourceMode === 'upload' ? (
                 <div>
@@ -325,7 +289,7 @@ export function EditPostForm({
           <div className="mt-3 flex flex-wrap gap-2" aria-describedby="post-topics-hint">
             {categories.map((category) => {
               const active = selectedCategories.includes(category.name)
-              return <button key={category.id} type="button" aria-pressed={active} onClick={() => handleCategoryToggle(category.name)} className={`rs-button max-w-full break-words ${active ? 'border-violet-400 bg-violet-500/15 text-violet-200' : ''}`}>{category.name}</button>
+              return <button key={category.id} type="button" aria-pressed={active} onClick={() => { setClientError(''); handleCategoryToggle(category.name) }} className={`rs-button max-w-full break-words ${active ? 'border-violet-400 bg-violet-500/15 text-violet-200' : ''}`}>{category.name}</button>
             })}
           </div>
         </fieldset>

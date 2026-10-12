@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createCameraSession, cameraFailureMessage, captureDimensions } from '@/components/camera/camera-session'
 import { safeReturnPath } from '@/lib/routes/safe-return-path'
@@ -147,58 +147,7 @@ export function CameraStudio({
     [mode]
   )
 
-  useEffect(() => {
-    const hasCameraApi =
-      typeof navigator !== 'undefined' &&
-      !!navigator.mediaDevices &&
-      typeof navigator.mediaDevices.getUserMedia === 'function'
-
-    setCameraSupported(hasCameraApi && window.isSecureContext)
-
-    if (!hasCameraApi || !window.isSecureContext) {
-      setCameraError(!window.isSecureContext ? 'Camera access requires a secure HTTPS connection. Use upload instead.' : 'This browser/device does not support in-app camera access. Use upload instead.')
-      setSource('upload')
-      return
-    }
-
-    if (source === 'camera' && !capturedFile && !cameraSuspended && !document.hidden) {
-      void startCamera()
-    }
-
-    return () => {
-      stopCamera()
-    }
-  }, [facingMode, deviceId, source, mode, capturedFile, cameraSuspended])
-
-  useEffect(() => {
-    const hide = () => {
-      if (document.hidden) {
-        stopCamera()
-        setCameraSuspended(true)
-      }
-    }
-    const leave = () => { stopCamera(); setCameraSuspended(true) }
-    document.addEventListener('visibilitychange', hide)
-    window.addEventListener('pagehide', leave)
-    return () => {
-      document.removeEventListener('visibilitychange', hide)
-      window.removeEventListener('pagehide', leave)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!recording) return
-    const started = Date.now()
-    setRecordingSeconds(0)
-    const timer = window.setInterval(() => {
-      const seconds = Math.floor((Date.now() - started) / 1000)
-      setRecordingSeconds(seconds)
-      if (seconds >= 60) stopVideoRecording()
-    }, 250)
-    return () => window.clearInterval(timer)
-  }, [recording])
-
-  function stopCamera() {
+  const stopCamera = useCallback(() => {
     cameraGeneration.current += 1
     const recorder = recorderRef.current
     recorderRef.current = null
@@ -215,9 +164,9 @@ export function CameraStudio({
     if (videoRef.current) videoRef.current.srcObject = null
     setCameraReady(false)
     setRecording(false)
-  }
+  }, [])
 
-  async function startCamera() {
+  const startCamera = useCallback(async () => {
     stopCamera()
     const generation = cameraGeneration.current
     setCameraError('')
@@ -250,7 +199,57 @@ export function CameraStudio({
       stopCamera()
       setCameraError(cameraFailureMessage(error))
     }
-  }
+  }, [deviceId, facingMode, mode, stopCamera])
+
+  useEffect(() => {
+    const hasCameraApi =
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function'
+
+    setCameraSupported(hasCameraApi && window.isSecureContext)
+
+    if (!hasCameraApi || !window.isSecureContext) {
+      setCameraError(!window.isSecureContext ? 'Camera access requires a secure HTTPS connection. Use upload instead.' : 'This browser/device does not support in-app camera access. Use upload instead.')
+      setSource('upload')
+      return
+    }
+
+    if (source === 'camera' && !capturedFile && !cameraSuspended && !document.hidden) {
+      void startCamera()
+    }
+
+    return () => {
+      stopCamera()
+    }
+  }, [source, capturedFile, cameraSuspended, startCamera, stopCamera])
+
+  useEffect(() => {
+    const hide = () => {
+      if (document.hidden) {
+        stopCamera()
+        setCameraSuspended(true)
+      }
+    }
+    const leave = () => { stopCamera(); setCameraSuspended(true) }
+    document.addEventListener('visibilitychange', hide)
+    window.addEventListener('pagehide', leave)
+    return () => {
+      document.removeEventListener('visibilitychange', hide)
+      window.removeEventListener('pagehide', leave)
+    }
+  }, [stopCamera])
+
+  useEffect(() => {
+    if (!recording) return
+    const started = Date.now()
+    const timer = window.setInterval(() => {
+      const seconds = Math.floor((Date.now() - started) / 1000)
+      setRecordingSeconds(seconds)
+      if (seconds >= 60) stopVideoRecording()
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [recording])
 
   function clearCapture() {
     if (publishBusy.current) return
@@ -348,7 +347,7 @@ export function CameraStudio({
       stopCamera()
       setCameraError('Video recording failed. Use upload instead.')
     }
-    try { recorder.start(1000); setRecording(true) } catch {
+    try { recorder.start(1000); setRecordingSeconds(0); setRecording(true) } catch {
       stopCamera()
       setCameraError('Video recording could not start. Use upload instead.')
     }
@@ -501,6 +500,7 @@ export function CameraStudio({
                 </>
               ) : previewUrl ? (
                 resolvedMediaType === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Captured blob URLs are private local previews; native events control publication readiness.
                   <img
                     src={previewUrl}
                     alt="Captured photo preview"

@@ -1,10 +1,12 @@
+import type { PostCardPost } from '@/components/feed/post-card'
+import { buildCategoryHighlights, resolvePostsWithMedia } from '@/lib/profile/post-presentation'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { HiddenPostGrid } from '@/components/profile/hidden-post-grid'
 import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
 import { ProfileSurfaceTabs } from '@/components/profile/profile-surface-tabs'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getHiddenPosts } from '@/lib/db/queries/hidden'
 import { getLikedPosts } from '@/lib/db/queries/liked'
 import { getProfilePageData } from '@/lib/db/queries/profile'
@@ -65,45 +67,6 @@ function buildReturnTo(tab: SelfProfileTab) {
   return `/profile?tab=${tab}`
 }
 
-function buildCategoryHighlights(posts: any[]) {
-  const counts = new Map<string, { slug: string; name: string; count: number }>()
-
-  for (const post of posts) {
-    const categories = Array.isArray(post?.post_categories)
-      ? post.post_categories
-      : []
-
-    for (const item of categories) {
-      const category = Array.isArray(item?.categories)
-        ? item.categories[0] ?? null
-        : item?.categories ?? null
-
-      if (!category?.slug || !category?.name) continue
-
-      const existing = counts.get(category.slug)
-
-      counts.set(category.slug, {
-        slug: category.slug,
-        name: category.name,
-        count: (existing?.count ?? 0) + 1,
-      })
-    }
-  }
-
-  return Array.from(counts.values())
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, 8)
-}
-
-async function resolvePostsWithMedia(posts: any[]) {
-  return Promise.all(
-    posts.map(async (post) => ({
-      ...post,
-      resolved_media_url: await getMediaUrl(post.media_path),
-      resolved_thumbnail_url: await getMediaUrl(post.thumbnail_path ?? null),
-    }))
-  )
-}
 
 export const metadata = { title: "Your profile" }
 
@@ -113,7 +76,7 @@ export default async function SelfProfilePage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const activeTab = normalizeTab(resolvedSearchParams?.tab)
 
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const collectionLoaders = {
     saved: getSavedPosts,
@@ -156,7 +119,7 @@ export default async function SelfProfilePage({
       emptyTitle: string
       emptyBody: string
       count: number
-      posts: any[]
+      posts: PostCardPost[]
       returnTo: string
       useHiddenGrid?: boolean
     }

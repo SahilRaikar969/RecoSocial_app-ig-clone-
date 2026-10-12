@@ -5,7 +5,7 @@ import { SearchResults } from '@/components/explore/search-results'
 import { SearchPanel } from '@/components/explore/search-panel'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceEmpty } from '@/components/ui/surface-empty'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { filterDiscoveryPosts, getExploreData } from '@/lib/db/queries/explore'
 import { getSearchCreators } from '@/lib/db/queries/search'
 

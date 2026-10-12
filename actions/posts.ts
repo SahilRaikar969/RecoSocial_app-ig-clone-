@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { cleanupFreshUploads, fileField, knownDatabaseRejection, MediaMutationError, mediaFailure, mutationId, resolveMedia, validateMedia, type MediaInput } from '@/lib/media/server-media'
 
 type Failure = { ok: false; error: string }
@@ -13,7 +13,7 @@ function invalidatePosts(profileId: string, postId: string) {
   for (const path of ['/feed','/explore','/profile',`/profile/${profileId}`,`/post/${postId}`]) revalidatePath(path)
 }
 async function savePost(form: FormData, createNew: boolean): Promise<Failure | never> {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const client = await createClient()
   const fresh: string[] = []
   let databaseStarted = false
@@ -65,7 +65,7 @@ async function savePost(form: FormData, createNew: boolean): Promise<Failure | n
 export async function createPost(form: FormData) { return savePost(form,true) }
 export async function updatePost(form: FormData) { return savePost(form,false) }
 export async function deletePost(form: FormData) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const client = await createClient()
   const id = String(form.get('post_id') || '').trim()
   const returnTo = String(form.get('return_to') || '/feed')

@@ -5,7 +5,7 @@ import { FeedList } from '@/components/feed/feed-list'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 import { StoryRail } from '@/components/stories/story-rail'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { getFeedData } from '@/lib/db/queries/feed'
 import { getStoriesRail } from '@/lib/db/queries/stories'
 

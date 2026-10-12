@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { EditPostForm } from '@/components/post/edit-post-form'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceHero } from '@/components/ui/surface-hero'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getAllCategories } from '@/lib/db/queries/categories'
 import { getEditablePost } from '@/lib/db/queries/post-edit'
 
@@ -23,7 +23,7 @@ export default async function EditPostPage({
 }: EditPostPageProps) {
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const postId = String(resolvedParams?.postId || '').trim()
 

@@ -65,7 +65,7 @@ function fixture(path, answer = () => ({ data: null, error: null }), extras = {}
     'next/cache': { revalidatePath(path) { invalidated.push(path) } },
     '@/lib/routes/safe-return-path': routes,
     '@/lib/supabase/server': { createClient: async () => client },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: 'actor' }) },
+    '@/lib/auth/session': { requireSession: async () => ({ profileId: 'actor' }) },
     ...extras,
   })
   return { actions, calls, invalidated }
@@ -126,7 +126,7 @@ for (const [table, fn, field, input] of [
     const deletion = f.calls.find((call) => call.method === 'delete')
     assert.ok(deletion.filters.some(([key, value]) => key === (table === 'follows' ? 'follower_id' : 'profile_id') && value === 'actor'))
     const unauthenticated = fixture(`actions/${table}.ts`, undefined, {
-      '@/lib/auth/get-dev-session': { getDevSession: async () => navigation.redirect('/login') },
+      '@/lib/auth/session': { requireSession: async () => navigation.redirect('/login') },
     })
     await expectRedirect(() => unauthenticated.actions[fn]({ ...input, [field]: false }), '/login')
     assert.deepEqual(unauthenticated.calls, [])

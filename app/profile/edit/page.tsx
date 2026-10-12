@@ -1,7 +1,7 @@
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceHero } from '@/components/ui/surface-hero'
 import { EditProfileForm } from '@/components/profile/edit-profile-form'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getEditableProfile } from '@/lib/db/queries/profile-edit'
 
 export const metadata = { title: "Edit profile" }
@@ -12,7 +12,7 @@ export default async function EditProfilePage({
   searchParams?: Promise<{ error?: string }>
 }) {
   const params = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const profile = await getEditableProfile(profileId)
 
   const error = params?.error || ''

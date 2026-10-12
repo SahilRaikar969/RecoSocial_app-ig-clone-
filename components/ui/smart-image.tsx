@@ -59,6 +59,7 @@ function SmartImageSource({
     <div className={`relative overflow-hidden ${className}`}>
       {!loaded ? <MediaSkeleton className="absolute inset-0 h-full w-full" /> : null}
 
+      {/* eslint-disable-next-line @next/next/no-img-element -- Native events and blob/signed sources preserve the M5 media readiness and retry lifecycle. */}
       <img
         key={attempt}
         src={normalizedSrc}

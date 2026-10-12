@@ -131,7 +131,7 @@ function load(file, context = fixture(), overrides = {}) {
     'next/cache': { revalidatePath: path => context.invalidations.push(path) },
     'next/navigation': { notFound:()=>{throw new Error('not-found')}, redirect: path => { throw new Error(`redirect:${path}`) } },
     '@/lib/supabase/server': { createClient: async () => context.client },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: context.viewer }), getOptionalSession:async()=>context.viewer?({profileId:context.viewer}):null },
+    '@/lib/auth/session': { requireSession: async () => ({ profileId: context.viewer }), getOptionalSession:async()=>context.viewer?({profileId:context.viewer}):null },
     '@/lib/db/queries/post-moderation': {
       getHiddenPostIds: async () => context.state.hidden,
       getViewerPostModerationStates: async (_profileId, ids) => new Map(ids.map(id => [id, {

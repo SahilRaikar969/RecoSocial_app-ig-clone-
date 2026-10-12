@@ -3,12 +3,12 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { buildReturnUrl, safeReturnPath } from '@/lib/routes/safe-return-path'
 
 export async function saveOnboardingPreferences(formData: FormData) {
   // The RPC derives its owner from auth.uid(); never accept a form's profile_id.
-  await getDevSession()
+  await requireSession()
   const supabase = await createClient()
   const returnTo = safeReturnPath(String(formData.get('return_to') || ''), '/onboarding')
   const categoryNames = [

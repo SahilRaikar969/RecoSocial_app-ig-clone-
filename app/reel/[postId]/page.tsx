@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { ReelViewer } from '@/components/reels/reel-viewer'
 import { getReelPageData } from '@/lib/db/queries/reels'
 

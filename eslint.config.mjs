@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Immutable audit snapshots and copied build output are evidence, not app source.
+    "docs/recosocial-audit/**",
   ]),
 ]);
 

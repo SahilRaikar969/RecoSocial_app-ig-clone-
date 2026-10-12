@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useObjectUrl } from '@/lib/media/use-object-url'
 import { useMediaFormAction } from '@/lib/media/use-media-form-action'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { updateProfile } from '@/actions/profile'
 import { AvatarCropEditor } from '@/components/profile/avatar-crop-editor'
@@ -61,27 +62,11 @@ export function EditProfileForm({
   const [bio, setBio] = useState(profile.bio || '')
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
+  const avatarPreviewUrl = useObjectUrl(avatarFile)
   const [avatarCropDataUrl, setAvatarCropDataUrl] = useState('')
   const [removeAvatar, setRemoveAvatar] = useState(false)
   const [clientError, setClientError] = useState('')
   const submitMedia = useMediaFormAction(updateProfile, 'profile', setClientError, { avatar_file: removeAvatar ? null : avatarFile })
-
-  useEffect(() => {
-    if (!avatarFile) {
-      setAvatarPreviewUrl('')
-      return
-    }
-
-    const objectUrl = URL.createObjectURL(avatarFile)
-    setAvatarPreviewUrl(objectUrl)
-
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [avatarFile])
-
-  useEffect(() => {
-    setClientError('')
-  }, [displayName, username, bio, avatarUrl, avatarFile, avatarCropDataUrl, removeAvatar])
 
   const previewName = displayName.trim() || 'Unnamed profile'
   const previewUsername = normalizeUsernameInput(username) || 'username'
@@ -141,7 +126,7 @@ export function EditProfileForm({
   }
 
   return (
-    <form action={submitMedia} onSubmit={handleSubmit} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)]">
+    <form action={submitMedia} onSubmit={handleSubmit} onChangeCapture={() => setClientError('')} className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)]">
       <input type="hidden" name="profile_id" value={profile.id} />
       <input type="hidden" name="remove_avatar" value={removeAvatar ? 'true' : 'false'} />
       <input type="hidden" name="return_to" value="/profile/edit" />
@@ -220,6 +205,7 @@ export function EditProfileForm({
       <aside className="min-w-0 self-start rounded-xl border border-zinc-800 p-5 lg:sticky lg:top-24">
         <h2 className="mb-5 text-sm font-medium text-zinc-400">Profile preview</h2>
         <div className="flex min-w-0 items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element -- Local blob/data previews must stay in the browser without an image optimization request. */}
           {resolvedAvatarPreview ? <img src={resolvedAvatarPreview} alt="Profile photo preview" className="h-20 w-20 shrink-0 rounded-full object-cover" /> : <div aria-hidden="true" className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xl font-semibold text-white">{previewInitials}</div>}
           <div className="min-w-0">
             <p className="break-words text-base font-semibold text-white">{previewName}</p>

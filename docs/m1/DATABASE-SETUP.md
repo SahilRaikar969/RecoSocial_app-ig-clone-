@@ -28,7 +28,7 @@ For a build without a running service, set `NEXT_PUBLIC_SUPABASE_URL=http://127.
 
 ## Clean installation only
 
-The active SQL is **not an upgrade for an existing project**. Before any service installation, inspect public relations, Auth users, existing Auth triggers, the `media` bucket and **all** Storage object policies. Use an isolated new project only. A future optional local Supabase CLI stack needs Docker; it was not started or forced for M1. Do not link or push these migrations to the existing project.
+The active SQL is **not an upgrade for an existing project**. Before any service installation, inspect public relations, Auth users, existing Auth triggers, the `media` bucket and **all** Storage object policies. Use an isolated new project only. A future optional local Supabase CLI stack needs Docker; it was not started or forced for M1. As of M7, the unused CLI is no longer a project dependency; an operator who chooses that separate workflow must install a reviewed current CLI explicitly. Repository tests and database type generation use PGlite and do not require it. Do not link or push these migrations to the existing project.
 
 The first migration refuses any existing public table/partitioned table/view/materialized view/foreign table or Auth user. The second refuses an existing `media` bucket or any `storage.objects` policy. Each file has its own transaction: a Storage refusal can happen after the application baseline committed. Preflight both areas before starting. If interrupted, inspect which migration committed; do not delete existing data or replay the baseline blindly. The scripts do not resolve existing migration history and contain no production reset/drop/truncate procedure.
 

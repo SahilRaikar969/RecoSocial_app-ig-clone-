@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { areMutualFollowers, getOrCreateDirectThread } from '@/lib/db/queries/messages'
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
@@ -12,7 +12,7 @@ function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
 }
 
 export async function startConversation(formData: FormData) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const otherProfileId = String(formData.get('other_profile_id') || '').trim()
 
   if (!profileId || !otherProfileId) {
@@ -30,7 +30,7 @@ export async function startConversation(formData: FormData) {
 
 export async function sendDirectMessage(formData: FormData) {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const threadId = String(formData.get('thread_id') || '').trim()
   const returnTo = String(formData.get('return_to') || `/messages/${threadId}`).trim()

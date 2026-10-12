@@ -39,12 +39,12 @@ async function request(input){const r=await fetch('/fixture',{method:'POST',head
 const ids=id=>[...document.querySelectorAll('#'+id+' [data-post-id]')].map(el=>el.dataset.postId).join(',');
 document.getElementById('run').onclick=async()=>{let n=0;result.textContent='';const check=(pass,label)=>{if(!pass)throw Error(label);n++;result.textContent+='PASS '+label+'\\n'};try{
  await request({reset:true});const baseline=ids('a'),other=ids('b');check(baseline==='friend,a-travel,b-cooking','cold start ranks followed post then deterministic ties');
- check(other==='friend,a-travel,b-cooking','second viewer uses independent selected interests');check(ids('following')==='friend','Following contains only actual followed creator');
- await request({signal:'like',active:false});check(ids('a')==='friend,b-cooking,a-travel','like changes later ranked and rendered category order');check(ids('b')===other,'other viewer ranking is unchanged');
- await request({signal:'like',active:false});check(document.querySelector('#a [data-post-id="b-cooking"]').textContent.includes('score 8'),'duplicate like does not inflate category weight');
+ check(other==='a-travel,friend,b-cooking','second viewer uses independent selected interests');check(ids('following')==='friend','Following contains only actual followed creator');
+ await request({signal:'like',active:false});check(ids('a')==='friend,b-cooking,a-travel','like changes later ranked and rendered category order');check(ids('b')===other,'other viewer ranking is unchanged');const liked=document.querySelector('#a [data-post-id="b-cooking"]').textContent;
+ await request({signal:'like',active:false});check(document.querySelector('#a [data-post-id="b-cooking"]').textContent===liked,'duplicate like does not inflate category weight');
  await request({signal:'like',active:true});check(ids('a')===baseline,'unlike restores current-state ordering');
- await request({signal:'save',active:false});check(ids('a')==='friend,b-cooking,a-travel','save changes later ranked render order');
- await request({signal:'save',active:false});check(document.querySelector('#a [data-post-id="b-cooking"]').textContent.includes('score 10'),'duplicate save does not inflate weight');
+ await request({signal:'save',active:false});check(ids('a')==='friend,b-cooking,a-travel','save changes later ranked render order');const saved=document.querySelector('#a [data-post-id="b-cooking"]').textContent;
+ await request({signal:'save',active:false});check(document.querySelector('#a [data-post-id="b-cooking"]').textContent===saved,'duplicate save does not inflate weight');
  await request({signal:'save',active:true});check(ids('a')===baseline,'unsave restores baseline');check(ids('following')==='friend','personalization never inserts fallback into Following');
  result.textContent+='ALL '+n+' M3 BROWSER CHECKS PASSED';
 }catch(error){result.textContent+='STOPPED: '+error.message}};

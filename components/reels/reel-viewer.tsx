@@ -18,6 +18,7 @@ import { toggleSaveInline } from '@/actions/saves'
 import { optimisticEngagement } from '@/lib/mutations/optimistic-engagement'
 import { SmartImage } from '@/components/ui/smart-image'
 import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
+import { useMutedPreference } from '@/lib/media/use-muted-preference'
 import { useVideoPlayback } from '@/lib/media/use-video-playback'
 
 type ReelAuthor = {
@@ -102,7 +103,7 @@ function ReelCard({
     { active: reel.saved_by_me, count: reel.save_count }, optimisticEngagement
   )
   const [mutationError, setMutationError] = useState('')
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, toggleMuted] = useMutedPreference(MUTE_STORAGE_KEY)
   const [showCenterIndicator, setShowCenterIndicator] = useState(false)
   const [isPendingLike, startLikeTransition] = useTransition()
   const [isPendingSave, startSaveTransition] = useTransition()
@@ -112,21 +113,6 @@ function ReelCard({
   const hasVideo = Boolean(reel.media_url)
   const hasPoster = Boolean(reel.thumbnail_url)
   const { videoRef, playing: isPlaying, ready: videoReady, failed: videoFailed, blocked, buffering, toggle, retry } = useVideoPlayback(reel.media_url, active, true, isMuted)
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(MUTE_STORAGE_KEY)
-      setIsMuted(stored !== '0')
-    } catch {
-      setIsMuted(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(MUTE_STORAGE_KEY, isMuted ? '1' : '0')
-    } catch {}
-  }, [isMuted])
 
   useEffect(() => {
     return () => {
@@ -256,7 +242,7 @@ function ReelCard({
               aria-label={savedByMe ? 'Remove save' : 'Save reel'}
               className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (savedByMe ? 'text-violet-300' : 'text-white')}><Bookmark className={'h-6 w-6 ' + (savedByMe ? 'fill-current' : '')} /></button>}
               <span className="mt-1 block text-xs"><span className="sr-only">Saves: </span>{formatCompactNumber(saveCount)}</span></div>
-            {hasVideo ? <button type="button" onClick={() => setIsMuted(current => !current)} aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
+            {hasVideo ? <button type="button" onClick={toggleMuted} aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85">{isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}</button> : null}
           </div>
         </div>

@@ -3,11 +3,11 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { cleanupFreshUploads, fileField, knownDatabaseRejection, MediaMutationError, mediaFailure, mutationId, resolveMedia, validateMedia, type MediaInput } from '@/lib/media/server-media'
 
 export async function createStory(form: FormData) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const client = await createClient()
   const fresh: string[] = []
   let safeToClean = true
@@ -44,7 +44,7 @@ export async function createStory(form: FormData) {
 }
 
 export async function markStoryViewed(storyId: string) {
-  const {profileId} = await getDevSession()
+  const {profileId} = await requireSession()
   const client = await createClient()
   if (!storyId) return {ok:false as const,error:'The story is unavailable.'}
   const {error} = await client.from('story_views').upsert({story_id:storyId,viewer_id:profileId},{onConflict:'story_id,viewer_id',ignoreDuplicates:true})

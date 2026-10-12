@@ -2,7 +2,7 @@ import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceEmpty } from '@/components/ui/surface-empty'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getSavedPosts } from '@/lib/db/queries/saved'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 
@@ -12,7 +12,7 @@ export const metadata = { title: "Saved" }
 
 export default async function SavedPage({ searchParams }: SavedPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const posts = await getSavedPosts(profileId)
   const postsWithResolvedMedia = await Promise.all(posts.map(async (post) => ({
     ...post,

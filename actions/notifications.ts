@@ -3,12 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { buildReturnUrl, safeReturnPath } from '@/lib/routes/safe-return-path'
 
 export async function markNotificationsRead() {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const { error } = await supabase
     .from('notifications')
@@ -26,7 +26,7 @@ export async function markNotificationsRead() {
 
 export async function markNotificationReadAndRedirect(formData: FormData) {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const notificationId = String(formData.get('notification_id') || '').trim()
   const targetHref = safeReturnPath(String(formData.get('target_href') || ''), '/activity')

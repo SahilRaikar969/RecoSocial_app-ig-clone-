@@ -1,22 +1,6 @@
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
-
-function normalizeNestedCategory(item: any) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
-}
 
 export async function getReportedPosts(devProfileId: string) {
   const supabase = await createClient()
@@ -62,11 +46,11 @@ export async function getReportedPosts(devProfileId: string) {
 
   if (error) throw new Error(error.message)
 
-  const reportedRows = (data ?? []).filter((row: any) => row.posts)
+  const reportedRows = (data ?? []).filter((row) => row.posts)
 
   if (!reportedRows.length) return []
 
-  const reportedPosts = reportedRows.map((row: any) => ({
+  const reportedPosts = reportedRows.map((row) => ({
     ...row.posts,
     __report_reason: row.reason,
     __report_details: row.details,
@@ -77,10 +61,10 @@ export async function getReportedPosts(devProfileId: string) {
     reportedPosts.map((post: { id: string }) => post.id)
   )
 
-  const profileIds = reportedPosts.flatMap((post: any) => [
+  const profileIds = reportedPosts.flatMap((post) => [
     post.author_id,
     ...(Array.isArray(post.comments)
-      ? post.comments.map((comment: any) => comment.author_id)
+      ? post.comments.map((comment) => comment.author_id)
       : []),
   ])
 
@@ -94,10 +78,10 @@ export async function getReportedPosts(devProfileId: string) {
   if (profilesError) throw new Error(profilesError.message)
 
   const profileMap = new Map(
-    (profilesData ?? []).map((profile: any) => [profile.id, profile])
+    (profilesData ?? []).map((profile) => [profile.id, profile])
   )
 
-  return reportedPosts.map((post: any) => {
+  return reportedPosts.map((post) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
     const comments = Array.isArray(post.comments) ? post.comments : []
@@ -106,7 +90,7 @@ export async function getReportedPosts(devProfileId: string) {
       : []
 
     comments.sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
@@ -124,11 +108,11 @@ export async function getReportedPosts(devProfileId: string) {
       ...post,
       author: profileMap.get(post.author_id) ?? null,
       like_count: likes.length,
-      liked_by_me: likes.some((like: any) => like.profile_id === devProfileId),
+      liked_by_me: likes.some((like) => like.profile_id === devProfileId),
       save_count: saveCounts.get(post.id) ?? 0,
-      saved_by_me: saves.some((save: any) => save.profile_id === devProfileId),
+      saved_by_me: saves.some((save) => save.profile_id === devProfileId),
       comment_count: comments.length,
-      comments: comments.map((comment: any) => ({
+      comments: comments.map((comment) => ({
         ...comment,
         author: profileMap.get(comment.author_id) ?? null,
       })),

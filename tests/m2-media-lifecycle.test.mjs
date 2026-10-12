@@ -51,7 +51,7 @@ function fixture(options={}) {
   }
   const mocks={
     '@/lib/supabase/server':{createClient:async()=>client},'@/lib/supabase/browser':{createClient:()=>client},
-    '@/lib/auth/get-dev-session':{getDevSession:async()=>({profileId:owner})},
+    '@/lib/auth/session':{requireSession:async()=>({profileId:owner})},
     'next/navigation':{redirect(url){throw new Redirect(url)}},'next/cache':{revalidatePath(path){invalidated.push(path)}},
   }
   return {client,mocks,uploads,removed,rpcs,writes,invalidated,actions:load('actions/posts.ts',mocks)}

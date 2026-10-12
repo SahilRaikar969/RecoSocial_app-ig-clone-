@@ -64,7 +64,7 @@ function load(file, context) {
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'Fragment' }
     if (name === 'next/link') return { default: 'Link' }
     if (name === 'next/navigation') return { redirect: path => { throw new Error(`redirect:${path}`) } }
-    if (name === '@/lib/auth/get-dev-session') return { getDevSession: async () => ({ profileId: context.viewer }), getOptionalSession: async () => ({ profileId: context.viewer }) }
+    if (name === '@/lib/auth/session') return { requireSession: async () => ({ profileId: context.viewer }), getOptionalSession: async () => ({ profileId: context.viewer }) }
     if (name === '@/lib/supabase/server') return { createClient: async () => context.client }
     if (name === '@/lib/media/get-media-url') return { getMediaUrl: async value => { context.media.push(value); return value } }
     if (name === '@/actions/post-moderation') return { unhidePost() {} }

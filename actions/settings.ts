@@ -5,14 +5,14 @@ import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 
 function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
   return buildReturnUrl(returnTo, params, '/settings')
 }
 
 export async function updateThemePreference(formData: FormData) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const theme = String(formData.get('theme') || '').trim()
   const returnTo = String(formData.get('return_to') || '/settings').trim()
 
@@ -51,7 +51,7 @@ export async function updateThemePreference(formData: FormData) {
 }
 
 export async function updatePrivacyPreference() {
-  await getDevSession()
+  await requireSession()
   // Retain an authenticated rejection for stale forms / direct action calls.
   redirect('/settings?error=private_accounts_unavailable')
 }

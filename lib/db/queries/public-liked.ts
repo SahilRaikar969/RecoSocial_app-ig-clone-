@@ -1,22 +1,6 @@
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
-
-function normalizeNestedCategory(item: any) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
-}
 
 export async function getPublicLikedPosts(
   viewerProfileId: string | null,
@@ -62,7 +46,7 @@ export async function getPublicLikedPosts(
 
   if (error) throw new Error(error.message)
 
-  const likedPosts = (data ?? []).map((row: any) => row.posts).filter(Boolean)
+  const likedPosts = (data ?? []).map((row) => row.posts).filter(Boolean)
 
   if (!likedPosts.length) return []
 
@@ -71,10 +55,10 @@ export async function getPublicLikedPosts(
     likedPosts.map((post: { id: string }) => post.id)
   )
 
-  const profileIds = likedPosts.flatMap((post: any) => [
+  const profileIds = likedPosts.flatMap((post) => [
     post.author_id,
     ...(Array.isArray(post.comments)
-      ? post.comments.map((comment: any) => comment.author_id)
+      ? post.comments.map((comment) => comment.author_id)
       : []),
   ])
 
@@ -88,10 +72,10 @@ export async function getPublicLikedPosts(
   if (profilesError) throw new Error(profilesError.message)
 
   const profileMap = new Map(
-    (profilesData ?? []).map((profile: any) => [profile.id, profile])
+    (profilesData ?? []).map((profile) => [profile.id, profile])
   )
 
-  return likedPosts.map((post: any) => {
+  return likedPosts.map((post) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
     const comments = Array.isArray(post.comments) ? post.comments : []
@@ -100,7 +84,7 @@ export async function getPublicLikedPosts(
       : []
 
     comments.sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
@@ -108,11 +92,11 @@ export async function getPublicLikedPosts(
       ...post,
       author: profileMap.get(post.author_id) ?? null,
       like_count: likes.length,
-      liked_by_me: likes.some((like: any) => like.profile_id === viewerProfileId),
+      liked_by_me: likes.some((like) => like.profile_id === viewerProfileId),
       save_count: saveCounts.get(post.id) ?? 0,
-      saved_by_me: saves.some((save: any) => save.profile_id === viewerProfileId),
+      saved_by_me: saves.some((save) => save.profile_id === viewerProfileId),
       comment_count: comments.length,
-      comments: comments.map((comment: any) => ({
+      comments: comments.map((comment) => ({
         ...comment,
         author: profileMap.get(comment.author_id) ?? null,
       })),

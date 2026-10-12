@@ -35,7 +35,7 @@ function fixture({duplicate=false,conflict=false,mutual=true,insertError=null,th
  return {data:stored.get(call.filters.find(([key])=>key==='id')?.[1])??null,error:null}
  }).then(resolve,reject)}
  }}}
- const actions=load('actions/message-delivery.ts',{'@/lib/supabase/server':{createClient:async()=>client},'@/lib/auth/get-dev-session':{getDevSession:async()=>({profileId:viewer})},'@/lib/db/queries/messages':{areMutualFollowers:async()=>mutual}})
+ const actions=load('actions/message-delivery.ts',{'@/lib/supabase/server':{createClient:async()=>client},'@/lib/auth/session':{requireSession:async()=>({profileId:viewer})},'@/lib/db/queries/messages':{areMutualFollowers:async()=>mutual}})
  return {actions,calls,stored}
 }
 test('inline send uses verified sender and supplied request UUID; replay does not insert again',async()=>{
@@ -102,7 +102,7 @@ test('inbox route preserves PostgreSQL microseconds in its next-page cursor',asy
   'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{redirect(){throw Error('Unexpected redirect')}},
   '@/components/ui/page-shell':{PageShell:()=>null},'@/components/ui/feedback-banner':{FeedbackBanner:()=>null},
   'next/link':{default:()=>null},'@/components/messages/messages-live':{MessagesLive:()=>null},'@/components/messages/conversation-list':{ConversationList:()=>null},
-  '@/lib/auth/get-dev-session':{getDevSession:async()=>({profileId:A})},
+  '@/lib/auth/session':{requireSession:async()=>({profileId:A})},
   '@/lib/db/queries/messages':{getInboxData:async(viewer,cursor)=>{received=cursor;return {conversations:[],nextCursor:null}},getOrCreateDirectThread:async()=>null},
  })
  const timestamp='2026-10-11T10:00:00.123456+00:00'

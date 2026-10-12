@@ -1,23 +1,8 @@
+import type { PublicProfile } from '@/lib/db/query-types'
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { getPublicProfile } from '@/lib/db/queries/public-content'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
-
-function normalizeNestedCategory(item: any) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
-}
 
 function buildFallbackProfile(profileId: string) {
   const compact = String(profileId || 'unknown').slice(0, 8)
@@ -109,7 +94,7 @@ export async function getProfilePageData(
       .eq('follower_id', safeProfileId),
 
     isOwnProfile
-      ? Promise.resolve({ data: null, error: null } as any)
+      ? Promise.resolve({ data: null, error: null })
       : supabase
           .from('follows')
           .select('follower_id, following_id')
@@ -118,7 +103,7 @@ export async function getProfilePageData(
           .maybeSingle(),
 
     isOwnProfile
-      ? Promise.resolve({ data: null, error: null } as any)
+      ? Promise.resolve({ data: null, error: null })
       : supabase
           .from('follows')
           .select('follower_id, following_id')
@@ -145,7 +130,7 @@ export async function getProfilePageData(
     (postsResult.data ?? []).map((post: { id: string }) => post.id)
   )
 
-  const rawPosts = (postsResult.data ?? []).map((post: any) => {
+  const rawPosts = (postsResult.data ?? []).map((post) => {
     const likes = Array.isArray(post.likes) ? post.likes : []
     const saves = Array.isArray(post.saves) ? post.saves : []
     const comments = Array.isArray(post.comments) ? post.comments : []
@@ -154,16 +139,16 @@ export async function getProfilePageData(
       : []
 
     comments.sort(
-      (a: any, b: any) =>
+      (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 
     return {
       ...post,
       like_count: likes.length,
-      liked_by_me: likes.some((like: any) => like.profile_id === safeViewerId),
+      liked_by_me: likes.some((like) => like.profile_id === safeViewerId),
       save_count: saveCounts.get(post.id) ?? 0,
-      saved_by_me: saves.some((save: any) => save.profile_id === safeViewerId),
+      saved_by_me: saves.some((save) => save.profile_id === safeViewerId),
       comment_count: comments.length,
       comments,
       post_categories: categories,
@@ -173,16 +158,16 @@ export async function getProfilePageData(
 
   const profileIds = [
     profile.id,
-    ...rawPosts.flatMap((post: any) => [
+    ...rawPosts.flatMap((post) => [
       post.author_id,
       ...(Array.isArray(post.comments)
-        ? post.comments.map((comment: any) => comment.author_id)
+        ? post.comments.map((comment) => comment.author_id)
         : []),
     ]),
   ].filter(Boolean)
 
   const uniqueProfileIds = [...new Set(profileIds)]
-  let profileMap = new Map<string, any>()
+  let profileMap = new Map<string, PublicProfile>()
 
   if (uniqueProfileIds.length > 0) {
     const { data: profilesData, error: profilesError } = await supabase
@@ -192,15 +177,15 @@ export async function getProfilePageData(
 
     if (profilesError) throw new Error(profilesError.message)
 
-    profileMap = new Map((profilesData ?? []).map((row: any) => [row.id, row]))
+    profileMap = new Map((profilesData ?? []).map((row) => [row.id, row]))
   }
 
   const resolvedProfile = profileMap.get(profile.id) ?? profile
 
-  const posts = rawPosts.map((post: any) => ({
+  const posts = rawPosts.map((post) => ({
     ...post,
     author: profileMap.get(post.author_id) ?? null,
-    comments: (post.comments ?? []).map((comment: any) => ({
+    comments: (post.comments ?? []).map((comment) => ({
       ...comment,
       author: profileMap.get(comment.author_id) ?? null,
     })),

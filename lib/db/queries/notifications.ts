@@ -110,7 +110,7 @@ export async function getNotificationsPageData(
     throw new Error(error.message)
   }
 
-  const normalizedRows = (data ?? []).map((row: any) => {
+  const normalizedRows = (data ?? []).map((row) => {
     const actor = normalizeRelation(row.actor)
     const post = normalizeRelation(row.post)
     const comment = normalizeRelation(row.comment)

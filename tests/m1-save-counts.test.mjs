@@ -23,6 +23,7 @@ function loadQuery(file, client = {}, hidden = new Set()) {
     if (name === '@/lib/recommendations/engine') return loadQuery('../../recommendations/engine.ts')
     if (name === '@/lib/db/queries/public-content') return {} // Authenticated paths must never call the guest branch.
     if (name === '@/lib/recommendations/feed-contract') return loadQuery('../../recommendations/feed-contract.ts')
+    if (name === '@/lib/db/normalize-relations') return loadQuery('../normalize-relations.ts')
     if (name === '@/lib/db/queries/save-counts') return loadQuery('save-counts.ts')
     if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`)
     return dependencies[name]
@@ -228,7 +229,7 @@ function loadReelPage(client) {
     '@/lib/supabase/server': { createClient: async () => client },
     '@/lib/db/queries/save-counts': loadQuery('save-counts.ts'),
     '@/lib/media/get-media-url': { getMediaUrl: async (path) => path },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: viewer }), getOptionalSession: async () => ({ profileId: viewer }) },
+    '@/lib/auth/session': { requireSession: async () => ({ profileId: viewer }), getOptionalSession: async () => ({ profileId: viewer }) },
     '@/components/reels/reel-viewer': { ReelViewer: 'ReelViewer' },
   }
   new Function('require', 'module', 'exports', outputText)((name) => {

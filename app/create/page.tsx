@@ -2,7 +2,7 @@ import { CreatePostForm } from '@/components/create/create-post-form'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceHero } from '@/components/ui/surface-hero'
 import { getAllCategories } from '@/lib/db/queries/categories'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 
 type CreatePageProps = {
   searchParams?: Promise<{ error?: string }>
@@ -13,7 +13,7 @@ export const metadata = { title: "Create post" }
 export default async function CreatePage({
   searchParams,
 }: CreatePageProps) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const params = searchParams ? await searchParams : undefined
   const error = params?.error || ''
   const categories = await getAllCategories()

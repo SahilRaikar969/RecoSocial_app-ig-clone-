@@ -55,7 +55,7 @@ test('the exact public demo video bypasses auth while nearby paths remain protec
   const { unstable_doesMiddlewareMatch } = require('next/experimental/testing/server');
   const { load } = await import('./helpers/m3-feed-fixture.mjs');
   let authCalls = 0;
-  const { middleware, config } = load('middleware.ts', undefined, {
+  const { proxy: middleware, config } = load('proxy.ts', undefined, {
     'next/server': { NextResponse },
     '@supabase/ssr': { createServerClient: () => ({ auth: { getUser: async () => { authCalls++; return { data: { user: null } }; } } }) },
   });

@@ -3,14 +3,14 @@ import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 import { AuthSubmitButton } from '@/components/auth/auth-submit-button'
 import { logout } from '@/actions/auth'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Settings' }
 type SettingsPageProps = { searchParams?: Promise<{ theme?: string; privacy?: string; error?: string }> }
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const supabase = await createClient()
   const { data: profile, error: profileError } = await supabase.from('profiles').select('id, username, display_name, is_private, theme_preference').eq('id', profileId).maybeSingle()
   if(profileError) throw new Error('Settings could not be loaded.')

@@ -1,24 +1,9 @@
+import type { JoinedPost, PublicProfile, NormalizedCategoryJoin } from '@/lib/db/query-types'
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { getPublicPost } from '@/lib/db/queries/public-content'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
-
-function normalizeNestedCategory(item: any) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
-}
 
 function getRecencyBoost(createdAt: string) {
   const ageHours = Math.max(
@@ -35,37 +20,16 @@ function getRecencyBoost(createdAt: string) {
 }
 
 function getCategorySlugs(
-  postCategories: Array<{
-    category_id: string
-    categories?: {
-      id: string
-      name: string
-      slug: string
-    } | null
-  }>
+  postCategories: NormalizedCategoryJoin[]
 ) {
   return postCategories
     .map((item) => item?.categories?.slug ?? null)
-    .filter(Boolean) as string[]
+    .filter((slug): slug is string => Boolean(slug))
 }
 
 function getSharedCategories(
-  sourceCategories: Array<{
-    category_id: string
-    categories?: {
-      id: string
-      name: string
-      slug: string
-    } | null
-  }>,
-  candidateCategories: Array<{
-    category_id: string
-    categories?: {
-      id: string
-      name: string
-      slug: string
-    } | null
-  }>
+  sourceCategories: NormalizedCategoryJoin[],
+  candidateCategories: NormalizedCategoryJoin[]
 ) {
   const sourceMap = new Map(
     sourceCategories
@@ -137,9 +101,9 @@ function scoreRelatedPost(params: {
   return sameAuthorBoost + categoryBoost + engagementBoost + params.recencyBoost
 }
 
-async function getProfileMap(supabase: any, profileIds: string[]) {
+async function getProfileMap(supabase: Awaited<ReturnType<typeof createClient>>, profileIds: string[]) {
   const uniqueProfileIds = [...new Set(profileIds.filter(Boolean))]
-  let profileMap = new Map<string, any>()
+  let profileMap = new Map<string, PublicProfile>()
 
   if (uniqueProfileIds.length > 0) {
     const { data: profilesData, error: profilesError } = await supabase
@@ -152,14 +116,14 @@ async function getProfileMap(supabase: any, profileIds: string[]) {
     }
 
     profileMap = new Map(
-      (profilesData ?? []).map((profile: any) => [profile.id, profile])
+      (profilesData ?? []).map((profile) => [profile.id, profile])
     )
   }
 
   return profileMap
 }
 
-function normalizePostShape(post: any, viewerProfileId: string, saveCount: number) {
+function normalizePostShape(post: JoinedPost, viewerProfileId: string, saveCount: number) {
   const likes = Array.isArray(post.likes) ? post.likes : []
   const saves = Array.isArray(post.saves) ? post.saves : []
   const comments = Array.isArray(post.comments) ? post.comments : []
@@ -168,16 +132,16 @@ function normalizePostShape(post: any, viewerProfileId: string, saveCount: numbe
     : []
 
   comments.sort(
-    (a: any, b: any) =>
+    (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 
   return {
     ...post,
     like_count: likes.length,
-    liked_by_me: likes.some((like: any) => like.profile_id === viewerProfileId),
+    liked_by_me: likes.some((like) => like.profile_id === viewerProfileId),
     save_count: saveCount,
-    saved_by_me: saves.some((save: any) => save.profile_id === viewerProfileId),
+    saved_by_me: saves.some((save) => save.profile_id === viewerProfileId),
     comment_count: comments.length,
     comments,
     post_categories: categories,
@@ -246,7 +210,7 @@ export async function getPostPageData(
 
   const baseProfileIds = [
     normalizedPost.author_id,
-    ...normalizedPost.comments.map((comment: any) => comment.author_id),
+    ...normalizedPost.comments.map((comment) => comment.author_id),
   ].filter(Boolean)
 
   const profileMap = await getProfileMap(supabase, baseProfileIds)
@@ -325,9 +289,9 @@ export async function getPostPageData(
   )
 
   const normalizedRelatedCandidates = (relatedRows ?? [])
-    .map((post: any) => normalizePostShape(post, viewerProfileId, relatedSaveCounts.get(post.id) ?? 0))
-    .filter((post: any) => !hiddenPostIds.has(post.id))
-    .filter((post: any) => {
+    .map((post) => normalizePostShape(post, viewerProfileId, relatedSaveCounts.get(post.id) ?? 0))
+    .filter((post) => !hiddenPostIds.has(post.id))
+    .filter((post) => {
       const candidateCategorySlugs = getCategorySlugs(post.post_categories)
       const sharesCategory = candidateCategorySlugs.some((slug) =>
         currentCategorySlugs.includes(slug)
@@ -337,17 +301,17 @@ export async function getPostPageData(
       return sharesCategory || sameAuthor
     })
 
-  const relatedProfileIds = normalizedRelatedCandidates.flatMap((post: any) => [
+  const relatedProfileIds = normalizedRelatedCandidates.flatMap((post) => [
     post.author_id,
     ...(Array.isArray(post.comments)
-      ? post.comments.map((comment: any) => comment.author_id)
+      ? post.comments.map((comment) => comment.author_id)
       : []),
   ])
 
   const relatedProfileMap = await getProfileMap(supabase, relatedProfileIds)
 
   const relatedPosts = normalizedRelatedCandidates
-    .map((post: any) => {
+    .map((post) => {
       const sharedCategories = getSharedCategories(
         normalizedPost.post_categories,
         post.post_categories
@@ -375,7 +339,7 @@ export async function getPostPageData(
       return {
         ...post,
         author: relatedProfileMap.get(post.author_id) ?? null,
-        comments: (post.comments ?? []).map((comment: any) => ({
+        comments: (post.comments ?? []).map((comment) => ({
           ...comment,
           author: relatedProfileMap.get(comment.author_id) ?? null,
         })),
@@ -383,7 +347,7 @@ export async function getPostPageData(
         related_score: relatedScore,
       }
     })
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       if (b.related_score !== a.related_score) {
         return b.related_score - a.related_score
       }
@@ -404,7 +368,7 @@ export async function getPostPageData(
     ...normalizedPost,
     author: profileMap.get(normalizedPost.author_id) ?? null,
     is_owner: normalizedPost.author_id === viewerProfileId,
-    comments: normalizedPost.comments.map((comment: any) => ({
+    comments: normalizedPost.comments.map((comment) => ({
       ...comment,
       author: profileMap.get(comment.author_id) ?? null,
     })),

@@ -37,6 +37,8 @@ type Comment = {
   created_at: string
 }
 
+export type PostCardPost = PostCardProps['post']
+
 type PostCardProps = {
   post: {
     id: string
@@ -131,6 +133,7 @@ export async function PostCard({
       <header className="flex items-center justify-between gap-3 p-3 sm:p-4">
         <Link href={authorProfileHref} className="flex min-w-0 items-center gap-3 rounded-lg">
           {authorAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- User avatar URLs may be signed or external; retain direct delivery without proxying or rewriting them.
             <img src={authorAvatarUrl} alt="" loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-full border border-zinc-700 object-cover" />
           ) : (
             <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-zinc-300">{authorDisplayName.slice(0, 1).toUpperCase()}</span>

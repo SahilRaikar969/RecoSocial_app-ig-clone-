@@ -19,6 +19,7 @@ function load(file, client) {
     '@/lib/db/queries/save-counts': file === 'save-counts.ts' ? {} : load('save-counts.ts', client),
   }
   new Function('require', 'module', 'exports', outputText)(name => {
+    if (name === '@/lib/db/normalize-relations') return load('../normalize-relations.ts', client)
     if (!(name in dependencies)) throw new Error(`Unexpected import: ${name}`)
     return dependencies[name]
   }, loaded, loaded.exports)

@@ -202,6 +202,7 @@ function hooks() {
     unmount() { slots.forEach(slot => slot?.cleanup?.()) },
     react: {
       useMemo(fn) { return fn() },
+      useSyncExternalStore(_subscribe, snapshot) { return snapshot() },
       useState(initial) { const n = cursor++; slots[n] ??= { value: initial }; return [slots[n].value, next => { slots[n].value = typeof next === 'function' ? next(slots[n].value) : next }] },
       useRef(initial) { const n = cursor++; slots[n] ??= { current: initial }; return slots[n] },
       useEffect(fn, deps) {
@@ -301,7 +302,7 @@ test('partially visible PostMedia permits explicit playback while preserving the
   class IntersectionObserver { constructor(callback){observe=callback} observe(){} disconnect(){} }
   const document={visibilityState:'visible',addEventListener(){},removeEventListener(){}}
   const window={innerWidth:1024,addEventListener(){},removeEventListener(){},localStorage:{getItem:()=>null,setItem(){}}}
-  const Component=load('components/feed/post-media.tsx',{react:h.react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{usePathname:()=>'/feed'},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/components/ui/media-skeleton':{MediaSkeleton:'Skeleton'},'@/components/ui/smart-image':{SmartImage:'Image'}},{IntersectionObserver,document,window}).PostMedia
+  const Component=load('components/feed/post-media.tsx',{react:h.react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{usePathname:()=>'/feed'},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/components/ui/media-skeleton':{MediaSkeleton:'Skeleton'},'@/components/ui/smart-image':{SmartImage:'Image'},'@/lib/media/use-muted-preference':{useMutedPreference:()=>[true,()=>{}]}},{IntersectionObserver,document,window}).PostMedia
   function render(){const tree=h.render(()=>Component({mediaType:'video',mediaUrl:'https://example.test/video.mp4'}));for(const node of nodes(tree))if(node.props.ref)node.props.ref.current=node.type==='video'?f.video:{};h.flush();return tree}
   render();observe([{isIntersecting:true,intersectionRatio:0.25}]);let tree=render()
   assert.equal(f.requests.length,0,'a quarter-visible video must not autoplay')
@@ -315,7 +316,7 @@ test('partially visible PostMedia permits explicit playback while preserving the
 
   const h2=hooks(),policies=[];let nextObserver
   class NextObserver { constructor(callback){nextObserver=callback} observe(){} disconnect(){} }
-  const Next=load('components/feed/post-media.tsx',{react:h2.react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{usePathname:()=>'/feed'},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/components/ui/media-skeleton':{MediaSkeleton:'Skeleton'},'@/components/ui/smart-image':{SmartImage:'Image'},'@/lib/media/use-video-playback':{useVideoPlayback(_source,active,autoplay){policies.push({active,autoplay});return{videoRef:{current:null},toggle(){},retry(){}}}}},{IntersectionObserver:NextObserver,document,window}).PostMedia
+  const Next=load('components/feed/post-media.tsx',{react:h2.react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{usePathname:()=>'/feed'},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/components/ui/media-skeleton':{MediaSkeleton:'Skeleton'},'@/components/ui/smart-image':{SmartImage:'Image'},'@/lib/media/use-muted-preference':{useMutedPreference:()=>[true,()=>{}]},'@/lib/media/use-video-playback':{useVideoPlayback(_source,active,autoplay){policies.push({active,autoplay});return{videoRef:{current:null},toggle(){},retry(){}}}}},{IntersectionObserver:NextObserver,document,window}).PostMedia
   function policyRender(){const tree=h2.render(()=>Next({mediaType:'video',mediaUrl:'video.mp4'}));nodes(tree).filter(n=>n.props.ref).forEach(n=>{n.props.ref.current={}});h2.flush()}
   policyRender();nextObserver([{isIntersecting:true,intersectionRatio:0.25}]);policyRender();assert.deepEqual(policies.at(-1),{active:true,autoplay:false})
   nextObserver([{isIntersecting:true,intersectionRatio:0.8}]);policyRender();assert.deepEqual(policies.at(-1),{active:true,autoplay:true})
@@ -325,7 +326,7 @@ test('partially visible PostMedia permits explicit playback while preserving the
 
 test('guest post detail retains the authoritative comment count when only the latest 100 comments are loaded', async () => {
   const post={id:'post',author_id:'author',media_type:'image',media_path:'image.jpg',caption:'Public post',created_at:'2026-10-11',comment_count:150,like_count:0,save_count:0,comments:Array.from({length:100},(_,id)=>({id:String(id),author_id:'author',body:'Comment',created_at:'2026-10-11'}))}
-  const mocks={'react/jsx-runtime':{jsx,jsxs:jsx},'next/link':{default:'a'},'next/navigation':{notFound(){throw new Error('missing')}},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/actions/comments':{deleteCommentByOwner(){}},'@/actions/posts':{deletePost(){}},'@/lib/auth/get-dev-session':{getOptionalSession:async()=>null},'@/lib/db/queries/post':{getPostPageData:async()=>post},'@/lib/db/queries/post-moderation':{getViewerPostModerationState(){throw new Error('guest moderation')}},'@/lib/media/get-media-url':{getMediaUrl:async value=>value},'@/lib/routes/media-links':{buildPostOpenHref:()=>'/post/post'}}
+  const mocks={'react/jsx-runtime':{jsx,jsxs:jsx},'next/link':{default:'a'},'next/navigation':{notFound(){throw new Error('missing')}},'lucide-react':new Proxy({},{get:()=>()=>null}),'@/actions/comments':{deleteCommentByOwner(){}},'@/actions/posts':{deletePost(){}},'@/lib/auth/session':{getOptionalSession:async()=>null},'@/lib/db/queries/post':{getPostPageData:async()=>post},'@/lib/db/queries/post-moderation':{getViewerPostModerationState(){throw new Error('guest moderation')}},'@/lib/media/get-media-url':{getMediaUrl:async value=>value},'@/lib/routes/media-links':{buildPostOpenHref:()=>'/post/post'}}
   for(const [file,name] of [['feed/feed-list','FeedList'],['feed/comment-thread-panel','CommentThreadPanel'],['feed/post-engagement-panel','PostEngagementPanel'],['feed/post-media','PostMedia'],['ui/feedback-banner','FeedbackBanner'],['post/copy-post-link-button','CopyPostLinkButton'],['post/post-viewer-controls','PostViewerControls']])mocks['@/components/'+file]={[name]:name}
   const Page=load('app/post/[postId]/page.tsx',mocks).default
   const tree=await Page({params:Promise.resolve({postId:'post'})})

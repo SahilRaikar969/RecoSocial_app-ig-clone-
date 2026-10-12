@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import type { MutationResult } from '@/lib/mutations/result'
 
 type ToggleSaveInlineInput = {
@@ -33,7 +33,7 @@ async function performSaveToggle(
   postId: string,
   saved: boolean
 ): Promise<ToggleSaveInlineResult> {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   try {
     const supabase = await createClient()

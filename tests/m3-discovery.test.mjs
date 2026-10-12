@@ -167,7 +167,6 @@ test('PostCard reel links derive Explore context from the actual listing return 
     '@/components/feed/post-detail-disclosure': { PostDetailDisclosure: 'Disclosure' },
     '@/components/feed/post-media': { PostMedia: 'Media' },
     '@/components/post/post-viewer-controls': { PostViewerControls: 'Controls' },
-    '@/components/ui/animated-shell-card': { AnimatedShellCard: 'Card' },
     '@/lib/db/queries/post-moderation': { getViewerPostModerationState: async () => ({}) },
   }
   const tree = await load('components/feed/post-card.tsx', fixture(), overrides).PostCard({

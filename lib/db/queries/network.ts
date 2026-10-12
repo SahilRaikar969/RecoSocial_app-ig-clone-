@@ -1,25 +1,13 @@
+import type { PublicProfile } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
 
 type NetworkMode = 'followers' | 'following'
-
-type FollowRow = {
-  follower_id: string
-  following_id: string
-}
-
-type ProfileRow = {
-  id: string
-  username: string | null
-  display_name: string | null
-  bio: string | null
-  avatar_url: string | null
-}
 
 function normalizeText(value: string | null | undefined) {
   return String(value || '').trim().toLowerCase()
 }
 
-function scoreProfileMatch(profile: ProfileRow, searchQuery: string) {
+function scoreProfileMatch(profile: PublicProfile, searchQuery: string) {
   const q = normalizeText(searchQuery)
 
   if (!q) return 0
@@ -65,7 +53,7 @@ export async function getProfileNetworkPageData(
   }
 
   const profileIds = (relationRows ?? [])
-    .map((row: FollowRow) => row[targetColumn as keyof FollowRow])
+    .map((row) => row[targetColumn])
     .filter(Boolean)
 
   if (!profileIds.length) {
@@ -131,29 +119,29 @@ export async function getProfileNetworkPageData(
   }
 
   const followedSet = new Set(
-    (followedRows ?? []).map((row: any) => row.following_id).filter(Boolean)
+    (followedRows ?? []).map((row) => row.following_id).filter(Boolean)
   )
 
   const followsYouSet = new Set(
-    (followsYouRows ?? []).map((row: any) => row.follower_id).filter(Boolean)
+    (followsYouRows ?? []).map((row) => row.follower_id).filter(Boolean)
   )
 
   const followerCountMap = new Map<string, number>()
   const postCountMap = new Map<string, number>()
 
   for (const row of followerCountRows ?? []) {
-    const profileId = (row as any)?.following_id
+    const profileId = row?.following_id
     if (!profileId) continue
     followerCountMap.set(profileId, (followerCountMap.get(profileId) ?? 0) + 1)
   }
 
   for (const row of postCountRows ?? []) {
-    const profileId = (row as any)?.author_id
+    const profileId = row?.author_id
     if (!profileId) continue
     postCountMap.set(profileId, (postCountMap.get(profileId) ?? 0) + 1)
   }
 
-  const filteredProfiles = (profilesData ?? []).filter((profile: ProfileRow) => {
+  const filteredProfiles = (profilesData ?? []).filter((profile: PublicProfile) => {
     if (!normalizedSearch) return true
 
     const username = normalizeText(profile.username)
@@ -168,7 +156,7 @@ export async function getProfileNetworkPageData(
   })
 
   const enrichedProfiles = filteredProfiles
-    .map((profile: ProfileRow) => {
+    .map((profile: PublicProfile) => {
       const isViewer = profile.id === viewerProfileId
       const followedByMe = followedSet.has(profile.id)
       const followsYou = followsYouSet.has(profile.id)

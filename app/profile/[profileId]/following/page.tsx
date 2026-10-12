@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { NetworkProfileList } from '@/components/profile/network-profile-list'
 import { NetworkSearchForm } from '@/components/profile/network-search-form'
 import { PageShell } from '@/components/ui/page-shell'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getProfileNetworkPageData } from '@/lib/db/queries/network'
 import { getProfilePageData } from '@/lib/db/queries/profile'
 
@@ -27,7 +27,7 @@ export default async function FollowingPage({
 
   const viewedProfileId = String(resolvedParams?.profileId || '').trim()
   const query = String(resolvedSearchParams?.q || '').trim()
-  const { profileId: viewerProfileId } = await getDevSession()
+  const { profileId: viewerProfileId } = await requireSession()
 
   if (!viewedProfileId) {
     redirect('/profile')

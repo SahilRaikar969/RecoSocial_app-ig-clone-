@@ -97,6 +97,7 @@ function studioFixture(extraGlobals = {}) {
     useState(value){const n=cursor++; if(!(n in cells))cells[n]=typeof value==='function'?value():value; return[cells[n],value=>{cells[n]=typeof value==='function'?value(cells[n]):value}]},
     useRef(value){const n=cursor++; if(!(n in cells))cells[n]={current:value};return cells[n]},
     useMemo(fn){return fn()},
+    useCallback(fn,deps){const n=cursor++;if(!cells[n]||deps.some((value,i)=>value!==cells[n].deps[i]))cells[n]={deps,fn};return cells[n].fn},
     useEffect(fn,deps){const n=cursor++; if(!cells[n]||deps.some((value,i)=>value!==cells[n].deps[i])){pending.push(()=>{cells[n]?.cleanup?.();cells[n]={deps,cleanup:fn()}})}}
   }
   const document={hidden:false,addEventListener(name,callback){listeners.set(name,callback)},removeEventListener(name){listeners.delete(name)},createElement(){return {width:0,height:0,getContext:()=>({translate(){},scale(){},drawImage(){}}),toBlob:callback=>callback(new Blob(['image'],{type:'image/jpeg'}))}}}

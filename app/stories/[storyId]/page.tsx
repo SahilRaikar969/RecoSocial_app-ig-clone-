@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { getStoryViewerData } from '@/lib/db/queries/stories'
 import { StoryViewer } from '@/components/stories/story-viewer'
 

@@ -117,7 +117,7 @@ export async function getOptionalSession() {
   }
 }
 /** Mutations and account routes must retain this authenticated boundary. */
-export async function getDevSession() {
+export async function requireSession() {
   const session=await getOptionalSession()
   if(!session) redirect('/login')
   return session

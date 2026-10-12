@@ -3,11 +3,11 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { cleanupFreshUploads, fileField, knownDatabaseRejection, MediaMutationError, mediaFailure, resolveMedia, validateMedia, type MediaInput } from '@/lib/media/server-media'
 
 export async function updateProfile(form: FormData) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   const client = await createClient()
   const fresh: string[] = []
   let safeToClean = true

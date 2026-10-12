@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 
 const ALLOWED_REPORT_REASONS = new Set([
   'spam',
@@ -20,7 +20,7 @@ function buildRedirectUrl(returnTo: string, params: Record<string, string>) {
 
 export async function hidePost(formData: FormData) {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const postId = String(formData.get('post_id') || '').trim()
   const returnTo = String(formData.get('return_to') || '/feed').trim()
@@ -74,7 +74,7 @@ export async function hidePost(formData: FormData) {
 
 export async function unhidePost(formData: FormData) {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const postId = String(formData.get('post_id') || '').trim()
   const returnTo = String(formData.get('return_to') || '/profile?tab=hidden').trim()
@@ -103,7 +103,7 @@ export async function unhidePost(formData: FormData) {
 
 export async function reportPost(formData: FormData) {
   const supabase = await createClient()
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const postId = String(formData.get('post_id') || '').trim()
   const rawReason = String(formData.get('reason') || '').trim().toLowerCase()

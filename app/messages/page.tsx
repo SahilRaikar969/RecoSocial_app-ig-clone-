@@ -4,7 +4,7 @@ import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import Link from 'next/link'
 import { MessagesLive } from '@/components/messages/messages-live'
 import { ConversationList } from '@/components/messages/conversation-list'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { getInboxData, getOrCreateDirectThread } from '@/lib/db/queries/messages'
 
 export const metadata = { title: 'Messages' }
@@ -36,7 +36,7 @@ export default async function MessagesPage({
   searchParams,
 }: MessagesPageProps) {
   const params = searchParams ? await searchParams : undefined
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
 
   const otherProfileId = String(params?.with || '').trim()
 

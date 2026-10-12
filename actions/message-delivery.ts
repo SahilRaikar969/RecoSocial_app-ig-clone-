@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { requireSession } from '@/lib/auth/session'
 import { areMutualFollowers } from '@/lib/db/queries/messages'
 import type { ThreadMessage } from '@/lib/messages/message-state'
 
@@ -9,7 +9,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const columns = 'id, thread_id, sender_id, body, created_at'
 
 export async function sendMessage(input: { id: string; threadId: string; body: string }): Promise<{ message?: ThreadMessage; error?: string }> {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   if (!uuid.test(input?.id ?? '') || !uuid.test(input?.threadId ?? '') || typeof input?.body !== 'string') return { error: 'Invalid message.' }
   const body = input.body.trim()
   if (!body || body.length > 1200) return { error: 'Use between 1 and 1,200 characters.' }
@@ -41,7 +41,7 @@ export async function sendMessage(input: { id: string; threadId: string; body: s
 }
 
 export async function loadOlderMessages(threadId: string, cursor: { id: string; created_at: string }) {
-  const { profileId } = await getDevSession()
+  const { profileId } = await requireSession()
   if (!uuid.test(threadId) || !uuid.test(cursor?.id ?? '') || !Number.isFinite(Date.parse(cursor?.created_at))) return { error: 'Invalid message cursor.' }
   const client = await createClient()
   const { data: thread } = await client.from('direct_threads').select('profile_low_id, profile_high_id').eq('id', threadId).maybeSingle()
@@ -57,7 +57,7 @@ export async function loadOlderMessages(threadId: string, cursor: { id: string; 
 }
 
 export async function markThreadRead(threadId: string, messageId: string) {
-  await getDevSession()
+  await requireSession()
   if (!uuid.test(threadId) || !uuid.test(messageId)) return { ok: false }
   const client = await createClient()
   const { error } = await client.rpc('mark_direct_thread_read', { p_thread_id: threadId, p_message_id: messageId })

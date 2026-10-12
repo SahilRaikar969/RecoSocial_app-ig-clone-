@@ -1,22 +1,5 @@
-import type { CategoryJoin } from '@/lib/db/query-types'
+import { normalizeNestedCategory } from '@/lib/db/normalize-relations'
 import { createClient } from '@/lib/supabase/server'
-
-function normalizeNestedCategory(item: CategoryJoin) {
-  const nested = Array.isArray(item?.categories)
-    ? item.categories[0] ?? null
-    : item?.categories ?? null
-
-  return {
-    category_id: item?.category_id ?? '',
-    categories: nested
-      ? {
-          id: nested.id,
-          name: nested.name,
-          slug: nested.slug,
-        }
-      : null,
-  }
-}
 
 export async function getEditablePost(postId: string, viewerProfileId: string) {
   const supabase = await createClient()

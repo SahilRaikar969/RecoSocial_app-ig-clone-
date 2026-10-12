@@ -46,7 +46,7 @@ test('continue browsing retains public content context but never returns guests 
 })
 
 test('middleware permits guest public detail and gates protected routes with local next context', async () => {
-  const middleware = load('middleware.ts', { '@supabase/ssr': { createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) } }).middleware
+  const middleware = load('proxy.ts', { '@supabase/ssr': { createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }) } }).proxy
   const publicResponse = await middleware(new NextRequest(`http://localhost/post/${id}`))
   assert.equal(publicResponse.headers.get('location'), null)
   assert.equal(publicResponse.headers.get('cache-control'), 'private, no-store')
@@ -60,9 +60,9 @@ test('middleware permits guest public detail and gates protected routes with loc
 test('optional session does not query or provision any profile for absent or invalid identity', async () => {
   for (const result of [{ data: { user: null }, error: null }, { data: { user: { id } }, error: new Error('expired') }]) {
     let reads = 0
-    const sessions = load('lib/auth/get-dev-session.ts', { '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => result }, from() { reads += 1; throw new Error('guest profile access') } }) } })
+    const sessions = load('lib/auth/session.ts', { '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => result }, from() { reads += 1; throw new Error('guest profile access') } }) } })
     assert.equal(await sessions.getOptionalSession(), null)
-    await assert.rejects(sessions.getDevSession, error => error instanceof Redirect && error.url === '/login')
+    await assert.rejects(sessions.requireSession, error => error instanceof Redirect && error.url === '/login')
     assert.equal(reads, 0)
   }
 })
@@ -70,7 +70,7 @@ test('optional session does not query or provision any profile for absent or inv
 test('guest action calls cannot bypass authentication by forging profile IDs', async () => {
   let databaseCalls = 0
   const mocks = {
-    '@/lib/auth/get-dev-session': { getDevSession: async () => navigation.redirect('/login') },
+    '@/lib/auth/session': { requireSession: async () => navigation.redirect('/login') },
     '@/lib/supabase/server': { createClient: async () => { databaseCalls += 1; throw new Error('unauthorized database call') } },
   }
   const actions = [

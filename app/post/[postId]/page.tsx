@@ -10,7 +10,7 @@ import { PostMedia } from '@/components/feed/post-media'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { CopyPostLinkButton } from '@/components/post/copy-post-link-button'
 import { PostViewerControls } from '@/components/post/post-viewer-controls'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { getPostPageData } from '@/lib/db/queries/post'
 import { getViewerPostModerationState } from '@/lib/db/queries/post-moderation'
 import { getMediaUrl } from '@/lib/media/get-media-url'
@@ -92,7 +92,7 @@ export default async function PostDetailPage({
   const authorAvatarUrl = await getMediaUrl(post.author?.avatar_url ?? null)
 
   const categories = Array.isArray(post.post_categories)
-    ? post.post_categories.flatMap((item: any) =>
+    ? post.post_categories.flatMap((item) =>
         !item?.categories
           ? []
           : Array.isArray(item.categories)
@@ -183,6 +183,7 @@ export default async function PostDetailPage({
           <div className="min-w-0 border-b border-zinc-800 xl:border-b-0 xl:border-r">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <Link href={authorProfileHref} className="flex min-w-0 items-center gap-3 rounded-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Preserve direct delivery of signed or external user avatar URLs. */}
                 {authorAvatarUrl ? <img src={authorAvatarUrl} alt="" loading="lazy" decoding="async" className="h-10 w-10 shrink-0 rounded-full object-cover" />
                   : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-300">{(post.author?.username || 'U').slice(0, 1).toUpperCase()}</span>}
                 <div className="min-w-0">
@@ -201,7 +202,7 @@ export default async function PostDetailPage({
                 commentsLabel={post.comment_count > 0 ? 'View comments' : 'Add a comment'}
                 secondaryHref={openMediaHref} secondaryAriaLabel={post.media_type === 'video' ? 'Watch reel' : 'Open post'} />
               {post.caption ? <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-zinc-200"><Link href={authorProfileHref} className="mr-2 font-semibold text-white">{post.author?.username || 'Creator'}</Link>{post.caption}</p> : null}
-              {categories.length ? <div className="mt-2 flex flex-wrap gap-1">{categories.map((category: any) => <Link key={category.id} href={'/explore?category=' + encodeURIComponent(category.slug)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-violet-300 hover:bg-violet-500/10">{category.name}</Link>)}</div> : null}
+              {categories.length ? <div className="mt-2 flex flex-wrap gap-1">{categories.map((category) => <Link key={category.id} href={'/explore?category=' + encodeURIComponent(category.slug)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-violet-300 hover:bg-violet-500/10">{category.name}</Link>)}</div> : null}
               <div className="mt-3 flex flex-wrap gap-2 border-t border-zinc-800 pt-3">
                 <CopyPostLinkButton postId={post.id} />
                 {isPostOwner ? <>
@@ -217,7 +218,7 @@ export default async function PostDetailPage({
           <aside id="comments" className="min-w-0 scroll-mt-24 px-4 py-4" aria-label="Comments">
             <h2 className="mb-4 text-base font-semibold text-white">Comments</h2>
             {initialComments.length > 0 && isPostOwner ? <div className="space-y-4">
-              {initialComments.map((comment: any) => <div key={comment.id} className="flex items-start gap-3 border-b border-zinc-800 pb-3">
+              {initialComments.map((comment) => <div key={comment.id} className="flex items-start gap-3 border-b border-zinc-800 pb-3">
                 <div className="min-w-0 flex-1"><Link href={getProfileHref(comment.author?.id ?? comment.author_id, profileId)} className="text-sm font-semibold text-white">{comment.author?.username || 'User'}</Link>
                   <p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-zinc-300">{comment.body}</p><p className="mt-2 text-xs text-zinc-400">{formatDate(comment.created_at)}</p>
                 </div>

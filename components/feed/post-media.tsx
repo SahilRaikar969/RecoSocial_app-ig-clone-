@@ -1,11 +1,11 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { MediaSkeleton } from '@/components/ui/media-skeleton'
 import { SmartImage } from '@/components/ui/smart-image'
+import { useMutedPreference } from '@/lib/media/use-muted-preference'
 import { useVideoPlayback } from '@/lib/media/use-video-playback'
 
 type PostMediaProps = {
@@ -17,6 +17,12 @@ type PostMediaProps = {
 }
 
 const MUTE_STORAGE_KEY = 'recosocial_video_muted'
+const serverDesktop = () => false
+const mobileSnapshot = () => window.innerWidth < 768
+function subscribeViewport(notify: () => void) {
+  window.addEventListener('resize', notify)
+  return () => window.removeEventListener('resize', notify)
+}
 
 function isFeedLikePath(pathname: string) {
   return (
@@ -38,47 +44,24 @@ export function PostMedia({
   const pathname = usePathname()
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, toggleMuted] = useMutedPreference(MUTE_STORAGE_KEY)
   const [visibleRatio, setVisibleRatio] = useState(0)
-  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const isMobileViewport = useSyncExternalStore(subscribeViewport, mobileSnapshot, serverDesktop)
 
   const isVideo = mediaType === 'video'
   const feedLikeMode = useMemo(() => isFeedLikePath(pathname), [pathname])
   const { videoRef, playing: isActuallyPlaying, ready: isVideoLoaded, failed: hasMediaError, blocked, buffering, toggle, retry } = useVideoPlayback(isVideo ? mediaUrl : null, visibleRatio > 0, feedLikeMode && !isMobileViewport && visibleRatio >= 0.7, isMuted)
 
   useEffect(() => {
-    function updateViewportMode() {
-      setIsMobileViewport(window.innerWidth < 768)
-    }
-
-    updateViewportMode()
-    window.addEventListener('resize', updateViewportMode)
-    return () => window.removeEventListener('resize', updateViewportMode)
-  }, [])
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(MUTE_STORAGE_KEY)
-      if (stored === '0') {
-        setIsMuted(false)
-      } else {
-        setIsMuted(true)
-      }
-    } catch {}
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(MUTE_STORAGE_KEY, isMuted ? '1' : '0')
-    } catch {}
-  }, [isMuted])
-
-  useEffect(() => {
     if (!isVideo || !containerRef.current) return
 
     const node = containerRef.current
 
-    if (typeof IntersectionObserver === 'undefined') { setVisibleRatio(1); return }
+    if (typeof IntersectionObserver === 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Publish the browser capability fallback when no observer can report visibility.
+      setVisibleRatio(1)
+      return
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -160,7 +143,7 @@ export function PostMedia({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsMuted((current) => !current)}
+                  onClick={toggleMuted}
                   className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/75"
                   aria-label={isMuted ? 'Unmute video' : 'Mute video'}
                 >

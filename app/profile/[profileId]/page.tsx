@@ -1,3 +1,4 @@
+import { buildCategoryHighlights, resolvePostsWithMedia } from '@/lib/profile/post-presentation'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
@@ -5,7 +6,7 @@ import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
 import { ProfileSurfaceTabs } from '@/components/profile/profile-surface-tabs'
-import { getOptionalSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/session'
 import { getProfilePageData } from '@/lib/db/queries/profile'
 import { getProfileCollectionCount } from '@/lib/db/queries/profile-collection-counts'
 import { getPublicLikedPosts } from '@/lib/db/queries/public-liked'
@@ -49,45 +50,6 @@ function getErrorMessage(value?: string) {
   }
 }
 
-function buildCategoryHighlights(posts: any[]) {
-  const counts = new Map<string, { slug: string; name: string; count: number }>()
-
-  for (const post of posts) {
-    const categories = Array.isArray(post?.post_categories)
-      ? post.post_categories
-      : []
-
-    for (const item of categories) {
-      const category = Array.isArray(item?.categories)
-        ? item.categories[0] ?? null
-        : item?.categories ?? null
-
-      if (!category?.slug || !category?.name) continue
-
-      const existing = counts.get(category.slug)
-
-      counts.set(category.slug, {
-        slug: category.slug,
-        name: category.name,
-        count: (existing?.count ?? 0) + 1,
-      })
-    }
-  }
-
-  return Array.from(counts.values())
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, 8)
-}
-
-async function resolvePostsWithMedia(posts: any[]) {
-  return Promise.all(
-    posts.map(async (post) => ({
-      ...post,
-      resolved_media_url: await getMediaUrl(post.media_path),
-      resolved_thumbnail_url: await getMediaUrl(post.thumbnail_path ?? null),
-    }))
-  )
-}
 
 async function createProfileViewNotification(viewerProfileId: string, viewedProfileId: string) {
   if (!viewerProfileId || !viewedProfileId || viewerProfileId === viewedProfileId) {
