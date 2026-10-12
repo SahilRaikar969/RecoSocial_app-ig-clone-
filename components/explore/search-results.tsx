@@ -33,7 +33,7 @@ type SearchPost = {
 type SearchResultsProps = {
   query: string
   activeCategory?: string
-  viewerProfileId: string
+  viewerProfileId: string | null
   creators: SearchCreator[]
   posts: SearchPost[]
 }

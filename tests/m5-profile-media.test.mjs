@@ -20,7 +20,8 @@ function load(file, overrides = {}) {
     if (name in overrides) return overrides[name]
     if (name === 'next/navigation') return { useRouter: () => ({ push() {}, refresh() {} }) }
     if (name === 'next/link') return { default: Link }
-    if (name === '@/components/ui/navigation-link') return { NavigationLink: Link }
+    if (name === '@/components/auth/auth-prompt-link') return {AuthPromptLink:'AuthPromptLink'}
+      if (name === '@/components/ui/navigation-link') return { NavigationLink: Link }
     if (name === 'lucide-react') return new Proxy({}, { get: () => () => null })
     if (name.startsWith('@/actions/')) return new Proxy({}, { get: () => () => {} })
     if (name === '@/lib/media/get-media-url') return { getMediaUrl: async value => value }
@@ -97,7 +98,7 @@ test('only the active Reel is available to sequential focus; controls remain nam
   assert.match(html, /href="\/feed\?view=following&amp;page=2"/)
 })
 
-test('Story controls have distinct names and disable unavailable navigation', () => {
+test('Story controls remain named, pause is explicit, and Next can complete the viewer', () => {
   const { StoryViewer } = load('components/stories/story-viewer.tsx')
   const html = render(StoryViewer, {
     author: { id: 'creator', username: 'mira', display_name: 'Mira' },
@@ -105,8 +106,10 @@ test('Story controls have distinct names and disable unavailable navigation', ()
   })
   assert.match(html, /aria-label="Back to feed"/)
   const buttons = elements(html, 'button')
-  assert.deepEqual(buttons.map(button => attribute(button, 'aria-label')), ['Unmute story', 'Previous story', 'Next story'])
-  assert.ok(buttons.slice(1).every(button => button.includes('disabled=""')))
+  assert.ok(['Pause story', 'Unmute story', 'Previous story', 'Next story'].every(label => buttons.some(button => attribute(button, 'aria-label') === label)))
+  assert.ok(buttons.find(button => attribute(button, 'aria-label') === 'Previous story').includes('disabled=""'))
+  assert.ok(!buttons.find(button => attribute(button, 'aria-label') === 'Next story').includes('disabled=""'))
+  assert.match(html, /Retry media/)
 })
 
 test('Follow uses a native server-action form with unchanged identity, state, and return fields', () => {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import test from 'node:test'
 import ts from 'typescript'
@@ -112,10 +113,19 @@ test('route error stays within root layout, hides raw errors, and refetches on r
     '@/components/ui/navigation-link': { NavigationLink: props => jsx('a', props) },
     'lucide-react': { AlertTriangle: icon, RefreshCcw: icon },
   })
-  const tree = RouteError({ error: new Error('private database failure'), unstable_retry: () => calls.push(['retry']) })
+  // Exercise the installed framework's actual props rather than inventing a
+  // callback name: an obsolete prop previously passed unit tests but failed UI.
+  const { ErrorBoundaryHandler } = createRequire(import.meta.url)('next/dist/client/components/error-boundary.js')
+  const boundary = new ErrorBoundaryHandler({ pathname: '/feed', errorComponent: RouteError })
+  boundary.state = { error: { thrownValue: new Error('private database failure') }, previousPathname: '/feed' }
+  boundary.context = { refresh: () => calls.push(['refresh']) }
+  boundary.setState = state => { calls.push(['reset']); boundary.state = { ...boundary.state, ...state } }
+  const fallback = boundary.render().props.children.find(child => child?.type === RouteError)
+  const tree = RouteError(fallback.props)
   const output = nodes(tree)
   assert.ok(output.every(node => node.type !== 'html' && node.type !== 'body'))
   assert.ok(!content(tree).includes('private database failure'))
   output.find(node => node.type === 'button').props.onClick()
-  assert.deepEqual(calls, [['transition'], ['retry']])
+  assert.deepEqual(calls, [['transition'], ['refresh'], ['reset']])
+  assert.equal(boundary.state.error, null)
 })

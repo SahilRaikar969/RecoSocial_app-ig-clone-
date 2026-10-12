@@ -10,7 +10,7 @@ import { PostMedia } from '@/components/feed/post-media'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { CopyPostLinkButton } from '@/components/post/copy-post-link-button'
 import { PostViewerControls } from '@/components/post/post-viewer-controls'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { getPostPageData } from '@/lib/db/queries/post'
 import { getViewerPostModerationState } from '@/lib/db/queries/post-moderation'
 import { getMediaUrl } from '@/lib/media/get-media-url'
@@ -37,7 +37,7 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString()
 }
 
-function getProfileHref(profileId: string | null | undefined, viewerProfileId: string) {
+function getProfileHref(profileId: string | null | undefined, viewerProfileId: string | null) {
   const safeProfileId = String(profileId || '').trim()
   if (!safeProfileId) return '/profile'
   if (safeProfileId === viewerProfileId) return '/profile'
@@ -76,7 +76,8 @@ export default async function PostDetailPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined
 
   const postId = String(resolvedParams?.postId || '').trim()
-  const { profileId } = await getDevSession()
+  const session=await getOptionalSession()
+  const profileId=session?.profileId ?? null
 
   const post = await getPostPageData(profileId, postId)
 
@@ -105,7 +106,7 @@ export default async function PostDetailPage({
   const isPostOwner = post.author_id === profileId
   const authorProfileHref = getProfileHref(post.author?.id ?? post.author_id, profileId)
 
-  const moderationState = !isPostOwner
+  const moderationState = profileId && !isPostOwner
     ? await getViewerPostModerationState(profileId, post.id)
     : { hiddenByViewer: false, reportedByViewer: false }
 
@@ -196,8 +197,8 @@ export default async function PostDetailPage({
               <PostEngagementPanel postId={post.id} devProfileId={profileId} returnTo={returnTo}
                 initialLikedByMe={post.liked_by_me} initialSavedByMe={post.saved_by_me}
                 initialLikeCount={post.like_count} initialSaveCount={post.save_count ?? 0}
-                commentCount={initialComments.length || post.comment_count} commentsHref="#comments"
-                commentsLabel={(initialComments.length || post.comment_count) > 0 ? 'View comments' : 'Add a comment'}
+                commentCount={post.comment_count} commentsHref="#comments"
+                commentsLabel={post.comment_count > 0 ? 'View comments' : 'Add a comment'}
                 secondaryHref={openMediaHref} secondaryAriaLabel={post.media_type === 'video' ? 'Watch reel' : 'Open post'} />
               {post.caption ? <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-zinc-200"><Link href={authorProfileHref} className="mr-2 font-semibold text-white">{post.author?.username || 'Creator'}</Link>{post.caption}</p> : null}
               {categories.length ? <div className="mt-2 flex flex-wrap gap-1">{categories.map((category: any) => <Link key={category.id} href={'/explore?category=' + encodeURIComponent(category.slug)} className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-violet-300 hover:bg-violet-500/10">{category.name}</Link>)}</div> : null}
@@ -206,11 +207,11 @@ export default async function PostDetailPage({
                 {isPostOwner ? <>
                   <Link href={'/post/' + post.id + '/edit'} className="inline-flex min-h-11 items-center rounded-lg border border-zinc-700 px-4 text-sm text-zinc-200 hover:bg-zinc-800">Edit post</Link>
                   <form action={deletePost}>
-                    <input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="dev_profile_id" value={profileId} /><input type="hidden" name="return_to" value={returnTo} /><DeletePostButton />
+                    <input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="dev_profile_id" value={profileId ?? ''} /><input type="hidden" name="return_to" value={returnTo} /><DeletePostButton />
                   </form>
                 </> : null}
               </div>
-              {!isPostOwner ? <div className="mt-3"><PostViewerControls postId={post.id} devProfileId={profileId} returnTo={returnTo} hiddenByViewer={moderationState.hiddenByViewer} reportedByViewer={moderationState.reportedByViewer} authorProfileHref={authorProfileHref} authorUsername={post.author?.username || 'Creator'} /></div> : null}
+              {profileId && !isPostOwner ? <div className="mt-3"><PostViewerControls postId={post.id} devProfileId={profileId} returnTo={returnTo} hiddenByViewer={moderationState.hiddenByViewer} reportedByViewer={moderationState.reportedByViewer} authorProfileHref={authorProfileHref} authorUsername={post.author?.username || 'Creator'} /></div> : null}
             </div>
           </div>
           <aside id="comments" className="min-w-0 scroll-mt-24 px-4 py-4" aria-label="Comments">
@@ -220,7 +221,7 @@ export default async function PostDetailPage({
                 <div className="min-w-0 flex-1"><Link href={getProfileHref(comment.author?.id ?? comment.author_id, profileId)} className="text-sm font-semibold text-white">{comment.author?.username || 'User'}</Link>
                   <p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-zinc-300">{comment.body}</p><p className="mt-2 text-xs text-zinc-400">{formatDate(comment.created_at)}</p>
                 </div>
-                <form action={deleteCommentByOwner}><input type="hidden" name="comment_id" value={comment.id} /><input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="dev_profile_id" value={profileId} /><input type="hidden" name="return_to" value={returnTo} /><DeleteCommentButton /></form>
+                <form action={deleteCommentByOwner}><input type="hidden" name="comment_id" value={comment.id} /><input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="dev_profile_id" value={profileId ?? ''} /><input type="hidden" name="return_to" value={returnTo} /><DeleteCommentButton /></form>
               </div>)}
             </div> : null}
             {!isPostOwner ? <CommentThreadPanel postId={post.id} profileId={profileId} returnTo={returnTo} initialComments={initialComments} showAllComments postOwnerId={post.author_id} />

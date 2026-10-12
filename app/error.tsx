@@ -5,10 +5,10 @@ import { useTransition } from 'react'
 import { AlertTriangle, RefreshCcw } from 'lucide-react'
 
 export default function RouteError({
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  retry: () => void
 }) {
   const [isPending, startTransition] = useTransition()
 
@@ -31,7 +31,7 @@ export default function RouteError({
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <button
             type="button"
-            onClick={() => startTransition(() => unstable_retry())}
+            onClick={() => startTransition(() => retry())}
             disabled={isPending}
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-white bg-white px-5 py-4 text-sm font-semibold text-black transition hover:opacity-90"
           >

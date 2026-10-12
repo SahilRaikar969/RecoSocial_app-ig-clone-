@@ -1,3 +1,4 @@
+import { getPublicProfile } from '@/lib/db/queries/public-content'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 
@@ -33,9 +34,10 @@ function buildFallbackProfile(profileId: string) {
 }
 
 export async function getProfilePageData(
-  viewerProfileId: string,
+  viewerProfileId: string | null,
   profileId: string
 ) {
+  if(!viewerProfileId) return getPublicProfile(profileId)
   const supabase = await createClient()
 
   const safeViewerId = String(viewerProfileId || '').trim()

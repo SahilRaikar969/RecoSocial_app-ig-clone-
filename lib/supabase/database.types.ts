@@ -84,6 +84,30 @@ export type Database = {
           { foreignKeyName: "direct_messages_thread_id_fkey"; columns: ["thread_id"]; isOneToOne: false; referencedRelation: "direct_threads"; referencedColumns: ["id"] },
         ]
       }
+      direct_thread_reads: {
+        Row: {
+          thread_id: string
+          profile_id: string
+          last_read_at: string
+          last_read_message_id: string
+        }
+        Insert: {
+          thread_id: string
+          profile_id: string
+          last_read_at: string
+          last_read_message_id: string
+        }
+        Update: {
+          thread_id?: string
+          profile_id?: string
+          last_read_at?: string
+          last_read_message_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "direct_thread_reads_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "direct_thread_reads_thread_id_fkey"; columns: ["thread_id"]; isOneToOne: false; referencedRelation: "direct_threads"; referencedColumns: ["id"] },
+        ]
+      }
       direct_threads: {
         Row: {
           id: string
@@ -445,11 +469,32 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      get_direct_inbox: {
+        Args: {
+          p_limit?: number | null
+          p_before_at?: string | null
+          p_before_id?: string | null
+        }
+        Returns: { thread_id: string; profile_low_id: string; profile_high_id: string; last_message_at: string; last_message_id: string; last_message_body: string; last_message_sender_id: string; last_message_created_at: string; has_unread: boolean }[]
+      }
+      get_visible_post_engagement: {
+        Args: {
+          post_ids: string[] | null
+        }
+        Returns: { post_id: string; like_count: number; save_count: number; comment_count: number; liked_by_me: boolean; saved_by_me: boolean }[]
+      }
       get_visible_post_save_counts: {
         Args: {
           post_ids: string[] | null
         }
         Returns: { post_id: string; save_count: number }[]
+      }
+      mark_direct_thread_read: {
+        Args: {
+          p_thread_id: string | null
+          p_message_id: string | null
+        }
+        Returns: boolean
       }
       record_profile_view: {
         Args: {

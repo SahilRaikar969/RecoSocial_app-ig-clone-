@@ -18,6 +18,7 @@ function setup() {
   const state = { user: 'viewer-a', count: 4, authReads: 0, reads: [], channels: [], activeChannels: [], removed: [], pendingRemovals: [], unsubscribed: false }
   let authEvent
   const client = {
+    realtime: { async setAuth() {} },
     auth: {
       async getUser() { state.authReads++; if (state.authPending) return await state.authPending.promise; return { data: { user: state.user ? { id: state.user } : null }, error: null } },
       onAuthStateChange(fn) { authEvent = fn; return { data: { subscription: { unsubscribe() { state.unsubscribed = true } } } } },

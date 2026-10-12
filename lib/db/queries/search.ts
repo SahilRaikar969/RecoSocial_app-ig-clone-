@@ -131,7 +131,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
       .select('following_id')
       .eq('follower_id', viewerProfileId),
 
-    getHiddenPostIds(viewerProfileId),
+    viewerProfileId ? getHiddenPostIds(viewerProfileId) : Promise.resolve(new Set<string>()),
   ])
 
   if (profilesError) throw new Error(profilesError.message)
@@ -319,7 +319,7 @@ export async function getSearchData(viewerProfileId: string, query: string) {
 // Account matching is independent of the six discovery spotlights. Separate
 // filters keep user text out of PostgREST's raw boolean-filter grammar.
 export async function getSearchCreators(
-  viewerProfileId: string,
+  viewerProfileId: string | null,
   query: string,
   eligibleAuthorIds?: readonly string[]
 ) {
@@ -346,11 +346,11 @@ export async function getSearchCreators(
   if (!candidates.length) return []
   const ids = candidates.map((profile) => profile.id)
   const [follows, followers, posts, hiddenIds] = await Promise.all([
-    supabase.from('follows').select('following_id').eq('follower_id', viewerProfileId),
+    viewerProfileId ? supabase.from('follows').select('following_id').eq('follower_id', viewerProfileId) : Promise.resolve({data:[],error:null}),
     supabase.from('follows').select('following_id').in('following_id', ids),
     supabase.from('posts').select('id, author_id, media_type, media_path')
       .eq('status', 'published').eq('visibility', 'public').in('author_id', ids),
-    getHiddenPostIds(viewerProfileId),
+    viewerProfileId ? getHiddenPostIds(viewerProfileId) : Promise.resolve(new Set<string>()),
   ])
   for (const result of [follows, followers, posts]) {
     if (result.error) throw new Error(result.error.message)

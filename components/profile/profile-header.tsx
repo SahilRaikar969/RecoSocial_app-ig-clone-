@@ -6,7 +6,7 @@ import { SmartImage } from '@/components/ui/smart-image'
 
 type ProfileHeaderProps = {
   profile: { id: string; username: string; display_name: string; bio?: string | null; avatar_url?: string | null }
-  viewerProfileId: string
+  viewerProfileId: string | null
   counts: { postCount: number; followerCount: number; followingCount: number }
   avatarUrl?: string | null
   isOwnProfile: boolean

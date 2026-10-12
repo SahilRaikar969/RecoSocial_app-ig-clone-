@@ -17,10 +17,11 @@ export async function markNotificationsRead() {
     .is('read_at', null)
 
   if (error) {
-    throw new Error('notification_update_failed')
+    redirect('/activity?error=notification_update_failed')
   }
 
   revalidatePath('/activity')
+  redirect('/activity?read=1')
 }
 
 export async function markNotificationReadAndRedirect(formData: FormData) {

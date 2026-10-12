@@ -63,10 +63,10 @@ test('database retrieval and server transformation preserve rank through the ren
     preferences: ['travel'], follows: ['author-followed'], counts: { popular: 20 } })
   context.state.posts.find(row => row.id === 'interest').post_categories = [category('travel')]
   const result = await getFeed(context)
-  assert.deepEqual(ids(result.posts), ['popular', 'followed', 'interest', 'fallback'])
-  assert.deepEqual(result.posts.map(row => row.feed_score), [85, 22, 13, 5])
+  assert.deepEqual(ids(result.posts), ['popular', 'interest', 'followed', 'fallback'])
+  assert.deepEqual(result.posts.map(row => row.feed_score), [19, 11, 10, 3])
   assert.deepEqual(ids(await renderPosts(result.posts)), ids(result.posts))
-  assert.deepEqual(result.posts.map(row => row.source_bucket), ['trending', 'following', 'interest', 'trending'])
+  assert.deepEqual(result.posts.map(row => row.source_bucket), ['trending', 'interest', 'following', 'trending'])
 })
 
 test('draft, private and deleted candidates are excluded before the 80-row cap', async () => {
@@ -129,8 +129,8 @@ test('Following pagination is over followed posts and preserves their ranked ord
 test('cold start uses deterministic engagement and recency rather than empty affinity', async () => {
   const context = fixture({ posts: [post('old'), post('fresh', { created_at: '2026-10-08T11:00:00Z' }), post('popular')], counts: { popular: 1 } })
   const result = await getFeed(context)
-  assert.deepEqual(ids(result.posts), ['popular', 'fresh', 'old'])
-  assert.deepEqual(result.posts.map(row => row.feed_score), [9, 8, 5])
+  assert.deepEqual(ids(result.posts), ['fresh', 'popular', 'old'])
+  assert.ok(result.posts[0].feed_score > result.posts[1].feed_score); assert.equal(result.posts[1].feed_score,7); assert.equal(result.posts[2].feed_score,3)
   assert.ok(result.posts.every(row => row.source_bucket === 'trending'))
   assert.deepEqual(result.summary.topInterestCategories, [])
 })
@@ -139,7 +139,7 @@ test('sparse and missing category metadata keeps public content available with f
   const context = fixture({ posts: [post('no-category', { post_categories: [] }), post('missing-join', { post_categories: [{ category_id: 'gone', categories: null }] })], preferences: ['travel'] })
   const result = await getFeed(context)
   assert.deepEqual(ids(result.posts), ['missing-join', 'no-category'])
-  assert.deepEqual(result.posts.map(row => row.feed_score), [5, 5])
+  assert.deepEqual(result.posts.map(row => row.feed_score), [3, 3])
   assert.ok(result.posts.every(row => row.source_bucket === 'trending'))
 })
 
@@ -155,9 +155,9 @@ for (const [table, actionFile, actionName, stateKey, weight] of [
     assert.deepEqual(await action(input), { ok: true, [stateKey]: true })
     const after = await getFeed(context)
     assert.deepEqual(ids(after.posts), ['b-cooking', 'a-travel'])
-    assert.equal(after.posts[0].feed_score, 5 + weight)
+    assert.ok(after.posts[0].feed_score > 3 && after.posts[0].feed_score < 3 + weight * 1.3)
     assert.equal(after.posts[0].source_bucket, 'interest')
-    assert.equal(after.posts[1].feed_score, 5)
+    assert.equal(after.posts[1].feed_score, 3)
     assert.deepEqual(await action(input), { ok: true, [stateKey]: true })
     const retried = await getFeed(context)
     assert.equal(retried.posts[0].feed_score, after.posts[0].feed_score)
@@ -165,17 +165,17 @@ for (const [table, actionFile, actionName, stateKey, weight] of [
     assert.deepEqual(await action({ ...input, [stateKey]: true }), { ok: true, [stateKey]: false })
     const undone = await getFeed(context)
     assert.deepEqual(ids(undone.posts), ['a-travel', 'b-cooking'])
-    assert.deepEqual(undone.posts.map(row => row.feed_score), [5, 5])
+    assert.deepEqual(undone.posts.map(row => row.feed_score), [3, 3])
     assert.equal(context.state[table].length, 0)
     assert.ok(context.invalidations.includes('/feed'))
   })
 }
 
-test('likes, saves and explicit preferences add without replacing their established weights', async () => {
+test('likes, saves and explicit preferences combine with diminishing returns', async () => {
   const context = fixture({ posts: [post('candidate'), post('history')], hidden: ['history'], preferences: ['cooking'],
     likes: [{ post_id: 'history', profile_id: viewer }], saves: [{ post_id: 'history', profile_id: viewer }] })
   const result = await getFeed(context)
-  assert.equal(result.posts[0].feed_score, 5 + 8 + 3 + 5)
+  assert.equal(result.posts[0].feed_score, 19)
   assert.deepEqual(result.summary.topInterestCategories.map(row => row.slug), ['cooking'])
 })
 

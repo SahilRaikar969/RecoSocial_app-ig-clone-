@@ -1,9 +1,10 @@
 'use client'
 
+import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
 import { useFormStatus } from 'react-dom'
 import { toggleFollow } from '@/actions/follows'
 
-type FollowButtonProps = { followerId: string; followingId: string; followedByMe: boolean; returnTo: string }
+type FollowButtonProps = { followerId: string | null; followingId: string; followedByMe: boolean; returnTo: string }
 
 function FollowSubmit({ followedByMe }: { followedByMe: boolean }) {
   const { pending } = useFormStatus()
@@ -14,6 +15,7 @@ function FollowSubmit({ followedByMe }: { followedByMe: boolean }) {
 }
 
 export function FollowButton({ followerId, followingId, followedByMe, returnTo }: FollowButtonProps) {
+  if(!followerId) return <AuthPromptLink returnTo={returnTo} action="follow">Follow</AuthPromptLink>
   return <form action={toggleFollow}>
     <input type="hidden" name="follower_id" value={followerId} />
     <input type="hidden" name="following_id" value={followingId} />

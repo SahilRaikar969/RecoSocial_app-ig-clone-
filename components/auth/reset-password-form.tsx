@@ -1,16 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PasswordField } from '@/components/auth/password-field'
+import { preparePasswordRecovery, recoveryReturnPath } from '@/lib/auth/recovery'
 import { createClient } from '@/lib/supabase/browser'
 
 export function ResetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const recoveryAttempt=useRef<Promise<void> | null>(null)
+  const submitting=useRef(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [pending, setPending] = useState(false)
@@ -28,42 +31,10 @@ export function ResetPasswordForm() {
         setError('')
         setSuccess('')
 
-        const supabase = createClient()
-
-        const code = searchParams.get('code')
-        const tokenHash = searchParams.get('token_hash')
-        const type = searchParams.get('type')
-
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
-          if (exchangeError) {
-            throw exchangeError
-          }
-        } else if (tokenHash && type === 'recovery') {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery',
-          })
-
-          if (verifyError) {
-            throw verifyError
-          }
-        }
-
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession()
-
-        if (sessionError) {
-          throw sessionError
-        }
-
-        if (!session) {
-          throw new Error('Recovery session is missing or expired. Request a new reset email.')
-        }
-
+        recoveryAttempt.current ??= preparePasswordRecovery(createClient(), {
+          code:searchParams.get('code'),tokenHash:searchParams.get('token_hash'),type:searchParams.get('type'),error:searchParams.get('error'),
+        })
+        await recoveryAttempt.current
         if (!active) return
 
         setRecoveryReady(true)
@@ -73,6 +44,7 @@ export function ResetPasswordForm() {
         setError('This reset link is invalid or expired. Request a new one.')
       } finally {
         if (!active) return
+        window.history.replaceState(window.history.state, '', recoveryReturnPath(window.location.href))
         setBootstrapping(false)
       }
     }
@@ -87,7 +59,7 @@ export function ResetPasswordForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!recoveryReady) return
+    if (!recoveryReady || submitting.current) return
 
     if (!password || !confirmPassword) {
       setError('Enter and confirm your new password.')
@@ -107,6 +79,7 @@ export function ResetPasswordForm() {
       return
     }
 
+    submitting.current=true
     try {
       setPending(true)
       setError('')
@@ -121,17 +94,20 @@ export function ResetPasswordForm() {
         throw updateError
       }
 
-      await supabase.auth.signOut()
-
-      setSuccess('Password updated successfully. Redirecting to login...')
-
-      setTimeout(() => {
-        router.replace('/login?message=password_reset_success')
-      }, 900)
+      setPassword('')
+      setConfirmPassword('')
+      const signOut=await supabase.auth.signOut()
+      if(signOut.error) {
+        setSuccess('Password updated. You are still signed in; use Settings to sign out.')
+        setRecoveryReady(false)
+        return
+      }
+      router.replace('/login?message=password_reset_success')
     } catch {
       setError('Unable to update your password. Please try again.')
       setSuccess('')
     } finally {
+      submitting.current=false
       setPending(false)
     }
   }

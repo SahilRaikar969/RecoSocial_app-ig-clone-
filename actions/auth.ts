@@ -1,5 +1,7 @@
 'use server'
 
+import { authReturnPath } from '@/lib/auth/return-path'
+import { buildReturnUrl } from '@/lib/routes/safe-return-path'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
@@ -90,7 +92,7 @@ export async function signup(formData: FormData) {
   const rawUsername = String(formData.get('username') || '')
   const username = normalizeUsername(rawUsername)
 
-  if (!email || !password || !username) {
+  if (!email || password.length < 8 || !username) {
     redirect('/signup?error=missing_fields')
   }
 
@@ -148,6 +150,8 @@ export async function signup(formData: FormData) {
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
+  const next=authReturnPath(String(formData.get('next') || '/feed'))
+  const fail=(error:string):never=>redirect(buildReturnUrl('/login',{error,next}))
 
   const email = String(formData.get('email') || '').trim()
   const password = String(formData.get('password') || '')
@@ -158,26 +162,26 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent('Unable to sign in. Check your credentials and email confirmation.')}`)
+    fail('Unable to sign in. Check your credentials and email confirmation.')
   }
 
   const userId = data.user?.id
 
   if (!userId) {
-    redirect('/login?error=login_failed')
+    return fail('login_failed')
   }
 
-  const usernameFromMeta = normalizeUsername(String(data.user.user_metadata?.username || ''))
+  const usernameFromMeta = normalizeUsername(String(data.user?.user_metadata?.username || ''))
   const fallbackUsername =
     usernameFromMeta ||
     normalizeUsername(email.split('@')[0] || 'user') ||
     'user'
 
   try { await ensureProfileForUser(userId, fallbackUsername, email) } catch {
-    redirect('/login?error=profile_setup_failed')
+    fail('profile_setup_failed')
   }
 
-  redirect('/feed')
+  redirect(next)
 }
 
 export async function logout() {

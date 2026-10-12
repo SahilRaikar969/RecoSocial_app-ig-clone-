@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { createClient } from '@/lib/supabase/browser'
 
 export function ForgotPasswordForm() {
+  const inFlight=useRef(false)
   const [email, setEmail] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -13,6 +14,7 @@ export function ForgotPasswordForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if(inFlight.current)return
 
     const cleanEmail = email.trim()
 
@@ -22,6 +24,7 @@ export function ForgotPasswordForm() {
       return
     }
 
+    inFlight.current=true
     try {
       setPending(true)
       setError('')
@@ -38,11 +41,12 @@ export function ForgotPasswordForm() {
         throw resetError
       }
 
-      setSuccess('Reset email sent. Open the link from your email to continue.')
+      setSuccess('If this address has an account, a reset link will arrive by email.')
       setEmail('')
     } catch {
       setError('Unable to send the reset email. Please try again.')
     } finally {
+      inFlight.current=false
       setPending(false)
     }
   }
@@ -57,7 +61,7 @@ export function ForgotPasswordForm() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-5" aria-busy={pending}>
         <div>
           <label htmlFor="recovery-email" className="mb-2 block text-sm font-medium text-zinc-200">Email</label>
-          <input id="recovery-email" name="email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rs-input" placeholder="you@example.com" />
+          <input id="recovery-email" name="email" type="email" inputMode="email" autoCapitalize="none" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rs-input" placeholder="you@example.com" />
         </div>
         <button type="submit" disabled={pending} className="rs-button rs-button-primary w-full" aria-live="polite">{pending ? 'Sending…' : 'Send reset link'}</button>
       </form>

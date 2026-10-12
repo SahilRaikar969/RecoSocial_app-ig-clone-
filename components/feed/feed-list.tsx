@@ -57,7 +57,7 @@ type FeedPost = {
 
 type FeedListProps = {
   posts: FeedPost[]
-  devProfileId: string
+  devProfileId: string | null
   emptyMode?: 'feed' | 'explore'
   feedView?: FeedView
   title?: string
@@ -82,10 +82,10 @@ export async function FeedList({ posts, devProfileId, emptyMode = 'feed', feedVi
     )
   }
 
-  const moderationStates = await getViewerPostModerationStates(
+  const moderationStates = devProfileId ? await getViewerPostModerationStates(
     devProfileId,
     mainPosts.filter(post => post.author_id !== devProfileId).map(post => post.id)
-  )
+  ) : new Map()
 
   return (
     <section aria-label={title || (emptyMode === 'explore' ? 'Discover posts' : 'Feed posts')} className="mx-auto w-full max-w-[640px]">

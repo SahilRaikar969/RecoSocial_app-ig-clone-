@@ -5,7 +5,7 @@ import { SearchResults } from '@/components/explore/search-results'
 import { SearchPanel } from '@/components/explore/search-panel'
 import { PageShell } from '@/components/ui/page-shell'
 import { SurfaceEmpty } from '@/components/ui/surface-empty'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { filterDiscoveryPosts, getExploreData } from '@/lib/db/queries/explore'
 import { getSearchCreators } from '@/lib/db/queries/search'
 
@@ -17,7 +17,8 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const searchQuery = String(resolvedSearchParams?.q || '').trim()
   const activeCategory = String(resolvedSearchParams?.category || '').trim()
-  const { profileId } = await getDevSession()
+  const session=await getOptionalSession()
+  const profileId=session?.profileId ?? null
   const baseData = await getExploreData(profileId, activeCategory || undefined)
   const creators = searchQuery
     ? await getSearchCreators(profileId, searchQuery, activeCategory
@@ -28,7 +29,7 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
     categories: baseData.categories,
     creators,
     // Filtering preserves the query's ranked order and all media/ranking metadata.
-    posts: filterDiscoveryPosts(baseData.posts, searchQuery),
+    posts: filterDiscoveryPosts<(typeof baseData.posts)[number]>(baseData.posts, searchQuery),
   }
   const hasSearch = Boolean(searchQuery)
   const exploreReturnTo = activeCategory ? `/explore?category=${encodeURIComponent(activeCategory)}` : '/explore'

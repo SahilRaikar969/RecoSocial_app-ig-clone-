@@ -48,5 +48,7 @@ export async function markStoryViewed(storyId: string) {
   const client = await createClient()
   if (!storyId) return {ok:false as const,error:'The story is unavailable.'}
   const {error} = await client.from('story_views').upsert({story_id:storyId,viewer_id:profileId},{onConflict:'story_id,viewer_id',ignoreDuplicates:true})
-  return error ? {ok:false as const,error:'The story view could not be recorded.'} : {ok:true as const}
+  if (error) return {ok:false as const,error:'The story view could not be recorded.'}
+  revalidatePath('/feed')
+  return {ok:true as const}
 }

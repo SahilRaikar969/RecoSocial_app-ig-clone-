@@ -1,31 +1,14 @@
+import { isPublicRoute } from '@/lib/auth/public-routes'
+import { authReturnPath as safeReturnPath } from '@/lib/auth/return-path'
 import type { Database } from '@/lib/supabase/database.types'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-
-const PUBLIC_PATH_PREFIXES = [
-  '/login',
-  '/signup',
-  '/forgot-password',
-  '/reset-password',
-]
-
-const PUBLIC_EXACT_PATHS = [
-  '/',
-]
 
 function isStaticAsset(pathname: string) {
   return (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|woff|woff2|ttf)$/.test(pathname)
-  )
-}
-
-function isPublicPath(pathname: string) {
-  if (PUBLIC_EXACT_PATHS.includes(pathname)) return true
-
-  return PUBLIC_PATH_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )
 }
 
@@ -72,19 +55,22 @@ export async function middleware(request: NextRequest) {
     return redirectResponse
   }
 
-  const publicPath = isPublicPath(pathname)
+  const publicPath = isPublicRoute(pathname)
 
   if (!user && !publicPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
+    url.searchParams.set('next', safeReturnPath(request.nextUrl.pathname + request.nextUrl.search))
+    url.searchParams.set('reason', 'continue')
     return redirectWithCookies(url)
   }
 
   if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/feed'
-    url.search = ''
+    const destination=new URL(safeReturnPath(request.nextUrl.searchParams.get('next') || '/feed'), request.url)
+    url.pathname = destination.pathname
+    url.search = destination.search
     return redirectWithCookies(url)
   }
 

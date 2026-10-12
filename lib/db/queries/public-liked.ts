@@ -19,7 +19,7 @@ function normalizeNestedCategory(item: any) {
 }
 
 export async function getPublicLikedPosts(
-  viewerProfileId: string,
+  viewerProfileId: string | null,
   targetProfileId: string
 ) {
   const supabase = await createClient()

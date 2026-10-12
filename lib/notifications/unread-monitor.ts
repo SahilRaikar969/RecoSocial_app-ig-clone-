@@ -4,7 +4,8 @@ import type { Database } from '@/lib/supabase/database.types'
 // One lifecycle per mounted shell. Never retains viewer state across mounts.
 export function startUnreadMonitor(
   client: SupabaseClient<Database>,
-  onCount: (count: number) => void
+  onCount: (count: number) => void,
+  observer?: { onSync?: () => void; onViewer?: (viewerId: string | null) => void }
 ) {
   let stopped = false
   let running = false
@@ -28,9 +29,16 @@ export function startUnreadMonitor(
       const { data: { user }, error } = await client.auth.getUser()
       if (stopped || requestGeneration !== generation) return
       const verifiedId = !error && user ? user.id : null
+      if (verifiedId) {
+        // Server auth actions update cookies without notifying this singleton.
+        // Switch realtime back to its current-session token callback.
+        await client.realtime.setAuth()
+        if (stopped || requestGeneration !== generation) return
+      }
       if (verifiedId !== recipientId) {
         clearChannel()
         recipientId = verifiedId
+        observer?.onViewer?.(verifiedId)
         onCount(0)
         if (verifiedId) {
           // Supabase reuses same-topic channels until async unsubscribe finishes.
@@ -39,15 +47,18 @@ export function startUnreadMonitor(
             .on('postgres_changes', {
               event: '*', schema: 'public', table: 'notifications',
               filter: 'recipient_id=eq.' + verifiedId,
-            }, () => { void refresh() }).subscribe()
+            }, () => { void refresh() }).subscribe(status => {
+              if (!stopped && requestGeneration === generation && status === 'SUBSCRIBED') void refresh()
+            })
         }
       }
-      if (!verifiedId) { onCount(0); return }
+      if (!verifiedId) { observer?.onViewer?.(null); onCount(0); return }
       const { count, error: countError } = await client.from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('recipient_id', verifiedId).is('read_at', null)
       if (!stopped && requestGeneration === generation && !countError) {
         onCount(Math.max(0, Number(count || 0)))
+        observer?.onSync?.()
       }
     } catch {
       // The decorative unread indicator must not break the navigation shell.
@@ -57,9 +68,10 @@ export function startUnreadMonitor(
     }
   }
 
-  const { data: { subscription } } = client.auth.onAuthStateChange((event) => {
+  const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
     if (event === 'INITIAL_SESSION') return // Initial verified read already runs.
     generation += 1
+    if (event === 'SIGNED_OUT' || (event === 'SIGNED_IN' && session?.user.id !== recipientId)) observer?.onViewer?.(null)
     recipientId = null
     clearChannel()
     onCount(0)

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { getStoryViewerData } from '@/lib/db/queries/stories'
 import { StoryViewer } from '@/components/stories/story-viewer'
 
@@ -13,7 +13,8 @@ export const metadata = { title: "Stories" }
 
 export default async function StoryViewerPage({ params }: StoryViewerPageProps) {
   const { storyId } = await params
-  const { profileId } = await getDevSession()
+  const session = await getOptionalSession()
+  const profileId = session?.profileId ?? null
 
   const data = await getStoryViewerData(profileId, String(storyId || '').trim())
 
@@ -23,6 +24,10 @@ export default async function StoryViewerPage({ params }: StoryViewerPageProps) 
 
   return (
     <StoryViewer
+      key={storyId}
+      viewerProfileId={profileId}
+      previousAuthorStoryId={data.previousAuthorStoryId}
+      nextAuthorStoryId={data.nextAuthorStoryId}
       author={data.author}
       stories={data.stories}
       initialIndex={data.initialIndex}

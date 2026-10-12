@@ -3,6 +3,7 @@ import { SmartImage } from '@/components/ui/smart-image'
 
 type Conversation = {
   id: string
+  has_unread?: boolean
   last_message_at: string
   other_profile: {
     id: string
@@ -12,9 +13,9 @@ type Conversation = {
   }
   last_message?: {
     id: string
-    body: string
-    sender_id: string
-    created_at: string
+    body: string | null
+    sender_id: string | null
+    created_at: string | null
   } | null
 }
 
@@ -54,7 +55,7 @@ export function ConversationList({ conversations }: ConversationListProps) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
                 <p className="truncate text-sm font-semibold text-white">
-                  {conversation.other_profile.username}
+                  {conversation.other_profile.username}{conversation.has_unread ? <span className="ml-2 text-xs text-violet-300">Unread</span> : null}
                 </p>
                 <span className="text-xs text-zinc-500">
                   {formatRelative(conversation.last_message_at)}

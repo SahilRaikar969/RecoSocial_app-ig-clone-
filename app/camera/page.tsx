@@ -1,3 +1,4 @@
+import { safeReturnPath } from '@/lib/routes/safe-return-path'
 import { CameraStudio } from '@/components/camera/camera-studio'
 import { getAllCategories } from '@/lib/db/queries/categories'
 
@@ -13,7 +14,7 @@ export default async function CameraPage({
   searchParams,
 }: CameraPageProps) {
   const params = searchParams ? await searchParams : undefined
-  const returnTo = String(params?.returnTo || '/feed').trim() || '/feed'
+  const returnTo = safeReturnPath(String(params?.returnTo || '/feed'))
   const categories = await getAllCategories()
 
   return (

@@ -1,5 +1,5 @@
 import { NavigationLink as Link } from '@/components/ui/navigation-link'
-import { markNotificationsRead } from '@/actions/notifications'
+import { ActivityLive, MarkAllNotificationsRead } from '@/components/activity/activity-live'
 import { ActivityList } from '@/components/activity/activity-list'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
@@ -75,10 +75,10 @@ export default async function ActivityPage({
     resolvedSearchParams?.read === '1' ? 'Notifications marked as read.' : ''
 
   return <PageShell maxWidth="4xl">
-    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Activity</h1><form action={markNotificationsRead}><button type="submit" className="rs-button">Mark all as read</button></form></header>
+    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Activity</h1><MarkAllNotificationsRead /></header>
     {feedback ? <FeedbackBanner>{feedback}</FeedbackBanner> : null}
     {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
     <nav aria-label="Activity filters" className="flex flex-wrap gap-2">{FILTERS.map(item => <Link key={item.key} href={getFilterHref(item.key)} aria-current={item.key === filter ? 'page' : undefined} className={`rs-button ${item.key === filter ? 'border-violet-400 bg-violet-500/15 text-violet-100' : ''}`}>{item.label}</Link>)}</nav>
-    <ActivityList filter={filter} notifications={notifications} />
+    <ActivityLive key={profileId} viewerId={profileId}><ActivityList filter={filter} notifications={notifications} /></ActivityLive>
   </PageShell>
 }

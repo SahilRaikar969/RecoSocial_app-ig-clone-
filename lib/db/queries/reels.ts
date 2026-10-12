@@ -28,7 +28,7 @@ export type ReelPost = ReelBase & {
 }
 
 type GetReelPageDataInput = {
-  viewerProfileId: string
+  viewerProfileId: string | null
   postId: string
   source?: string
   sourceProfileId?: string | null
@@ -60,7 +60,7 @@ export async function getReelPageData({
     supabase.from('posts')
       .select('id, author_id, caption, media_type, media_path, thumbnail_path, created_at, post_categories(category_id,categories(id,name,slug))')
       .eq('id', postId).eq('media_type', 'video').eq('status', 'published').eq('visibility', 'public').maybeSingle(),
-    getHiddenPostIds(viewerProfileId),
+    viewerProfileId ? getHiddenPostIds(viewerProfileId) : Promise.resolve(new Set<string>()),
   ])
   if (currentResult.error) throw new Error(currentResult.error.message)
   let current: ReelBase | null = currentResult.data
@@ -81,7 +81,7 @@ export async function getReelPageData({
     // The requested reel opens first; subsequent reels preserve the same ranked,
     // category/search-filtered discovery sequence. An empty scope stays empty.
     const discovery = await getExploreData(viewerProfileId, activeCategory?.trim() || undefined)
-    const matches = filterDiscoveryPosts(discovery.posts, searchQuery ?? '')
+    const matches = filterDiscoveryPosts<(typeof discovery.posts)[number]>(discovery.posts, searchQuery ?? '')
       .filter((post) => post.media_type === 'video')
     const matched = matches.find((post) => post.id === current!.id)
     if (!matched) return empty
@@ -101,6 +101,7 @@ export async function getReelPageData({
       query = query.eq('author_id', authorId)
     }
     if (source === 'saved') {
+      if(!viewerProfileId)return empty
       const saved = await supabase.from('saves').select('post_id').eq('profile_id', viewerProfileId)
       if (saved.error) throw new Error(saved.error.message)
       const ids = (saved.data ?? []).map((row) => row.post_id)
@@ -140,8 +141,8 @@ export async function getReelPageData({
     supabase.from('likes').select('post_id').in('post_id', ids),
     getVisiblePostSaveCounts(supabase, ids),
     supabase.from('comments').select('post_id').in('post_id', ids),
-    supabase.from('likes').select('post_id').eq('profile_id', viewerProfileId).in('post_id', ids),
-    supabase.from('saves').select('post_id').eq('profile_id', viewerProfileId).in('post_id', ids),
+    viewerProfileId ? supabase.from('likes').select('post_id').eq('profile_id', viewerProfileId).in('post_id', ids) : Promise.resolve({data:[],error:null}),
+    viewerProfileId ? supabase.from('saves').select('post_id').eq('profile_id', viewerProfileId).in('post_id', ids) : Promise.resolve({data:[],error:null}),
   ])
   for (const result of [profiles, likes, comments, viewerLikes, viewerSaves]) {
     if (result.error) throw new Error(result.error.message)

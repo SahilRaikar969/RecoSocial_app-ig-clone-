@@ -63,7 +63,7 @@ type PostCardProps = {
     feed_score?: number
     reason_labels?: string[]
   }
-  devProfileId: string
+  devProfileId: string | null
   returnTo?: string
   moderationState?: ViewerPostModerationState
   showAllComments?: boolean
@@ -83,7 +83,7 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString()
 }
 
-function getProfileHref(profileId: string | null | undefined, viewerProfileId?: string) {
+function getProfileHref(profileId: string | null | undefined, viewerProfileId?: string | null) {
   const safeProfileId = String(profileId || '').trim()
   if (!safeProfileId) return '/profile'
   if (viewerProfileId && safeProfileId === viewerProfileId) return '/profile'
@@ -120,13 +120,11 @@ export async function PostCard({
 
   const openLabel = post.media_type === 'video' ? 'Watch reel' : 'Open post'
 
-  const moderationState = !isPostOwner
+  const moderationState = devProfileId && !isPostOwner
     ? suppliedModerationState ?? await getViewerPostModerationState(devProfileId, post.id)
     : { hiddenByViewer: false, reportedByViewer: false }
 
-  const resolvedCommentCount = Array.isArray(post.comments)
-    ? post.comments.length
-    : post.comment_count
+  const resolvedCommentCount = post.comment_count
 
   return (
     <article className="min-w-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
@@ -159,8 +157,8 @@ export async function PostCard({
               {categories.map(category => <Link key={category.id} href={'/explore?category=' + encodeURIComponent(category.slug)} className="inline-flex min-h-11 items-center rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 hover:bg-zinc-800">{category.name}</Link>)}
             </nav>
           ) : null}
-          <CommentThreadPanel postId={post.id} profileId={devProfileId} returnTo={returnTo} initialComments={post.comments ?? []} showAllComments={showAllComments} postOwnerId={post.author_id} />
-          {!isPostOwner ? <PostViewerControls postId={post.id} devProfileId={devProfileId} returnTo={returnTo} hiddenByViewer={moderationState.hiddenByViewer} reportedByViewer={moderationState.reportedByViewer} authorProfileHref={authorProfileHref} authorUsername={authorUsername} /> : null}
+          {post.comments === undefined ? <Link href={'/post/'+post.id} className="rs-button">View comments</Link> : <CommentThreadPanel postId={post.id} profileId={devProfileId} returnTo={returnTo} initialComments={post.comments ?? []} showAllComments={showAllComments} postOwnerId={post.author_id} />}
+          {devProfileId && !isPostOwner ? <PostViewerControls postId={post.id} devProfileId={devProfileId} returnTo={returnTo} hiddenByViewer={moderationState.hiddenByViewer} reportedByViewer={moderationState.reportedByViewer} authorProfileHref={authorProfileHref} authorUsername={authorUsername} /> : null}
         </PostDetailDisclosure>
       </div>
     </article>

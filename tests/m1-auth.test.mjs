@@ -22,6 +22,7 @@ function loadTs(path, mocks = {}) {
     exports: compiledModule.exports,
     require(name) {
       if (Object.hasOwn(mocks, name)) return mocks[name]
+      if(name.startsWith('@/lib/auth/') || name==='@/lib/routes/safe-return-path') return loadTs(name.slice(2)+'.ts',mocks)
       throw new Error(`Unexpected dependency: ${name}`)
     },
     URL,
@@ -206,7 +207,7 @@ test('notification marking remains owner-scoped and sanitizes navigation', async
 })
 
 for (const [pathname, user, destination] of [
-  ['/feed', null, '/login'], ['/login', { id: 'actor' }, '/feed'], ['/feed', { id: 'actor' }, null],
+  ['/feed', null, null], ['/login', { id: 'actor' }, '/feed'], ['/feed', { id: 'actor' }, null],
 ]) {
   test(`middleware preserves refreshed cookie batches and private caching for ${pathname} ${user ? 'signed in' : 'signed out'}`, async () => {
     const middleware = loadTs('middleware.ts', {
@@ -342,6 +343,7 @@ function pageMocks() {
     'next/link': { default: 'a' },
     'lucide-react': new Proxy({}, { get(_target, name) { return String(name) } }),
     '@/actions/auth': { login() {}, signup() {} },
+    '@/lib/supabase/server': { createClient:async()=>({from:()=>({select(){return this},eq:async()=>({data:[],error:null})})}) },
     '@/components/auth/auth-frame': { AuthFrame: 'AuthFrame' },
     '@/components/auth/auth-submit-button': { AuthSubmitButton: 'AuthSubmitButton' },
     '@/components/auth/password-field': { PasswordField: 'PasswordField' },
@@ -350,6 +352,7 @@ function pageMocks() {
     '@/lib/db/queries/onboarding': { getOnboardingCategories: async () => [] },
     '@/lib/db/queries/notifications': { getNotificationsPageData: async () => ({ notifications: [], summary: { total: 0, unread: 0, follow: 0, like: 0, comment: 0 } }) },
     '@/components/onboarding/onboarding-form': { OnboardingForm: 'OnboardingForm' },
+    '@/components/activity/activity-live': { ActivityLive: 'ActivityLive', MarkAllNotificationsRead: 'MarkAllNotificationsRead' },
     '@/components/activity/activity-list': { ActivityList: 'ActivityList' },
     '@/components/ui/feedback-banner': { FeedbackBanner: 'FeedbackBanner' },
     '@/components/ui/page-shell': { PageShell: 'PageShell' },

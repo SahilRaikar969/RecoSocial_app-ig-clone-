@@ -1,5 +1,6 @@
 'use client'
 
+import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
 import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { useRouter } from 'next/navigation'
 import { useId, useMemo, useOptimistic, useState, useTransition } from 'react'
@@ -22,7 +23,7 @@ type InitialComment = {
 
 type CommentThreadPanelProps = {
   postId: string
-  profileId: string
+  profileId: string | null
   returnTo: string
   initialComments: InitialComment[]
   showAllComments?: boolean
@@ -43,7 +44,7 @@ function formatDateStable(value: string) {
   return `${day}/${month}/${year}`
 }
 
-function getProfileHref(profileId: string | null | undefined, viewerProfileId?: string) {
+function getProfileHref(profileId: string | null | null | undefined, viewerProfileId?: string | null) {
   const safeProfileId = String(profileId || '').trim()
   if (!safeProfileId) return '/profile'
   if (viewerProfileId && safeProfileId === viewerProfileId) return '/profile'
@@ -78,7 +79,7 @@ export function CommentThreadPanel({
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (trimmedLength === 0 || isPending) return
+    if (trimmedLength === 0 || isPending || !profileId) return
 
     const optimisticComment: InitialComment = {
       id: `temp-${Date.now()}`,
@@ -137,7 +138,7 @@ export function CommentThreadPanel({
           })}
         </ul>
       ) : <p className="text-sm text-zinc-400">No comments yet.</p>}
-      <form onSubmit={handleSubmit} aria-busy={isPending} className="mt-4 border-t border-zinc-800 pt-4">
+      <>{!profileId ? <AuthPromptLink returnTo={returnTo} action="comment">Sign in to comment</AuthPromptLink> : <form onSubmit={handleSubmit} aria-busy={isPending} className="mt-4 border-t border-zinc-800 pt-4">
         <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-zinc-200">Add a comment</label>
         {mutationError ? <p id={errorId} role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
         <textarea id={inputId} name="body" disabled={isPending} value={value} onChange={event => setValue(event.target.value)} placeholder="Write a comment…" maxLength={280} rows={2} aria-describedby={countId + (mutationError ? ' ' + errorId : '')} className="min-h-24 w-full resize-y rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-base leading-6 text-white placeholder:text-zinc-400 disabled:opacity-60" />
@@ -146,7 +147,7 @@ export function CommentThreadPanel({
           <button type="submit" disabled={isPending || trimmedLength === 0} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-400">{isPending ? 'Posting…' : 'Post'}</button>
         </div>
         <span role="status" className="sr-only">{isPending ? 'Posting comment…' : ''}</span>
-      </form>
+      </form>}</>
     </section>
   )
 }

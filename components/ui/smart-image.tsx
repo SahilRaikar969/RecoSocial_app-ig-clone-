@@ -10,6 +10,7 @@ type SmartImageProps = {
   fallbackClassName?: string
   fallbackText?: string
   loading?: 'lazy' | 'eager'
+  retryable?: boolean
   fetchPriority?: 'auto' | 'high' | 'low'
 }
 
@@ -34,9 +35,11 @@ function SmartImageSource({
   fallbackText = 'Media',
   loading = 'lazy',
   fetchPriority = 'auto',
+  retryable = false,
 }: SmartImageProps) {
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   const normalizedSrc = String(src || '').trim()
   const shouldRender = isProbablyRenderableUrl(normalizedSrc)
@@ -44,7 +47,10 @@ function SmartImageSource({
   if (!shouldRender || failed) {
     return (
       <div className={fallbackClassName || className}>
-        <span>{fallbackText}</span>
+        <div className="flex flex-col items-center gap-2 text-center"><span>{fallbackText}</span>
+          {retryable && failed && shouldRender ? <button type="button" onClick={() => { setLoaded(false); setFailed(false); setAttempt(value => value + 1) }}
+            className="min-h-11 rounded-lg bg-zinc-800 px-4 text-sm font-medium text-white">Retry image</button> : null}
+        </div>
       </div>
     )
   }
@@ -54,6 +60,7 @@ function SmartImageSource({
       {!loaded ? <MediaSkeleton className="absolute inset-0 h-full w-full" /> : null}
 
       <img
+        key={attempt}
         src={normalizedSrc}
         alt={alt}
         loading={loading}

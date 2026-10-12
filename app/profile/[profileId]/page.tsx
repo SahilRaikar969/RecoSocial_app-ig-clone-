@@ -5,7 +5,7 @@ import { ProfileHeader } from '@/components/profile/profile-header'
 import { ProfilePostGrid } from '@/components/profile/profile-post-grid'
 import { ProfileSurfaceEmpty } from '@/components/profile/profile-surface-empty'
 import { ProfileSurfaceTabs } from '@/components/profile/profile-surface-tabs'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { getProfilePageData } from '@/lib/db/queries/profile'
 import { getProfileCollectionCount } from '@/lib/db/queries/profile-collection-counts'
 import { getPublicLikedPosts } from '@/lib/db/queries/public-liked'
@@ -113,21 +113,23 @@ export default async function PublicProfilePage({
 }: PublicProfilePageProps) {
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const activeTab = normalizeTab(resolvedSearchParams?.tab)
+  let activeTab = normalizeTab(resolvedSearchParams?.tab)
 
   const viewedProfileId = String(resolvedParams?.profileId || '').trim()
-  const { profileId: viewerProfileId } = await getDevSession()
+  const session=await getOptionalSession()
+  const viewerProfileId=session?.profileId ?? null
 
   if (!viewedProfileId || viewedProfileId === viewerProfileId) {
     redirect('/profile')
   }
 
-  await createProfileViewNotification(viewerProfileId, viewedProfileId)
+  if(viewerProfileId) await createProfileViewNotification(viewerProfileId, viewedProfileId)
+  else activeTab='posts'
 
   const [{ profile, stats, posts }, likedPosts, inactiveLikedCount] = await Promise.all([
     getProfilePageData(viewerProfileId, viewedProfileId),
     activeTab === 'liked' ? getPublicLikedPosts(viewerProfileId, viewedProfileId) : Promise.resolve([]),
-    activeTab === 'liked' ? Promise.resolve(0) : getProfileCollectionCount(viewedProfileId, 'liked'),
+    !viewerProfileId || activeTab === 'liked' ? Promise.resolve(0) : getProfileCollectionCount(viewedProfileId, 'liked'),
   ])
 
   const [avatarUrl, resolvedPosts, resolvedLikedPosts] = await Promise.all([
@@ -199,7 +201,7 @@ export default async function PublicProfilePage({
       />
 
       <>
-        <ProfileSurfaceTabs tabs={tabs} />
+        <ProfileSurfaceTabs tabs={viewerProfileId ? tabs : tabs.filter(tab=>tab.key==='posts')} />
         <div className="mt-1">
           {currentPosts.length ? (
             <ProfilePostGrid

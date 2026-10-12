@@ -6,15 +6,15 @@ import { useFormStatus } from 'react-dom'
 import { saveOnboardingPreferences } from '@/actions/onboarding'
 
 type CategoryOption = { id: string; name: string; slug: string; description?: string | null }
-type OnboardingFormProps = { profileId: string; categories: CategoryOption[]; errorMessage?: string }
+type OnboardingFormProps = { profileId: string; categories: CategoryOption[]; errorMessage?: string; initialSelected?: string[] }
 
 function ContinueButton() {
   const { pending } = useFormStatus()
   return <button type="submit" disabled={pending} className="rs-button rs-button-primary" aria-live="polite">{pending ? 'Saving…' : 'Continue'}</button>
 }
 
-export function OnboardingForm({ profileId, categories, errorMessage = '' }: OnboardingFormProps) {
-  const [selected, setSelected] = useState<string[]>([])
+export function OnboardingForm({ profileId, categories, initialSelected = [], errorMessage = '' }: OnboardingFormProps) {
+  const [selected, setSelected] = useState<string[]>(initialSelected)
   const [clientError, setClientError] = useState('')
   const effectiveError = clientError || errorMessage
 

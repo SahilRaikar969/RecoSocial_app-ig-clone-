@@ -1,9 +1,11 @@
+import { feedRankingTime } from '@/lib/recommendations/feed-contract'
+import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
 import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { FeedList } from '@/components/feed/feed-list'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { PageShell } from '@/components/ui/page-shell'
 import { StoryRail } from '@/components/stories/story-rail'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { getFeedData } from '@/lib/db/queries/feed'
 import { getStoriesRail } from '@/lib/db/queries/stories'
 
@@ -17,21 +19,24 @@ type FeedPageProps = {
     error?: string
     view?: string
     page?: string
+    at?: string
   }>
 }
 
 export const metadata = { title: "Home" }
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
-  const { profileId } = await getDevSession()
+  const session=await getOptionalSession()
+  const profileId=session?.profileId ?? null
   const params = searchParams ? await searchParams : undefined
   const view = params?.view === 'following' ? 'following' : 'for-you'
+  const rankingTime = feedRankingTime(params?.at)
   const requestedPage = Number(params?.page ?? 1)
   const [{ posts, pagination }, storyRail] = await Promise.all([
-    getFeedData(profileId, { view, page: requestedPage }),
+    getFeedData(profileId, { view, page: requestedPage, candidateBefore: rankingTime }),
     getStoriesRail(profileId),
   ])
-  const feedHref = (pageNumber: number) => '/feed?' + new URLSearchParams({ view, page: String(pageNumber) }).toString()
+  const feedHref = (pageNumber: number) => '/feed?' + new URLSearchParams({ view, page: String(pageNumber), at: String(rankingTime) }).toString()
   const feedback = params?.post_created === '1'
     ? { tone: 'success' as const, text: 'Post published.' }
     : params?.story_created === '1'
@@ -58,13 +63,14 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         {feedback ? <FeedbackBanner tone={feedback.tone}>{feedback.text}</FeedbackBanner> : null}
         {errorMessage ? <FeedbackBanner tone="error">{errorMessage}</FeedbackBanner> : null}
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Your feed</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">{profileId ? 'Your feed' : 'Discover RecoSocial'}</h1>
           <Link href="/create" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500">Create post</Link>
         </header>
+        {!profileId ? <div className="rounded-xl border border-zinc-800 p-4 text-sm text-zinc-300">Browse public posts. <AuthPromptLink returnTo="/feed" action="personalize">Sign in to personalize your feed</AuthPromptLink></div> : null}
         <StoryRail items={storyRail} />
         <nav aria-label="Feed views" className="flex border-b border-zinc-800">
           <Link href="/feed" aria-current={view === 'for-you' ? 'page' : undefined} className={`min-h-11 flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold ${view === 'for-you' ? 'border-violet-400 text-white' : 'border-transparent text-zinc-400 hover:text-white'}`}>For You</Link>
-          <Link href="/feed?view=following" aria-current={view === 'following' ? 'page' : undefined} className={`min-h-11 flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold ${view === 'following' ? 'border-violet-400 text-white' : 'border-transparent text-zinc-400 hover:text-white'}`}>Following</Link>
+          <Link href={profileId ? "/feed?view=following" : "/login?next=%2Ffeed%3Fview%3Dfollowing&reason=follow"} aria-current={view === 'following' ? 'page' : undefined} className={`min-h-11 flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold ${view === 'following' ? 'border-violet-400 text-white' : 'border-transparent text-zinc-400 hover:text-white'}`}>Following</Link>
         </nav>
         <FeedList posts={posts} devProfileId={profileId} emptyMode="feed" feedView={view} title={view === 'following' ? 'Following' : 'For You'} returnToBase={feedHref(pagination.page)} />
         {pagination.pageCount > 1 ? (

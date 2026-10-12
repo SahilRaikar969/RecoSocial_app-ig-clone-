@@ -1,3 +1,4 @@
+import { authReturnPath, guestReturnPath } from '@/lib/auth/return-path'
 import Link from 'next/link'
 import { login } from '@/actions/auth'
 import { AuthFrame } from '@/components/auth/auth-frame'
@@ -6,7 +7,7 @@ import { PasswordField } from '@/components/auth/password-field'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 
 type LoginPageProps = {
-  searchParams?: Promise<{ error?: string; message?: string }>
+  searchParams?: Promise<{ error?: string; message?: string; next?: string; reason?: string }>
 }
 
 function getBannerState(error?: string, message?: string) {
@@ -28,15 +29,18 @@ export const metadata = { title: "Log in" }
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = searchParams ? await searchParams : undefined
   const banner = getBannerState(params?.error, params?.message)
+  const next=authReturnPath(params?.next || '/feed')
+  const reason:Record<string,string>={like:'Sign in to like this post.',save:'Sign in to save this post.',comment:'Sign in to join the conversation.',follow:'Sign in to follow creators.',personalize:'Sign in for a feed shaped by your interests.',continue:'Sign in to continue.'}
   return (
     <AuthFrame>
       <h1 className="text-2xl font-semibold tracking-tight text-white">Welcome back</h1>
-      <p className="mt-2 text-sm text-zinc-400">Sign in to RecoSocial.</p>
+      <p className="mt-2 text-sm text-zinc-400">{reason[params?.reason || ''] || 'Sign in to RecoSocial.'}</p>
       {banner.text ? <div className="mt-5"><FeedbackBanner tone={banner.tone}>{banner.text}</FeedbackBanner></div> : null}
       <form action={login} className="mt-6 space-y-5">
+        <input type="hidden" name="next" value={next} />
         <div>
           <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-200">Email</label>
-          <input id="email" name="email" type="email" required autoComplete="email" className="rs-input" placeholder="you@example.com" />
+          <input id="email" name="email" type="email" inputMode="email" autoCapitalize="none" required autoComplete="email" className="rs-input" placeholder="you@example.com" />
         </div>
         <PasswordField id="password" name="password" label="Password" required autoComplete="current-password" />
         <div className="flex justify-end">
@@ -45,6 +49,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <AuthSubmitButton pendingLabel="Signing in…">Sign in</AuthSubmitButton>
       </form>
       <p className="mt-6 text-sm text-zinc-400">New here? <Link href="/signup" className="inline-flex min-h-11 items-center font-medium text-white underline underline-offset-4">Create an account</Link></p>
+    <Link href={guestReturnPath(next)} className="rs-button mt-3">Continue browsing</Link>
     </AuthFrame>
   )
 }

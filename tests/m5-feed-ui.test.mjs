@@ -18,6 +18,7 @@ function load(file, overrides = {}, globals = {}) {
     require(name) {
       if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'Fragment' }
       if (Object.hasOwn(overrides, name)) return overrides[name]
+      if (name === '@/components/auth/auth-prompt-link') return {AuthPromptLink:'AuthPromptLink'}
       if (name === '@/components/ui/navigation-link') return { NavigationLink: 'a' }
       if (name === 'lucide-react') return new Proxy({}, { get: () => 'svg' })
       if (name.startsWith('@/lib/')) return load(name.slice(2) + '.ts', overrides, globals)
@@ -205,7 +206,7 @@ const serverMocks = {
   '@/components/explore/search-panel': { SearchPanel: 'SearchPanel' },
   '@/components/explore/search-results': { SearchResults: 'SearchResults' },
   '@/components/explore/creator-spotlight-list': { CreatorSpotlightList: 'Creators' },
-  '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: 'viewer' }) },
+  '@/lib/auth/get-dev-session': { getOptionalSession: async () => ({ profileId: 'viewer' }) },
   '@/lib/db/queries/feed': { getFeedData: async () => ({ posts: [], summary: {}, pagination: { page: 1, pageCount: 1 } }) },
   '@/lib/db/queries/stories': { getStoriesRail: async () => [] },
   '@/lib/db/queries/explore': { getExploreData: async () => ({ posts: [], creators: [], categories: [{ id: 'travel', name: 'Travel', slug: 'travel' }] }), filterDiscoveryPosts: posts => posts },

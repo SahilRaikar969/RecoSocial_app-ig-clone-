@@ -1,4 +1,4 @@
-/** For You preserves global score order. Following is a filtered view, never a prefix. */
+/** For You preserves the engine’s bounded diversity order. Following is a filtered view, never a prefix. */
 export type FeedView = 'for-you' | 'following'
 export type FeedBucket = 'following' | 'interest' | 'trending'
 export const FEED_PAGE_SIZE = 24
@@ -28,4 +28,12 @@ export function selectFeedPage<T extends { id: string; source_bucket: FeedBucket
   const pageCount = Math.max(1, Math.ceil(eligible.length / size))
   const page = Math.min(pageCount, Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage : 1))
   return { posts: eligible.slice((page - 1) * size, page * size), page, pageCount, total: eligible.length }
+}
+
+/** Keep candidate recency and new candidate insertion fixed during a short paging journey.
+ * Current interactions, their decay, removals and authorization still apply; this is not a stored ranking snapshot.
+ */
+export function feedRankingTime(value: string | undefined, now = Date.now()) {
+  const parsed = Number(value)
+  return value && Number.isSafeInteger(parsed) && parsed <= now && parsed >= now - 30 * 60_000 ? parsed : now
 }

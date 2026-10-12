@@ -1,3 +1,4 @@
+import { getPublicPost } from '@/lib/db/queries/public-content'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
 import { getHiddenPostIds } from '@/lib/db/queries/post-moderation'
@@ -184,9 +185,10 @@ function normalizePostShape(post: any, viewerProfileId: string, saveCount: numbe
 }
 
 export async function getPostPageData(
-  viewerProfileId: string,
+  viewerProfileId: string | null,
   postId: string
 ) {
+  if(!viewerProfileId) return getPublicPost(postId)
   const safePostId = String(postId || '').trim()
 
   if (!safePostId || safePostId === 'undefined' || safePostId === 'null') {

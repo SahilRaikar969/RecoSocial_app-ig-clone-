@@ -12,11 +12,13 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from 'react'
 import { toggleLikeInline } from '@/actions/likes'
 import { toggleSaveInline } from '@/actions/saves'
 import { optimisticEngagement } from '@/lib/mutations/optimistic-engagement'
 import { SmartImage } from '@/components/ui/smart-image'
+import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
+import { useVideoPlayback } from '@/lib/media/use-video-playback'
 
 type ReelAuthor = {
   id: string
@@ -43,14 +45,14 @@ type ReelItem = {
 type ReelViewerProps = {
   reels: ReelItem[]
   initialPostId: string
-  viewerProfileId: string
+  viewerProfileId: string | null
   backHref: string
   viewerQueryString?: string
 }
 
 const MUTE_STORAGE_KEY = 'recosocial_reel_muted'
 
-function getProfileHref(profileId?: string | null, viewerProfileId?: string) {
+function getProfileHref(profileId?: string | null, viewerProfileId?: string | null) {
   const safeProfileId = String(profileId || '').trim()
   if (!safeProfileId) return '/profile'
   if (viewerProfileId && safeProfileId === viewerProfileId) return '/profile'
@@ -75,21 +77,23 @@ function ReelCard({
   reel,
   viewerProfileId,
   active,
+  selected,
   backHref,
   preload,
   currentIndex,
   totalCount,
+  returnTo,
 }: {
   reel: ReelItem
-  viewerProfileId: string
+  viewerProfileId: string | null
   active: boolean
+  selected: boolean
   backHref: string
   preload: boolean
   currentIndex: number
   totalCount: number
+  returnTo: string
 }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-
   const router = useRouter()
   const [{ active: likedByMe, count: likeCount }, setLikeOptimistic] = useOptimistic(
     { active: reel.liked_by_me, count: reel.like_count }, optimisticEngagement
@@ -99,10 +103,6 @@ function ReelCard({
   )
   const [mutationError, setMutationError] = useState('')
   const [isMuted, setIsMuted] = useState(true)
-  const [isPausedByUser, setIsPausedByUser] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [videoReady, setVideoReady] = useState(false)
-  const [videoFailed, setVideoFailed] = useState(false)
   const [showCenterIndicator, setShowCenterIndicator] = useState(false)
   const [isPendingLike, startLikeTransition] = useTransition()
   const [isPendingSave, startSaveTransition] = useTransition()
@@ -111,6 +111,7 @@ function ReelCard({
 
   const hasVideo = Boolean(reel.media_url)
   const hasPoster = Boolean(reel.thumbnail_url)
+  const { videoRef, playing: isPlaying, ready: videoReady, failed: videoFailed, blocked, buffering, toggle, retry } = useVideoPlayback(reel.media_url, active, true, isMuted)
 
   useEffect(() => {
     try {
@@ -128,41 +129,12 @@ function ReelCard({
   }, [isMuted])
 
   useEffect(() => {
-    setVideoReady(false)
-    setVideoFailed(false)
-    setIsPausedByUser(false)
-    setIsPlaying(false)
-    setShowCenterIndicator(false)
-  }, [reel.id, reel.media_url, reel.thumbnail_url])
-
-  useEffect(() => {
     return () => {
       if (indicatorTimerRef.current) {
         window.clearTimeout(indicatorTimerRef.current)
       }
     }
   }, [])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    video.muted = isMuted
-  }, [isMuted])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !hasVideo || videoFailed) return
-
-    if (active && videoReady && !isPausedByUser) {
-      const playPromise = video.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
-      }
-    } else {
-      video.pause()
-      setIsPlaying(false)
-    }
-  }, [active, videoReady, isPausedByUser, videoFailed, hasVideo])
 
   function pulseCenterIndicator() {
     setShowCenterIndicator(true)
@@ -177,31 +149,12 @@ function ReelCard({
   }
 
   function handleVideoToggle() {
-    const video = videoRef.current
-    if (!video || !hasVideo || videoFailed) return
-
-    if (video.paused) {
-      setIsPausedByUser(false)
-      const playPromise = video.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise
-          .then(() => {
-            setIsPlaying(true)
-            pulseCenterIndicator()
-          })
-          .catch(() => setIsPlaying(false))
-      }
-      return
-    }
-
-    setIsPausedByUser(true)
-    video.pause()
-    setIsPlaying(false)
+    toggle()
     pulseCenterIndicator()
   }
 
   function handleToggleLike() {
-    if (isPendingLike) return
+    if (isPendingLike || !viewerProfileId) return
     const previous = likedByMe
     setMutationError('')
     startLikeTransition(async () => {
@@ -225,7 +178,7 @@ function ReelCard({
   }
 
   function handleToggleSave() {
-    if (isPendingSave) return
+    if (isPendingSave || !viewerProfileId) return
     const previous = savedByMe
     setMutationError('')
     startSaveTransition(async () => {
@@ -256,28 +209,29 @@ function ReelCard({
       <div className="relative h-[100svh] w-full max-w-[480px] overflow-hidden bg-black">
         <button type="button" onClick={handleVideoToggle}
           className="absolute inset-0 z-0 block h-full w-full bg-black focus-visible:outline-offset-[-4px]"
-          aria-label={isPlaying ? 'Pause reel' : 'Play reel'} disabled={unavailable || videoFailed}>
+          aria-label={isPlaying ? 'Pause reel' : 'Play reel'} disabled={!hasVideo || videoFailed}>
           {hasPoster ? <SmartImage src={reel.thumbnail_url} alt={reel.caption || 'Reel thumbnail'}
             loading={active ? 'eager' : 'lazy'} fetchPriority={active ? 'high' : 'low'}
             className={'absolute inset-0 h-full w-full object-cover ' + (videoReady && !videoFailed ? 'opacity-0' : 'opacity-100')}
-            fallbackClassName="absolute inset-0 flex h-full w-full items-center justify-center bg-black text-sm text-zinc-400" fallbackText="Loading reel" /> : null}
-          {hasVideo && !videoFailed ? <video ref={videoRef} src={reel.media_url!} poster={reel.thumbnail_url || undefined}
-            playsInline loop muted preload={active ? 'auto' : preload ? 'metadata' : 'none'}
+            fallbackClassName="absolute inset-0 flex h-full w-full items-center justify-center bg-black text-sm text-zinc-400" fallbackText="Image unavailable" /> : null}
+          {hasVideo ? <video key={reel.media_url} ref={videoRef} src={reel.media_url!} poster={reel.thumbnail_url || undefined}
+            playsInline loop muted preload={selected ? 'auto' : preload ? 'metadata' : 'none'}
             className={'absolute inset-0 h-full w-full object-contain ' + (videoReady ? 'opacity-100' : 'opacity-0')}
-            onLoadedData={() => setVideoReady(true)} onCanPlay={() => setVideoReady(true)}
-            onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)}
-            onError={() => { setVideoFailed(true); setIsPlaying(false) }} /> : null}
+            /> : null}
           {unavailable || videoFailed ? <div className="absolute inset-0 flex items-center justify-center bg-zinc-950 px-8">
             <div className="text-center"><p className="text-base font-semibold text-white">Reel unavailable</p><p className="mt-2 text-sm text-zinc-400">This video could not be loaded.</p></div>
           </div> : null}
         </button>
+        {videoFailed ? <div className="absolute inset-x-0 top-1/2 z-30 mt-14 flex justify-center"><button type="button" onClick={retry} aria-label="Retry reel" className="min-h-11 rounded-lg bg-zinc-800 px-4 text-sm font-medium text-white">Retry video</button></div> : null}
+        {active && hasVideo && !videoFailed && buffering ? <p role="status" className="pointer-events-none absolute inset-x-0 top-32 z-20 text-center text-sm text-white">Loading video…</p> : null}
+        {active && blocked ? <p role="status" className="pointer-events-none absolute inset-x-0 top-24 z-20 text-center text-sm text-white">Tap play to start this video.</p> : null}
         <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/95 via-transparent to-black/50" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-3 pt-[max(12px,env(safe-area-inset-top))]">
           <Link href={backHref} className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-lg bg-black/65 px-3 text-sm font-medium text-white hover:bg-black/85"><ArrowLeft className="h-4 w-4" />Back</Link>
           <p className="text-sm font-medium text-white">Reels <span className="text-zinc-300">{currentIndex}/{totalCount}</span></p>
           <Link href={buildPostDetailHref(reel.id)} className="pointer-events-auto inline-flex min-h-11 items-center rounded-lg bg-black/65 px-3 text-sm font-medium text-white hover:bg-black/85">Open post</Link>
         </div>
-        {!videoFailed && !unavailable && (showCenterIndicator || !isPlaying) ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" aria-hidden="true">
+        {hasVideo && !videoFailed && !unavailable && (showCenterIndicator || !isPlaying) ? <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" aria-hidden="true">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/65 text-white">{isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}</div>
         </div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end gap-3 px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-16">
@@ -292,18 +246,18 @@ function ReelCard({
             <Link href={buildPostDetailHref(reel.id)} className="pointer-events-auto mt-1 inline-flex min-h-11 items-center text-sm text-zinc-300 underline underline-offset-4 hover:text-white">View post details</Link>
           </div>
           <div className="pointer-events-auto flex w-12 shrink-0 flex-col items-center gap-3 text-white">
-            <div className="text-center"><button type="button" onClick={handleToggleLike} disabled={isPendingLike} aria-pressed={likedByMe}
+            <div className="text-center">{!viewerProfileId ? <AuthPromptLink action="like" returnTo={returnTo} className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65"><Heart className="h-6 w-6" /><span className="sr-only">Like reel</span></AuthPromptLink> : <button type="button" onClick={handleToggleLike} disabled={isPendingLike} aria-pressed={likedByMe}
               aria-label={likedByMe ? 'Unlike reel' : 'Like reel'}
-              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (likedByMe ? 'text-violet-300' : 'text-white')}><Heart className={'h-6 w-6 ' + (likedByMe ? 'fill-current' : '')} /></button>
+              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (likedByMe ? 'text-violet-300' : 'text-white')}><Heart className={'h-6 w-6 ' + (likedByMe ? 'fill-current' : '')} /></button>}
               <span className="mt-1 block text-xs"><span className="sr-only">Likes: </span>{formatCompactNumber(likeCount)}</span></div>
             <div className="text-center"><Link href={buildPostDetailHref(reel.id, true)} aria-label="Open comments" className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85"><MessageCircle className="h-6 w-6" /></Link>
               <span className="mt-1 block text-xs"><span className="sr-only">Comments: </span>{formatCompactNumber(reel.comment_count)}</span></div>
-            <div className="text-center"><button type="button" onClick={handleToggleSave} disabled={isPendingSave} aria-pressed={savedByMe}
+            <div className="text-center">{!viewerProfileId ? <AuthPromptLink action="save" returnTo={returnTo} className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65"><Bookmark className="h-6 w-6" /><span className="sr-only">Save reel</span></AuthPromptLink> : <button type="button" onClick={handleToggleSave} disabled={isPendingSave} aria-pressed={savedByMe}
               aria-label={savedByMe ? 'Remove save' : 'Save reel'}
-              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (savedByMe ? 'text-violet-300' : 'text-white')}><Bookmark className={'h-6 w-6 ' + (savedByMe ? 'fill-current' : '')} /></button>
+              className={'flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85 disabled:opacity-60 ' + (savedByMe ? 'text-violet-300' : 'text-white')}><Bookmark className={'h-6 w-6 ' + (savedByMe ? 'fill-current' : '')} /></button>}
               <span className="mt-1 block text-xs"><span className="sr-only">Saves: </span>{formatCompactNumber(saveCount)}</span></div>
-            <button type="button" onClick={() => setIsMuted(current => !current)} aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85">{isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}</button>
+            {hasVideo ? <button type="button" onClick={() => setIsMuted(current => !current)} aria-label={isMuted ? 'Unmute reel' : 'Mute reel'}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/65 hover:bg-black/85">{isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}</button> : null}
           </div>
         </div>
       </div>
@@ -321,6 +275,8 @@ export function ReelViewer({
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [activeId, setActiveId] = useState(initialPostId)
+  const [visibleId, setVisibleId] = useState<string | null>(initialPostId)
+  const unlockTimerRef = useRef<number | null>(null)
   const lockRef = useRef(false)
   const touchStartYRef = useRef<number | null>(null)
 
@@ -334,14 +290,16 @@ export function ReelViewer({
     return foundIndex >= 0 ? foundIndex : 0
   }, [activeId, reels])
 
-  function scrollToIndex(nextIndex: number) {
+  const scrollToIndex = useCallback((nextIndex: number) => {
     const container = containerRef.current
     if (!container) return
 
     const boundedIndex = Math.max(0, Math.min(reels.length - 1, nextIndex))
     const target = container.children.item(boundedIndex) as HTMLElement | null
+    if (boundedIndex !== activeIndex) setVisibleId(null)
+    if (typeof IntersectionObserver === 'undefined') { setActiveId(reels[boundedIndex]?.id || initialPostId); setVisibleId(reels[boundedIndex]?.id || initialPostId) }
     target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
-  }
+  }, [activeIndex, initialPostId, reels])
 
   useEffect(() => {
     const container = containerRef.current
@@ -350,9 +308,10 @@ export function ReelViewer({
     const target = container.children.item(startIndex) as HTMLElement | null
     if (!target) return
 
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       target.scrollIntoView({ block: 'start' })
     })
+    return () => cancelAnimationFrame(frame)
   }, [startIndex])
 
   useEffect(() => {
@@ -360,22 +319,20 @@ export function ReelViewer({
     if (!container) return
 
     const slides = Array.from(container.children) as HTMLElement[]
+    if (typeof IntersectionObserver === 'undefined') return
+    const ratios = new Map<Element, number>()
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const best = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-
-        if (best && best.intersectionRatio >= 0.72) {
-          const postId = best.target.getAttribute('data-post-id')
-          if (postId) {
-            setActiveId(postId)
-          }
-        }
+        for (const entry of entries) ratios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0)
+        const best = [...ratios].sort((a, b) => b[1] - a[1])[0]
+        const postId = best && best[1] >= 0.72 ? best[0].getAttribute('data-post-id') : null
+        setVisibleId(postId)
+        if (postId) setActiveId(postId)
       },
       {
-        threshold: [0.55, 0.72, 0.9],
+        root: container,
+        threshold: [0, 0.55, 0.72, 0.9],
       }
     )
 
@@ -415,7 +372,8 @@ export function ReelViewer({
       lockRef.current = true
       scrollToIndex(nextIndex)
 
-      window.setTimeout(() => {
+      if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current)
+      unlockTimerRef.current = window.setTimeout(() => {
         lockRef.current = false
       }, 420)
     }
@@ -425,7 +383,7 @@ export function ReelViewer({
     return () => {
       container.removeEventListener('wheel', handleWheel)
     }
-  }, [activeIndex, reels.length])
+  }, [activeIndex, reels.length, scrollToIndex])
 
   useEffect(() => {
     const container = containerRef.current
@@ -454,7 +412,8 @@ export function ReelViewer({
       lockRef.current = true
       scrollToIndex(nextIndex)
 
-      window.setTimeout(() => {
+      if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current)
+      unlockTimerRef.current = window.setTimeout(() => {
         lockRef.current = false
       }, 420)
     }
@@ -466,7 +425,7 @@ export function ReelViewer({
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [activeIndex, reels.length])
+  }, [activeIndex, reels.length, scrollToIndex])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -494,7 +453,9 @@ export function ReelViewer({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [activeIndex, backHref, router])
+  }, [activeIndex, backHref, router, scrollToIndex])
+
+  useEffect(() => () => { if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current) }, [])
 
   return (
     <main className="fixed inset-0 z-[100] bg-black text-white" aria-label="Reels">
@@ -506,16 +467,23 @@ export function ReelViewer({
         {reels.map((reel, index) => (
           <div key={reel.id} data-post-id={reel.id} className="h-[100svh] snap-start">
             <ReelCard
+              key={`${reel.id}:${reel.media_url}:${reel.thumbnail_url}`}
               reel={reel}
               viewerProfileId={viewerProfileId}
-              active={activeId === reel.id}
+              active={visibleId === reel.id}
+              selected={activeId === reel.id}
               backHref={backHref}
               preload={Math.abs(index - activeIndex) <= 1}
               currentIndex={index + 1}
               totalCount={reels.length}
+              returnTo={viewerQueryString ? `/reel/${reel.id}?${viewerQueryString}` : `/reel/${reel.id}`}
             />
           </div>
         ))}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-[72px] z-40 mx-auto flex max-w-[480px] justify-between px-3">
+        <button type="button" onClick={() => scrollToIndex(activeIndex - 1)} disabled={activeIndex === 0} aria-label="Previous reel" className="pointer-events-auto min-h-11 rounded-lg bg-black/65 px-3 text-sm text-white disabled:opacity-30">Previous</button>
+        <button type="button" onClick={() => scrollToIndex(activeIndex + 1)} disabled={activeIndex >= reels.length - 1} aria-label="Next reel" className="pointer-events-auto min-h-11 rounded-lg bg-black/65 px-3 text-sm text-white disabled:opacity-30">Next</button>
       </div>
     </main>
   )

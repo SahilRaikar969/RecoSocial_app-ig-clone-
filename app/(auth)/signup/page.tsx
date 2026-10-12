@@ -35,10 +35,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         </div>
         <div>
           <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-200">Email</label>
-          <input id="email" name="email" type="email" required autoComplete="email" className="rs-input" placeholder="you@example.com" />
+          <input id="email" name="email" type="email" inputMode="email" autoCapitalize="none" required autoComplete="email" className="rs-input" placeholder="you@example.com" />
         </div>
-        <PasswordField id="password" name="password" label="Password" minLength={6} required autoComplete="new-password" aria-describedby="password-hint" />
-        <p id="password-hint" className="text-xs text-zinc-400">Use at least 6 characters.</p>
+        <PasswordField id="password" name="password" label="Password" minLength={8} required autoComplete="new-password" aria-describedby="password-hint" />
+        <p id="password-hint" className="text-xs text-zinc-400">Use at least 8 characters.</p>
         <AuthSubmitButton pendingLabel="Creating account…">Create account</AuthSubmitButton>
       </form>
       <p className="mt-6 text-sm text-zinc-400">Already a member? <Link href="/login" className="inline-flex min-h-11 items-center font-medium text-white underline underline-offset-4">Sign in</Link></p>

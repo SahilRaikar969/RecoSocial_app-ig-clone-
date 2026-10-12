@@ -23,7 +23,7 @@ type CreatorSpotlight = {
 
 type CreatorSpotlightListProps = {
   creators: CreatorSpotlight[]
-  viewerProfileId: string
+  viewerProfileId: string | null
   returnTo: string
   activeCategory?: string
 }

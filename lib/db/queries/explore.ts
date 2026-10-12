@@ -1,3 +1,4 @@
+import { getPublicExplore } from '@/lib/db/queries/public-content'
 import type { CategoryJoin, PublicProfile } from '@/lib/db/query-types'
 import { createClient } from '@/lib/supabase/server'
 import { getVisiblePostSaveCounts } from '@/lib/db/queries/save-counts'
@@ -106,9 +107,10 @@ export function filterDiscoveryPosts<T extends {
 }
 
 export async function getExploreData(
-  devProfileId: string,
+  devProfileId: string | null,
   categorySlug?: string
 ) {
+  if(!devProfileId) return getPublicExplore(categorySlug)
   const supabase = await createClient()
   const now = Date.now()
 

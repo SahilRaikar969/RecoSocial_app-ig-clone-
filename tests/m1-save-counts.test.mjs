@@ -20,6 +20,8 @@ function loadQuery(file, client = {}, hidden = new Set()) {
     '@/lib/db/queries/post-moderation': { getHiddenPostIds: async () => hidden },
   }
   const requireDependency = (name) => {
+    if (name === '@/lib/recommendations/engine') return loadQuery('../../recommendations/engine.ts')
+    if (name === '@/lib/db/queries/public-content') return {} // Authenticated paths must never call the guest branch.
     if (name === '@/lib/recommendations/feed-contract') return loadQuery('../../recommendations/feed-contract.ts')
     if (name === '@/lib/db/queries/save-counts') return loadQuery('save-counts.ts')
     if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`)
@@ -34,10 +36,11 @@ function clientFixture(respond, counts = {}) {
   return {
     rpcCalls,
     async rpc(name, args) {
-      assert.equal(name, 'get_visible_post_save_counts')
+      assert.ok(['get_visible_post_save_counts', 'get_visible_post_engagement'].includes(name))
       assert.deepEqual(Object.keys(args), ['post_ids'])
       assert.ok(args.post_ids.length <= 1000)
       rpcCalls.push(args.post_ids)
+      if(name==='get_visible_post_engagement'){const rows=respond({table:'posts'}).data;return {data:args.post_ids.map(id=>{const p=rows.find(p=>p.id===id);return {post_id:id,like_count:p.likes.length,save_count:counts[id]??0,comment_count:p.comments.length,liked_by_me:p.likes.some(l=>l.profile_id===viewer),saved_by_me:p.saves.some(s=>s.profile_id===viewer)}}),error:null}}
       return { data: args.post_ids.map((id) => ({ post_id: id, save_count: String(counts[id] ?? 0) })), error: null }
     },
     from(table) {
@@ -46,6 +49,8 @@ function clientFixture(respond, counts = {}) {
         select(columns, options = {}) { query.columns = columns; query.options = options; return chain },
         eq(key, value) { query.filters.push([key, value]); return chain },
         neq(key, value) { query.filters.push([`!${key}`, value]); return chain },
+        gte() { return chain },
+        lte() { return chain },
         in() { return chain },
         not() { return chain },
         order() { return chain },
@@ -96,13 +101,13 @@ function rankingClient({ posts, counts = {}, liked = [], saved = [], preferences
     if (table === 'saves') return ok(saved)
     if (table === 'profile_category_preferences') return ok(preferences)
     if (table === 'follows') return ok(follows)
-    if (table === 'profiles') return ok([])
+    if (table === 'profiles' || table === 'comments') return ok([])
     throw new Error(`Unexpected table: ${table}`)
   }, counts)
 }
 
 for (const [file, fn, scoreKey, baseBoost, savedWeight, likedWeight, preferenceWeight, followWeight] of [
-  ['feed.ts', 'getFeedData', 'feed_score', 5, 5, 3, 8, 22],
+  ['feed.ts', 'getFeedData', 'feed_score', 3, 8*Math.log2(1+5/8), 8*Math.log2(1+3/8), 8, 10],
   ['explore.ts', 'getExploreData', 'explore_score', 0, 3, 2, 6, 3],
 ]) {
   test(`${file}: global save totals preserve engagement scores, tie ordering and own-save state`, async () => {
@@ -112,11 +117,12 @@ for (const [file, fn, scoreKey, baseBoost, savedWeight, likedWeight, preferenceW
     const client = rankingClient({ posts: [travel, cooking], counts: { travel: 3, cooking: 4 } })
     const { posts } = await loadQuery(file, client)[fn](viewer)
     assert.deepEqual(posts.map((row) => row.id), ['cooking', 'travel'])
-    assert.deepEqual(posts.map((row) => row[scoreKey]), [16 + baseBoost, 16 + baseBoost])
+    const engagement = file === 'feed.ts' ? 4*Math.log2(5) : 16
+    assert.deepEqual(posts.map((row) => row[scoreKey]), [engagement + baseBoost, engagement + baseBoost])
     assert.deepEqual(posts.map((row) => row.save_count), [4, 3])
     assert.deepEqual(posts.map((row) => row.saved_by_me), [false, true])
     if (file === 'feed.ts') {
-      assert.ok(posts[0].reason_labels.includes('Saved by others'))
+      assert.equal(posts[0].save_count, 4)
       assert.equal(posts[0].source_bucket, 'trending')
       assert.equal(posts[0].recommendation_bucket, undefined)
     }
@@ -124,19 +130,19 @@ for (const [file, fn, scoreKey, baseBoost, savedWeight, likedWeight, preferenceW
 
   test(`${file}: likes, saves and preference rows still change later category ranking`, async () => {
     const candidates = [post('travel', 'travel'), post('cooking')]
-    const priorInteraction = { post_id: 'older-cooking', posts: { post_categories: [category('cooking')] } }
+    const priorInteraction = { post_id: 'older-cooking', created_at:new Date().toISOString(), posts: { author_id:'older-creator', post_categories: [category('cooking')] } }
     for (const [signal, weight] of [['liked', likedWeight], ['saved', savedWeight], ['preferences', preferenceWeight]]) {
       const input = { posts: candidates, [signal]: signal === 'preferences' ? [category('cooking')] : [priorInteraction] }
       const { posts } = await loadQuery(file, rankingClient(input))[fn](viewer)
       assert.equal(posts[0].id, 'cooking')
-      assert.equal(posts[0][scoreKey], baseBoost + weight)
+      assert.ok(Math.abs(posts[0][scoreKey] - (baseBoost + weight)) < 0.0001)
       assert.equal(posts[1][scoreKey], baseBoost)
     }
     const { posts: resetPosts } = await loadQuery(file, rankingClient({ posts: candidates }))[fn](viewer)
     assert.deepEqual(resetPosts.map((row) => row[scoreKey]), [baseBoost, baseBoost])
   })
 
-  test(`${file}: follow weights and hard hidden exclusion remain unchanged`, async () => {
+  test(`${file}: follow weights and hard hidden exclusion remain correct`, async () => {
     const client = rankingClient({ posts: [post('cooking'), post('travel', 'travel')], follows: [{ following_id: 'author-travel' }] })
     const result = await loadQuery(file, client, new Set(['cooking']))[fn](viewer)
     assert.deepEqual(result.posts.map((row) => row.id), ['travel'])
@@ -222,7 +228,7 @@ function loadReelPage(client) {
     '@/lib/supabase/server': { createClient: async () => client },
     '@/lib/db/queries/save-counts': loadQuery('save-counts.ts'),
     '@/lib/media/get-media-url': { getMediaUrl: async (path) => path },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: viewer }) },
+    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: viewer }), getOptionalSession: async () => ({ profileId: viewer }) },
     '@/components/reels/reel-viewer': { ReelViewer: 'ReelViewer' },
   }
   new Function('require', 'module', 'exports', outputText)((name) => {

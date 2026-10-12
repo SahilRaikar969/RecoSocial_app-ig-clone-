@@ -93,7 +93,7 @@ export async function getNotificationsPageData(
     `
     )
     .eq('recipient_id', profileId)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }).order('id', { ascending: false })
     .limit(80)
 
   if (filter === 'unread') {

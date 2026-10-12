@@ -1,5 +1,6 @@
 'use client'
 
+import { AuthPromptLink } from '@/components/auth/auth-prompt-link'
 import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Heart, MessageCircle, Share2 } from 'lucide-react'
@@ -10,7 +11,7 @@ import { optimisticEngagement } from '@/lib/mutations/optimistic-engagement'
 
 type PostEngagementPanelProps = {
   postId: string
-  devProfileId: string
+  devProfileId: string | null
   returnTo: string
   initialLikedByMe: boolean
   initialSavedByMe: boolean
@@ -71,7 +72,7 @@ export function PostEngagementPanel({
   }
 
   function handleToggleLike() {
-    if (isPendingLike) return
+    if (isPendingLike || !devProfileId) return
     const previous = likedByMe
     setMutationError('')
     startLikeTransition(async () => {
@@ -95,7 +96,7 @@ export function PostEngagementPanel({
   }
 
   function handleToggleSave() {
-    if (isPendingSave) return
+    if (isPendingSave || !devProfileId) return
     const previous = savedByMe
     setMutationError('')
     startSaveTransition(async () => {
@@ -122,16 +123,16 @@ export function PostEngagementPanel({
     <div>
       {mutationError ? <p role="alert" className="mb-3 text-sm text-red-300">{mutationError}</p> : null}
       <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-        <button type="button" onClick={handleToggleLike} disabled={isPendingLike} aria-pressed={likedByMe} aria-label={likedByMe ? 'Unlike post' : 'Like post'} aria-describedby={countId + '-likes'} className={'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2.5 text-sm transition disabled:opacity-60 ' + (likedByMe ? 'bg-violet-500/10 text-violet-300' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white')}>
+        <>{!devProfileId ? <AuthPromptLink returnTo={returnTo} action="like"><Heart aria-hidden="true" className="h-5 w-5" />Like · {initialLikeCount}</AuthPromptLink> : <button type="button" onClick={handleToggleLike} disabled={isPendingLike} aria-pressed={likedByMe} aria-label={likedByMe ? 'Unlike post' : 'Like post'} aria-describedby={countId + '-likes'} className={'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2.5 text-sm transition disabled:opacity-60 ' + (likedByMe ? 'bg-violet-500/10 text-violet-300' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white')}>
           <Heart aria-hidden="true" className="h-5 w-5" fill={likedByMe ? 'currentColor' : 'none'} />
           <span aria-hidden="true">{formatCompactNumber(likeCount)}</span><span id={countId + '-likes'} className="sr-only">{likeCount} likes</span>
-        </button>
+        </button>}</>
         <Link href={commentsHref} aria-label={'View ' + commentCount + (commentCount === 1 ? ' comment' : ' comments')} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white">
           <MessageCircle aria-hidden="true" className="h-5 w-5" /><span aria-hidden="true">{formatCompactNumber(commentCount)}</span>
         </Link>
-        <button type="button" onClick={handleToggleSave} disabled={isPendingSave} aria-pressed={savedByMe} aria-label={savedByMe ? 'Unsave post' : 'Save post'} aria-describedby={countId + '-saves'} className={'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2.5 text-sm transition disabled:opacity-60 ' + (savedByMe ? 'bg-violet-500/10 text-violet-300' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white')}>
+        <>{!devProfileId ? <AuthPromptLink returnTo={returnTo} action="save"><Bookmark aria-hidden="true" className="h-5 w-5" />Save · {initialSaveCount}</AuthPromptLink> : <button type="button" onClick={handleToggleSave} disabled={isPendingSave} aria-pressed={savedByMe} aria-label={savedByMe ? 'Unsave post' : 'Save post'} aria-describedby={countId + '-saves'} className={'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2.5 text-sm transition disabled:opacity-60 ' + (savedByMe ? 'bg-violet-500/10 text-violet-300' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white')}>
           <Bookmark aria-hidden="true" className="h-5 w-5" fill={savedByMe ? 'currentColor' : 'none'} /><span aria-hidden="true">{formatCompactNumber(saveCount)}</span><span id={countId + '-saves'} className="sr-only">{saveCount} saves</span>
-        </button>
+        </button>}</>
         <button type="button" onClick={handleCopyLink} aria-label="Copy post link" className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2.5 text-zinc-300 hover:bg-zinc-800 hover:text-white"><Share2 aria-hidden="true" className="h-5 w-5" /></button>
       </div>
       <p role="status" className={copyState === 'idle' ? 'sr-only' : 'mt-2 text-sm text-zinc-300'}>{copyState === 'copied' ? 'Post link copied.' : copyState === 'failed' ? 'Could not copy the link. Open the post and copy its address.' : ''}</p>

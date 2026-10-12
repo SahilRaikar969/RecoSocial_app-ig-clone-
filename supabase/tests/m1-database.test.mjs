@@ -26,9 +26,10 @@ before(async () => {
 })
 after(async () => { if (db) await db.close() })
 
-test('fresh installation creates 16 application tables, RLS, categories and safe function grants', async () => {
+test('fresh installation creates 17 application tables, RLS, categories and safe function grants', async () => {
   const tables = await rows("select c.relname,c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'")
-  assert.equal(tables.length, 16)
+  // M6 adds owner-only message read receipts through a forward migration.
+  assert.equal(tables.length, 17)
   assert.ok(tables.every(table => table.relrowsecurity))
   assert.equal(await scalar('select count(*)::int from public.categories'), 16)
   assert.equal(await scalar("select has_function_privilege('anon','public.save_profile_category_preferences(uuid[])','execute')"), false)

@@ -19,7 +19,7 @@ function buildDisplayName(email: string) {
   return cleaned ? cleaned.slice(0, 40) : 'New User'
 }
 
-export async function getDevSession() {
+export async function getOptionalSession() {
   const supabase = await createClient()
 
   const {
@@ -28,7 +28,7 @@ export async function getDevSession() {
   } = await supabase.auth.getUser()
 
   if (userError || !user) {
-    redirect('/login')
+    return null
   }
 
   const { data: existingProfile, error: profileError } = await supabase
@@ -115,4 +115,10 @@ export async function getDevSession() {
     username: String(insertedProfile.username || '').trim() || finalUsername,
     displayName: String(insertedProfile.display_name || '').trim() || displayName,
   }
+}
+/** Mutations and account routes must retain this authenticated boundary. */
+export async function getDevSession() {
+  const session=await getOptionalSession()
+  if(!session) redirect('/login')
+  return session
 }

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { MediaSkeleton } from '@/components/ui/media-skeleton'
 import { SmartImage } from '@/components/ui/smart-image'
+import { useVideoPlayback } from '@/lib/media/use-video-playback'
 
 type PostMediaProps = {
   mediaType: string
@@ -35,19 +36,15 @@ export function PostMedia({
   priorityLabel,
 }: PostMediaProps) {
   const pathname = usePathname()
-  const videoRef = useRef<HTMLVideoElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  const [isPausedByUser, setIsPausedByUser] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
-  const [isInViewport, setIsInViewport] = useState(false)
-  const [isActuallyPlaying, setIsActuallyPlaying] = useState(false)
-  const [hasMediaError, setHasMediaError] = useState(false)
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false)
+  const [visibleRatio, setVisibleRatio] = useState(0)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
 
   const isVideo = mediaType === 'video'
   const feedLikeMode = useMemo(() => isFeedLikePath(pathname), [pathname])
+  const { videoRef, playing: isActuallyPlaying, ready: isVideoLoaded, failed: hasMediaError, blocked, buffering, toggle, retry } = useVideoPlayback(isVideo ? mediaUrl : null, visibleRatio > 0, feedLikeMode && !isMobileViewport && visibleRatio >= 0.7, isMuted)
 
   useEffect(() => {
     function updateViewportMode() {
@@ -58,13 +55,6 @@ export function PostMedia({
     window.addEventListener('resize', updateViewportMode)
     return () => window.removeEventListener('resize', updateViewportMode)
   }, [])
-
-  useEffect(() => {
-    setHasMediaError(false)
-    setIsPausedByUser(false)
-    setIsActuallyPlaying(false)
-    setIsVideoLoaded(false)
-  }, [mediaUrl, thumbnailUrl, mediaType])
 
   useEffect(() => {
     try {
@@ -88,77 +78,26 @@ export function PostMedia({
 
     const node = containerRef.current
 
+    if (typeof IntersectionObserver === 'undefined') { setVisibleRatio(1); return }
+
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0]
-        setIsInViewport(entry.isIntersecting && entry.intersectionRatio >= 0.7)
+        setVisibleRatio(entry.isIntersecting ? entry.intersectionRatio : 0)
       },
       {
-        threshold: [0.3, 0.5, 0.7, 0.9],
+        threshold: [0, 0.01, 0.3, 0.5, 0.7, 0.9],
       }
     )
 
     observer.observe(node)
 
     return () => observer.disconnect()
-  }, [isVideo])
+  }, [isVideo, mediaUrl])
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!isVideo || !video || hasMediaError) return
+  function handleVideoClick() { toggle() }
 
-    if (!feedLikeMode) {
-      video.pause()
-      setIsActuallyPlaying(false)
-      return
-    }
-
-    if (isMobileViewport) {
-      video.pause()
-      setIsActuallyPlaying(false)
-      return
-    }
-
-    if (isInViewport && !isPausedByUser) {
-      const playPromise = video.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise
-          .then(() => setIsActuallyPlaying(true))
-          .catch(() => setIsActuallyPlaying(false))
-      }
-    } else {
-      video.pause()
-      setIsActuallyPlaying(false)
-    }
-  }, [feedLikeMode, hasMediaError, isInViewport, isPausedByUser, isVideo, isMobileViewport])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    video.muted = isMuted
-  }, [isMuted])
-
-  function handleVideoClick() {
-    const video = videoRef.current
-    if (!video || hasMediaError) return
-
-    if (video.paused) {
-      setIsPausedByUser(false)
-      const playPromise = video.play()
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise
-          .then(() => setIsActuallyPlaying(true))
-          .catch(() => setIsActuallyPlaying(false))
-      }
-      return
-    }
-
-    setIsPausedByUser(true)
-    video.pause()
-    setIsActuallyPlaying(false)
-  }
-
-  if (!mediaUrl || hasMediaError) {
+  if (!mediaUrl) {
     return (
       <div
         ref={containerRef}
@@ -190,10 +129,12 @@ export function PostMedia({
             onClick={handleVideoClick}
             className="relative block aspect-[4/5] w-full cursor-pointer bg-black"
             aria-label={isActuallyPlaying ? 'Pause video' : 'Play video'}
+            disabled={hasMediaError}
           >
-            {!isVideoLoaded ? <MediaSkeleton className="pointer-events-none absolute inset-0 aspect-[4/5] w-full" /> : null}
+            {!isVideoLoaded && !hasMediaError ? <MediaSkeleton className="pointer-events-none absolute inset-0 aspect-[4/5] w-full" /> : null}
             <video
               ref={videoRef}
+              key={mediaUrl}
               src={mediaUrl}
               poster={thumbnailUrl || undefined}
               playsInline
@@ -203,29 +144,17 @@ export function PostMedia({
               className={`aspect-[4/5] w-full bg-black object-contain transition duration-300 ${
                 isVideoLoaded ? 'opacity-100' : 'opacity-0'
               }`}
-              onLoadedData={() => setIsVideoLoaded(true)}
-              onCanPlay={() => setIsVideoLoaded(true)}
-              onPlay={() => setIsActuallyPlaying(true)}
-              onPause={() => setIsActuallyPlaying(false)}
-              onError={() => {
-                setHasMediaError(true)
-                setIsActuallyPlaying(false)
-              }}
             />
           </button>
+          {hasMediaError ? <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-zinc-950 p-6 text-center">
+            <p role="status" className="text-sm text-zinc-300">This video could not be loaded. Its format or connection may be unavailable.</p>
+            <button type="button" onClick={retry} className="min-h-11 rounded-lg bg-zinc-800 px-4 text-sm font-medium text-white">Retry video</button>
+          </div> : null}
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/88 via-black/12 to-transparent px-4 pb-4 pt-16">
             <div className="flex items-end justify-between gap-3">
               <div className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-medium text-white">
-                {isMobileViewport
-                  ? isActuallyPlaying ? 'Playing' : 'Tap to play'
-                  : feedLikeMode
-                    ? isActuallyPlaying
-                      ? 'Playing'
-                      : isPausedByUser
-                        ? 'Paused'
-                        : 'Ready'
-                    : 'Video'}
+                {blocked ? 'Tap to play' : buffering ? 'Loading video…' : isActuallyPlaying ? 'Playing' : 'Tap to play'}
               </div>
 
               <div className="flex items-center gap-2">
@@ -252,6 +181,7 @@ export function PostMedia({
           className="aspect-[4/5] w-full bg-black object-contain"
           fallbackClassName="flex aspect-[4/5] w-full items-center justify-center bg-[#08080b] text-sm text-zinc-500"
           fallbackText="Media unavailable"
+          retryable
         />
       )}
     </div>

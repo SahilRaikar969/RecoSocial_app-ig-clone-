@@ -189,7 +189,7 @@ test('theme update affecting no profile does not update cookie or claim success'
   const f = fixture('actions/settings.ts', () => ({ data: null, error: null }), {
     'next/headers': { cookies: async () => ({ set() { cookieWrites++ } }) },
   })
-  await expectRedirect(() => f.actions.updateThemePreference(form({ theme: 'light' })), '/settings?error=theme_update_failed')
+  await expectRedirect(() => f.actions.updateThemePreference(form({ theme: 'dark' })), '/settings?error=theme_update_failed')
   assert.equal(cookieWrites, 0)
   assert.deepEqual(f.invalidated, [])
 })

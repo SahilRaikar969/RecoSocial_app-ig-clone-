@@ -20,7 +20,7 @@ export async function updateThemePreference(formData: FormData) {
     redirect(buildRedirectUrl(returnTo, { error: 'missing_profile_id' }))
   }
 
-  if (theme !== 'dark' && theme !== 'light') {
+  if (theme !== 'dark') {
     redirect(buildRedirectUrl(returnTo, { error: 'invalid_theme' }))
   }
 

@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { PageShell } from '@/components/ui/page-shell'
 import { FeedbackBanner } from '@/components/ui/feedback-banner'
 import { MessageThread } from '@/components/messages/message-thread'
-import { MessageComposer } from '@/components/messages/message-composer'
 import { getDevSession } from '@/lib/auth/get-dev-session'
 import { getThreadPageData } from '@/lib/db/queries/messages'
 
@@ -80,11 +79,14 @@ export default async function ThreadPage({
 
       <div className="overflow-hidden rounded-xl border border-white/10 bg-black ">
         <MessageThread
+          key={`${profileId}:${data.thread.id}`}
           viewerProfileId={profileId}
+          threadId={data.thread.id}
+          hasOlder={data.hasOlder}
+          canSend={data.canSend}
           otherProfile={data.thread.other_profile}
           messages={data.messages}
         />
-        <MessageComposer threadId={data.thread.id} />
       </div>
     </PageShell>
   )

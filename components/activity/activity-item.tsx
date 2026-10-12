@@ -1,5 +1,6 @@
 import { NavigationLink as Link } from '@/components/ui/navigation-link'
 import { SmartImage } from '@/components/ui/smart-image'
+import { markNotificationReadAndRedirect } from '@/actions/notifications'
 import { getMediaUrl } from '@/lib/media/get-media-url'
 
 type NotificationItem = {
@@ -113,7 +114,7 @@ export async function ActivityItem({ notification }: ActivityItemProps) {
   const text = getNotificationText(notification)
   return <article className="flex min-w-0 items-start gap-3 py-4">
     <Link href={actorProfileHref} aria-label="View creator profile" className="shrink-0 rounded-full"><SmartImage src={actorAvatarUrl} alt="" className="h-11 w-11 rounded-full object-cover" fallbackClassName="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800 text-sm" fallbackText="?" /></Link>
-    <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{text.primary}</p>{text.secondary ? <p className="mt-1 line-clamp-2 break-words text-sm text-zinc-300">{text.secondary}</p> : null}<p className="mt-1 text-xs text-zinc-400">{formatRelativeTime(notification.created_at)}{!notification.read_at ? <span className="ml-2 text-violet-300">Unread</span> : null}</p><div className="mt-2 flex flex-wrap gap-2"><Link href={actorProfileHref} className="rs-button">View profile</Link>{notification.post?.id ? <Link href={postHref} className="rs-button">View post</Link> : null}</div></div>
+    <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{text.primary}</p>{text.secondary ? <p className="mt-1 line-clamp-2 break-words text-sm text-zinc-300">{text.secondary}</p> : null}<p className="mt-1 text-xs text-zinc-400">{formatRelativeTime(notification.created_at)}{!notification.read_at ? <span className="ml-2 text-violet-300">Unread</span> : null}</p><div className="mt-2 flex flex-wrap gap-2"><form action={markNotificationReadAndRedirect}><input type="hidden" name="notification_id" value={notification.id} /><input type="hidden" name="target_href" value={notification.post?.id ? postHref : actorProfileHref} /><input type="hidden" name="return_to" value="/activity" /><button type="submit" className="rs-button">{notification.post?.id ? 'View post' : 'View profile'}</button></form>{notification.post?.id ? <Link href={actorProfileHref} className="rs-button">View profile</Link> : null}</div></div>
     {notification.post?.id ? <Link href={postHref} aria-label="View post" className="shrink-0 rounded-lg"><SmartImage src={postPreviewUrl} alt="" className="h-14 w-14 rounded-lg object-cover" fallbackClassName="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-800 text-xs" fallbackText="Post" /></Link> : null}
   </article>
 }

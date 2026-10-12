@@ -77,58 +77,33 @@ export async function getOrCreateDirectThread(viewerProfileId: string, otherProf
   return insertedThread
 }
 
-export async function getInboxData(viewerProfileId: string) {
+export async function getInboxData(viewerProfileId: string, cursor?: { created_at: string; id: string }) {
   const supabase = await createClient()
 
-  const { data: threads, error: threadsError } = await supabase
-    .from('direct_threads')
-    .select('id, profile_low_id, profile_high_id, created_at, last_message_at')
-    .or(`profile_low_id.eq.${viewerProfileId},profile_high_id.eq.${viewerProfileId}`)
-    .order('last_message_at', { ascending: false })
-
+  const { data: threads, error: threadsError } = await supabase.rpc('get_direct_inbox', {
+    p_limit: 51,
+    ...(cursor ? { p_before_at: cursor.created_at, p_before_id: cursor.id } : {}),
+  })
   if (threadsError) throw new Error(threadsError.message)
-
-  const otherProfileIds = [...new Set(
-    (threads ?? []).map((thread) =>
-      thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id
-    )
-  )]
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url')
-    .in('id', otherProfileIds.length ? otherProfileIds : ['00000000-0000-0000-0000-000000000000'])
-
+  const page = (threads ?? []).slice(0, 50)
+  const otherProfileIds = [...new Set(page.map(thread => thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id))]
+  const { data: profiles, error: profilesError } = otherProfileIds.length
+    ? await supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', otherProfileIds)
+    : { data: [], error: null }
   if (profilesError) throw new Error(profilesError.message)
-
-  const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]))
-
-  const threadIds = (threads ?? []).map((thread) => thread.id)
-  const { data: rawMessages, error: messagesError } = await supabase
-    .from('direct_messages')
-    .select('id, thread_id, sender_id, body, created_at')
-    .in('thread_id', threadIds.length ? threadIds : ['00000000-0000-0000-0000-000000000000'])
-    .order('created_at', { ascending: false })
-
-  if (messagesError) throw new Error(messagesError.message)
-
-  const firstMessageByThread = new Map<string, NonNullable<typeof rawMessages>[number]>()
-  for (const message of rawMessages ?? []) {
-    if (!firstMessageByThread.has(message.thread_id)) {
-      firstMessageByThread.set(message.thread_id, message)
-    }
-  }
+  const profileMap = new Map((profiles ?? []).map(row => [row.id, row]))
 
   const conversations = await Promise.all(
-    (threads ?? []).map(async (thread) => {
+    page.map(async (thread) => {
       const otherProfileId =
         thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id
       const otherProfile = profileMap.get(otherProfileId)
       const avatarUrl = await getMediaUrl(otherProfile?.avatar_url ?? null)
-      const lastMessage = firstMessageByThread.get(thread.id) ?? null
+      const lastMessage = thread.last_message_id ? { id: thread.last_message_id, body: thread.last_message_body, sender_id: thread.last_message_sender_id, created_at: thread.last_message_created_at } : null
 
       return {
-        id: thread.id,
+        id: thread.thread_id,
+        has_unread: thread.has_unread,
         last_message_at: thread.last_message_at,
         other_profile: {
           id: otherProfile?.id ?? otherProfileId,
@@ -148,7 +123,8 @@ export async function getInboxData(viewerProfileId: string) {
     })
   )
 
-  return conversations
+  const last = page[page.length - 1]
+  return { conversations, nextCursor: (threads?.length ?? 0) > 50 && last ? { id: last.thread_id, created_at: last.last_message_at } : null }
 }
 
 export async function getThreadPageData(viewerProfileId: string, threadId: string) {
@@ -171,7 +147,7 @@ export async function getThreadPageData(viewerProfileId: string, threadId: strin
     thread.profile_low_id === viewerProfileId ? thread.profile_high_id : thread.profile_low_id
 
   const mutual = await areMutualFollowers(viewerProfileId, otherProfileId)
-  if (!mutual) return null
+  // History remains participant-only after an unfollow; new sends stay disabled.
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
@@ -186,7 +162,7 @@ export async function getThreadPageData(viewerProfileId: string, threadId: strin
     .from('direct_messages')
     .select('id, thread_id, sender_id, body, created_at')
     .eq('thread_id', threadId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(51)
 
   if (messagesError) throw new Error(messagesError.message)
 
@@ -200,6 +176,8 @@ export async function getThreadPageData(viewerProfileId: string, threadId: strin
         avatar_url: await getMediaUrl(profileMap.get(otherProfileId)?.avatar_url ?? null),
       },
     },
-    messages: messages ?? [],
+    messages: (messages ?? []).slice(0, 50).reverse(),
+    hasOlder: (messages?.length ?? 0) > 50,
+    canSend: mutual,
   }
 }

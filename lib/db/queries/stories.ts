@@ -8,27 +8,27 @@ function getStoryPreviewPath(story: Pick<Tables<'stories'>, 'media_type' | 'medi
     : story.media_path || story.thumbnail_path || null
 }
 
-export async function getStoriesRail(viewerProfileId: string) {
+export async function getStoriesRail(viewerProfileId: string | null) {
   const supabase = await createClient()
   const nowIso = new Date().toISOString()
 
-  const { data: followRows, error: followsError } = await supabase
+  const { data: followRows, error: followsError } = viewerProfileId ? await supabase
     .from('follows')
     .select('following_id')
-    .eq('follower_id', viewerProfileId)
+    .eq('follower_id', viewerProfileId) : { data: [], error: null }
 
   if (followsError) throw new Error(followsError.message)
 
   const authorIds = [
     viewerProfileId,
     ...(followRows ?? []).map((row) => row.following_id),
-  ].filter(Boolean)
+  ].filter((id): id is string => Boolean(id))
 
-  if (authorIds.length === 0) {
+  if (viewerProfileId && authorIds.length === 0) {
     return []
   }
 
-  const { data: stories, error: storiesError } = await supabase
+  let storyQuery = supabase
     .from('stories')
     .select(`
       id,
@@ -40,9 +40,12 @@ export async function getStoriesRail(viewerProfileId: string) {
       created_at,
       expires_at
     `)
-    .in('author_id', authorIds)
     .gt('expires_at', nowIso)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(200)
+  if (viewerProfileId) storyQuery = storyQuery.in('author_id', authorIds)
+  const { data: stories, error: storiesError } = await storyQuery
 
   if (storiesError) throw new Error(storiesError.message)
 
@@ -60,10 +63,11 @@ export async function getStoriesRail(viewerProfileId: string) {
 
   const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]))
 
-  const { data: viewedRows, error: viewedError } = await supabase
+  const { data: viewedRows, error: viewedError } = viewerProfileId ? await supabase
     .from('story_views')
     .select('story_id')
     .eq('viewer_id', viewerProfileId)
+    .in('story_id', stories.map(story => story.id)) : { data: [], error: null }
 
   if (viewedError) throw new Error(viewedError.message)
 
@@ -80,6 +84,7 @@ export async function getStoriesRail(viewerProfileId: string) {
   const result = await Promise.all(
     Array.from(grouped.entries()).map(async ([authorId, authorStories]) => {
       const author = profileMap.get(authorId)
+      authorStories.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))
       const firstUnviewed = authorStories.find((story) => !viewedSet.has(story.id)) ?? authorStories[0]
       const previewUrl = await getMediaUrl(getStoryPreviewPath(firstUnviewed))
       const avatarUrl = await getMediaUrl(author?.avatar_url ?? null)
@@ -108,7 +113,7 @@ export async function getStoriesRail(viewerProfileId: string) {
   })
 }
 
-export async function getStoryViewerData(viewerProfileId: string, storyId: string) {
+export async function getStoryViewerData(viewerProfileId: string | null, storyId: string) {
   const supabase = await createClient()
   const nowIso = new Date().toISOString()
 
@@ -122,14 +127,25 @@ export async function getStoryViewerData(viewerProfileId: string, storyId: strin
   if (storyError) throw new Error(storyError.message)
   if (!currentStory) return null
 
-  const { data: authorStories, error: authorStoriesError } = await supabase
+  const { data: authorWindow, error: authorStoriesError } = await supabase
     .from('stories')
     .select('id, author_id, media_type, media_path, thumbnail_path, caption, created_at, expires_at')
     .eq('author_id', currentStory.author_id)
     .gt('expires_at', nowIso)
     .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(200)
 
   if (authorStoriesError) throw new Error(authorStoriesError.message)
+
+  // Keep the earliest active sequence bounded. A direct link outside that window
+  // retains its requested item in place of the window's last item, then sorts it.
+  const authorStories = [...(authorWindow ?? [])]
+  if (!authorStories.some(story => story.id === currentStory.id)) {
+    if (authorStories.length === 200) authorStories.pop()
+    authorStories.push(currentStory)
+    authorStories.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))
+  }
 
   const { data: authorProfile, error: authorError } = await supabase
     .from('profiles')
@@ -139,11 +155,11 @@ export async function getStoryViewerData(viewerProfileId: string, storyId: strin
 
   if (authorError) throw new Error(authorError.message)
 
-  const { data: viewedRows, error: viewedError } = await supabase
+  const { data: viewedRows, error: viewedError } = viewerProfileId ? await supabase
     .from('story_views')
     .select('story_id')
     .eq('viewer_id', viewerProfileId)
-    .in('story_id', (authorStories ?? []).map((story) => story.id))
+    .in('story_id', (authorStories ?? []).map((story) => story.id)) : { data: [], error: null }
 
   if (viewedError) throw new Error(viewedError.message)
 
@@ -168,7 +184,14 @@ export async function getStoryViewerData(viewerProfileId: string, storyId: strin
     stories.findIndex((story) => story.id === storyId)
   )
 
+  // Reuse the rail's own/unseen/author ordering across author boundaries.
+  // The active rail is bounded to 200 stories; a directly opened author outside it ends at Feed.
+  const rail = await getStoriesRail(viewerProfileId)
+  const authorIndex = rail.findIndex(item => item.author.id === currentStory.author_id)
+
   return {
+    previousAuthorStoryId: authorIndex > 0 ? rail[authorIndex - 1].first_story_id : null,
+    nextAuthorStoryId: authorIndex >= 0 ? rail[authorIndex + 1]?.first_story_id ?? null : null,
     author: {
       id: authorProfile?.id ?? currentStory.author_id,
       username: authorProfile?.username ?? 'creator',

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getDevSession } from '@/lib/auth/get-dev-session'
+import { getOptionalSession } from '@/lib/auth/get-dev-session'
 import { ReelViewer } from '@/components/reels/reel-viewer'
 import { getReelPageData } from '@/lib/db/queries/reels'
 
@@ -97,7 +97,8 @@ export default async function ReelPage({
   const resolvedParams = await params
   const resolvedSearchParams = searchParams ? await searchParams : undefined
   const postId = String(resolvedParams?.postId || '').trim()
-  const { profileId } = await getDevSession()
+  const session=await getOptionalSession()
+  const profileId=session?.profileId ?? null
   const { reels } = await getReelPageData({
     viewerProfileId: profileId,
     postId,

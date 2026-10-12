@@ -28,7 +28,7 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
     comments: posts.flatMap(row => row.comments.map(comment => ({ ...comment, post_id: row.id }))),
     posts: structuredClone(posts), hidden: new Set(hidden),
     follows: follows.map(id => ({ follower_id: viewerId, following_id: id })),
-    likes: structuredClone(likes), saves: structuredClone(saves),
+    likes: structuredClone(likes).map(row=>({created_at:new Date(now).toISOString(),...row})), saves: structuredClone(saves).map(row=>({created_at:new Date(now).toISOString(),...row})),
     profile_category_preferences: preferences.map(slug => ({ profile_id: viewerId, ...category(slug) })),
   }
   const calls = []
@@ -36,9 +36,10 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
   const client = {
     calls,
     async rpc(name, args) {
-      assert.equal(name, 'get_visible_post_save_counts')
+      assert.ok(['get_visible_post_save_counts','get_visible_post_engagement'].includes(name))
       assert.deepEqual(Object.keys(args), ['post_ids'])
       calls.push({ table: 'rpc', ids: args.post_ids })
+      if(name==='get_visible_post_engagement') return ok(args.post_ids.map(id=>{const post=state.posts.find(row=>row.id===id);return {post_id:id,like_count:(post?.likes.length??0)+state.likes.filter(row=>row.post_id===id).length,save_count:counts[id]??state.saves.filter(row=>row.post_id===id).length,comment_count:state.comments.filter(row=>row.post_id===id).length,liked_by_me:state.likes.some(row=>row.post_id===id&&row.profile_id===viewerId),saved_by_me:state.saves.some(row=>row.post_id===id&&row.profile_id===viewerId)}}))
       return ok(args.post_ids.map(id => ({ post_id: id, save_count: counts[id] ?? state.saves.filter(row => row.post_id === id).length })))
     },
     from(table) {
@@ -48,6 +49,8 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
           const literal = value.slice(1, -1).replace(/\\(.)/g, '$1').toLowerCase()
           return String(row[key] ?? '').toLowerCase().includes(literal)
         }
+        if(op==='gte') return row[key]>=value
+        if(op==='lte') return row[key]<=value
         if (op === 'eq') return row[key] === value
         if (op === 'neq') return row[key] !== value
         if (op === 'in') return value.includes(row[key])
@@ -57,6 +60,8 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
       const chain = {
         ilike(key, value) { query.filters.push(['ilike', key, value]); return chain },
         select(columns) { query.columns = columns; return chain },
+        gte(key,value) {query.filters.push(['gte',key,value]);return chain},
+        lte(key,value) {query.filters.push(['lte',key,value]);return chain},
         eq(key, value) { query.filters.push(['eq', key, value]); return chain },
         neq(key, value) { query.filters.push(['neq', key, value]); return chain },
         in(key, value) { query.filters.push(['in', key, value]); return chain },
@@ -79,7 +84,7 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
               assert.equal(query.options.ignoreDuplicates, true)
               assert.equal(query.payload.profile_id, viewerId)
               if (!state[table].some(row => row.post_id === query.payload.post_id && row.profile_id === viewerId)) {
-                state[table].push(query.payload)
+                state[table].push({created_at:new Date(now).toISOString(),...query.payload})
               }
               return ok(null)
             }
@@ -94,7 +99,7 @@ function fixture({ posts = [], hidden = [], follows = [], likes = [], saves = []
               rows = [...rows].sort((a, b) => (a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0) * (ascending ? 1 : -1))
             }
             rows = rows.slice(0, query.limit)
-            if (table === 'likes' || table === 'saves') {
+            if (table === 'likes' || table === 'saves' || table === 'comments') {
               rows = rows.map(row => ({ ...row, posts: state.posts.find(post => post.id === row.post_id) ?? null }))
             } else if (table === 'posts') {
               rows = rows.map(row => ({ ...row,
@@ -124,9 +129,9 @@ function load(file, context = fixture(), overrides = {}) {
     'next/link': { default: 'Link' },
     '@/components/ui/navigation-link': { NavigationLink: 'Link' },
     'next/cache': { revalidatePath: path => context.invalidations.push(path) },
-    'next/navigation': { redirect: path => { throw new Error(`redirect:${path}`) } },
+    'next/navigation': { notFound:()=>{throw new Error('not-found')}, redirect: path => { throw new Error(`redirect:${path}`) } },
     '@/lib/supabase/server': { createClient: async () => context.client },
-    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: context.viewer }) },
+    '@/lib/auth/get-dev-session': { getDevSession: async () => ({ profileId: context.viewer }), getOptionalSession:async()=>context.viewer?({profileId:context.viewer}):null },
     '@/lib/db/queries/post-moderation': {
       getHiddenPostIds: async () => context.state.hidden,
       getViewerPostModerationStates: async (_profileId, ids) => new Map(ids.map(id => [id, {
