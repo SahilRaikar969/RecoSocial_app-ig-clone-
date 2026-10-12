@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">RecoSocial demo: Fitness</title>
+  <desc id="desc">Project-generated geometric fitness illustration. Synthetic demo content, not a real user photograph.</desc>
+  <rect width="800" height="1000" fill="#b5edb0"/>
+  <circle cx="730" cy="88" r="205" fill="white" opacity=".24"/>
+  <circle cx="35" cy="864" r="172" fill="#23442a" opacity=".08"/>
+  <path d="M54 181h692M54 775h692" stroke="#23442a" stroke-width="2" opacity=".3"/>
+  <text x="55" y="93" fill="#23442a" font-family="sans-serif" font-size="26" font-weight="700" letter-spacing="3">RECOSOCIAL</text>
+  <text x="55" y="136" fill="#23442a" font-family="sans-serif" font-size="22">GENERATED DEMO CONTENT</text>
+  <g stroke="#23442a" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M268 365h264M268 295v140M225 320v90M532 295v140M575 320v90"/></g>
+  <text x="400" y="640" fill="#23442a" text-anchor="middle" font-family="sans-serif" font-size="64" font-weight="700">Fitness</text>
+  <text x="400" y="693" fill="#23442a" text-anchor="middle" font-family="sans-serif" font-size="25">A synthetic collection for exploring ideas</text>
+  <text x="55" y="842" fill="#23442a" font-family="sans-serif" font-size="23">DEMO / NOT A REAL ACCOUNT</text>
+  <text x="55" y="889" fill="#23442a" font-family="sans-serif" font-size="22">Local shapes. No scraped media.</text>
+</svg>

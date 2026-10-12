@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob:; media-src blob:; connect-src 'none'">
+<title>RecoSocial generated demo video</title>
+<style>body{max-width:46rem;margin:2rem auto;padding:0 1rem;font:1rem/1.5 system-ui;color:#173e35;background:#eff6f1}button,a{padding:.8rem;border:2px solid currentColor;border-radius:.4rem;background:white;color:inherit}canvas{display:block;max-width:100%;height:auto;margin:1rem 0}button:focus-visible,a:focus-visible{outline:3px solid #8e5109;outline-offset:4px}</style>
+<h1>Generate a RecoSocial demo clip</h1>
+<p>This local-only tool draws project-authored geometric scenery and records a silent 1.5-second VP8 WebM. It uses no camera, microphone, network requests, or external assets. The checked-in clip uses these shapes; encoding timestamps may vary between browsers and runs.</p>
+<button id="make" type="button">Generate clip</button>
+<p id="status" role="status">Ready</p>
+<a id="download" download="loop.webm" hidden>Download generated clip</a>
+<canvas id="canvas" width="480" height="720" aria-label="Generated geometric sun, mountain and moving horizontal line"></canvas>
+<script>
+const button = document.querySelector('#make');
+const status = document.querySelector('#status');
+const download = document.querySelector('#download');
+const canvas = document.querySelector('canvas');
+let objectUrl;
+let activeStream;
+let timer;
+let stopTimer;
+function cleanup() {
+  clearInterval(timer);
+  clearTimeout(stopTimer);
+  activeStream?.getTracks().forEach(track => track.stop());
+  activeStream = undefined;
+}
+addEventListener('pagehide', () => { cleanup(); if (objectUrl) URL.revokeObjectURL(objectUrl); });
+button.onclick = () => {
+  if (!canvas.captureStream || !globalThis.MediaRecorder?.isTypeSupported('video/webm;codecs=vp8')) {
+    status.textContent = 'This browser cannot record VP8 WebM. Use a browser with MediaRecorder support.';
+    return;
+  }
+  button.disabled = true;
+  download.hidden = true;
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  const context = canvas.getContext('2d');
+  const parts = [];
+  let frame = 0;
+  function draw() {
+    context.fillStyle = '#c8d7cf'; context.fillRect(0, 0, 480, 720);
+    context.fillStyle = '#f7edcf'; context.beginPath(); context.arc(350, 150, 55, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#4e7169'; context.beginPath(); context.moveTo(0, 550); context.lineTo(160, 300); context.lineTo(480, 570); context.lineTo(480, 720); context.lineTo(0, 720); context.fill();
+    context.fillStyle = '#233e39'; context.fillRect(0, 600, 480, 120);
+    context.fillStyle = '#d6ae76'; context.fillRect((frame++ * 3) % 480, 625, 45, 8);
+  }
+  try {
+    draw();
+    activeStream = canvas.captureStream(12);
+    const recorder = new MediaRecorder(activeStream, { mimeType: 'video/webm;codecs=vp8' });
+    recorder.ondataavailable = event => { if (event.data.size) parts.push(event.data); };
+    recorder.onerror = () => { cleanup(); button.disabled = false; status.textContent = 'Recording failed. Try again.'; };
+    recorder.onstop = () => {
+      cleanup();
+      if (parts.length) {
+        objectUrl = URL.createObjectURL(new Blob(parts, { type: 'video/webm' }));
+        download.href = objectUrl;
+        download.hidden = false;
+        status.textContent = 'Generated locally. The download contains only synthetic scenery.';
+      }
+      button.disabled = false;
+    };
+    recorder.start();
+    timer = setInterval(draw, 83);
+    stopTimer = setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, 1500);
+    status.textContent = 'Recording local shapes…';
+  } catch {
+    cleanup(); button.disabled = false; status.textContent = 'Recording could not start. Try another supported browser.';
+  }
+};
+</script>
+</html>

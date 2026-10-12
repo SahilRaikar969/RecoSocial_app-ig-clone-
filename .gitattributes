@@ -3,3 +3,7 @@
 
 # Keep the historical SQL evidence byte-for-byte, including original line endings.
 supabase/legacy-migrations/*.sql -text whitespace=cr-at-eol
+
+# Demo fixtures keep reproducible bytes across Windows and Unix checkouts.
+public/demo/recosocial-v1/*.svg text eol=lf
+public/demo/recosocial-v1/*.webm binary

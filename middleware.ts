@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 function isStaticAsset(pathname: string) {
   return (
+    pathname === '/demo/recosocial-v1/loop.webm' ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|woff|woff2|ttf)$/.test(pathname)
@@ -81,6 +82,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|woff|woff2|ttf)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|demo/recosocial-v1/loop\\.webm$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|woff|woff2|ttf)$).*)',
   ],
 }

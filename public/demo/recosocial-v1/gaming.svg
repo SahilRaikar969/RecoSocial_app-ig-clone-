@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">RecoSocial demo: Gaming</title>
+  <desc id="desc">Project-generated geometric gaming illustration. Synthetic demo content, not a real user photograph.</desc>
+  <rect width="800" height="1000" fill="#d7c2fa"/>
+  <circle cx="730" cy="88" r="205" fill="white" opacity=".24"/>
+  <circle cx="35" cy="864" r="172" fill="#41236c" opacity=".08"/>
+  <path d="M54 181h692M54 775h692" stroke="#41236c" stroke-width="2" opacity=".3"/>
+  <text x="55" y="93" fill="#41236c" font-family="sans-serif" font-size="26" font-weight="700" letter-spacing="3">RECOSOCIAL</text>
+  <text x="55" y="136" fill="#41236c" font-family="sans-serif" font-size="22">GENERATED DEMO CONTENT</text>
+  <g stroke="#41236c" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M285 285h230c27 0 40 15 47 42l30 113c8 31-22 48-46 26l-55-48H309l-55 48c-24 22-54 5-46-26l30-113c7-27 20-42 47-42Z"/><path d="M277 346h66m-33-33v66"/><circle cx="494" cy="337" r="9"/><circle cx="534" cy="372" r="9"/></g>
+  <text x="400" y="640" fill="#41236c" text-anchor="middle" font-family="sans-serif" font-size="64" font-weight="700">Gaming</text>
+  <text x="400" y="693" fill="#41236c" text-anchor="middle" font-family="sans-serif" font-size="25">A synthetic collection for exploring ideas</text>
+  <text x="55" y="842" fill="#41236c" font-family="sans-serif" font-size="23">DEMO / NOT A REAL ACCOUNT</text>
+  <text x="55" y="889" fill="#41236c" font-family="sans-serif" font-size="22">Local shapes. No scraped media.</text>
+</svg>

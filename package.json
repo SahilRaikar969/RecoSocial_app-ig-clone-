@@ -16,7 +16,12 @@
     "test:m3": "node --test tests/m3-*.test.mjs",
     "test:m4": "node --test tests/m4-*.test.mjs",
     "test:m5": "node --test tests/m5-*.test.mjs",
-    "test:m6": "node --test tests/m6-*.test.mjs supabase/tests/m6-*.test.mjs"
+    "test:m6": "node --test tests/m6-*.test.mjs supabase/tests/m6-*.test.mjs",
+    "demo:plan": "node scripts/demo/cli.mjs plan",
+    "demo:seed": "node scripts/demo/cli.mjs seed",
+    "demo:reset": "node scripts/demo/cli.mjs reset",
+    "demo:media": "node scripts/demo/generate-media.mjs",
+    "test:demo": "node --test tests/m6-demo-*.test.mjs supabase/tests/m6-demo-seed.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

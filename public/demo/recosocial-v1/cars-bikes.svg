@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">RecoSocial demo: Cars</title>
+  <desc id="desc">Project-generated geometric cars illustration. Synthetic demo content, not a real user photograph.</desc>
+  <rect width="800" height="1000" fill="#f3c797"/>
+  <circle cx="730" cy="88" r="205" fill="white" opacity=".24"/>
+  <circle cx="35" cy="864" r="172" fill="#6a361d" opacity=".08"/>
+  <path d="M54 181h692M54 775h692" stroke="#6a361d" stroke-width="2" opacity=".3"/>
+  <text x="55" y="93" fill="#6a361d" font-family="sans-serif" font-size="26" font-weight="700" letter-spacing="3">RECOSOCIAL</text>
+  <text x="55" y="136" fill="#6a361d" font-family="sans-serif" font-size="22">GENERATED DEMO CONTENT</text>
+  <g stroke="#6a361d" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m235 370 43-94h240l49 94m-345 67v-67h356v67m-356 0h356M300 276l-17 94m217-94 20 94"/><circle cx="285" cy="442" r="33"/><circle cx="515" cy="442" r="33"/></g>
+  <text x="400" y="640" fill="#6a361d" text-anchor="middle" font-family="sans-serif" font-size="64" font-weight="700">Cars</text>
+  <text x="400" y="693" fill="#6a361d" text-anchor="middle" font-family="sans-serif" font-size="25">A synthetic collection for exploring ideas</text>
+  <text x="55" y="842" fill="#6a361d" font-family="sans-serif" font-size="23">DEMO / NOT A REAL ACCOUNT</text>
+  <text x="55" y="889" fill="#6a361d" font-family="sans-serif" font-size="22">Local shapes. No scraped media.</text>
+</svg>
