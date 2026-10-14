@@ -46,8 +46,10 @@ export async function proxy(request: NextRequest) {
   )
 
   const {
-    data: { user },
+    data: { user: verifiedUser },
+    error: authError,
   } = await supabase.auth.getUser()
+  const user = authError ? null : verifiedUser
 
   function redirectWithCookies(url: URL) {
     const redirectResponse = NextResponse.redirect(url)
@@ -58,7 +60,11 @@ export async function proxy(request: NextRequest) {
 
   const publicPath = isPublicRoute(pathname)
 
-  if (!user && !publicPath) {
+  // Page redirects apply to navigation only. Server Actions and API handlers
+  // authenticate independently and must produce their own response format.
+  const isNavigation = request.method === 'GET' || request.method === 'HEAD'
+
+  if (isNavigation && !user && !publicPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
@@ -67,7 +73,7 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(url)
   }
 
-  if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/')) {
+  if (isNavigation && user && (pathname === '/login' || pathname === '/signup' || pathname === '/')) {
     const url = request.nextUrl.clone()
     const destination=new URL(safeReturnPath(request.nextUrl.searchParams.get('next') || '/feed'), request.url)
     url.pathname = destination.pathname
@@ -75,6 +81,13 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(url)
   }
 
+  // Bind rendered client state to this request's verified identity. Always
+  // overwrite incoming values; this header never authorizes data access.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-recosocial-viewer-id', user?.id || '')
+  const previousCookies = response.cookies.getAll()
+  response = NextResponse.next({ request: { headers: requestHeaders } })
+  previousCookies.forEach(cookie => response.cookies.set(cookie))
   response.headers.set('Cache-Control', 'private, no-store')
 
   return response

@@ -93,7 +93,9 @@ try {
     "export type TablesUpdate<Name extends TableName> = Database['public']['Tables'][Name]['Update']", '')
   const source = lines.join('\n')
   if (process.argv.includes('--check')) {
-    if ((await readFile(output, 'utf8')) !== source) throw new Error('Database types are stale; regenerate them.')
+    // Git may check out this generated file with CRLF on Windows. Compare
+    // content strictly while allowing that checkout-only newline conversion.
+    if ((await readFile(output, 'utf8')).replace(/\r\n/g, '\n') !== source) throw new Error('Database types are stale; regenerate them.')
     console.log('Database type contracts match repository migrations.')
   } else {
     await writeFile(output, source)

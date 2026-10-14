@@ -5,7 +5,11 @@ import type { Database } from '@/lib/supabase/database.types'
 export function startUnreadMonitor(
   client: SupabaseClient<Database>,
   onCount: (count: number) => void,
-  observer?: { onSync?: () => void; onViewer?: (viewerId: string | null) => void }
+  observer?: {
+    onSync?: () => void
+    onViewer?: (viewerId: string | null) => void
+    onVerifiedViewer?: (viewerId: string | null) => void
+  }
 ) {
   let stopped = false
   let running = false
@@ -28,7 +32,12 @@ export function startUnreadMonitor(
       // Preserve verified getUser: browser session events are invalidation only.
       const { data: { user }, error } = await client.auth.getUser()
       if (stopped || requestGeneration !== generation) return
+      // An unavailable Auth service is not evidence of logout. Keep the last
+      // verified identity until recovery, unless the session is explicitly absent
+      // or rejected. Invalidation events alone never reset the document.
+      if (error && error.name !== 'AuthSessionMissingError' && error.status !== 401 && error.status !== 403) return
       const verifiedId = !error && user ? user.id : null
+      observer?.onVerifiedViewer?.(verifiedId)
       if (verifiedId) {
         // Server auth actions update cookies without notifying this singleton.
         // Switch realtime back to its current-session token callback.
@@ -81,6 +90,8 @@ export function startUnreadMonitor(
   const interval = window.setInterval(() => { void refresh() }, 15000)
   const onVisibility = () => { if (document.visibilityState === 'visible') void refresh() }
   document.addEventListener('visibilitychange', onVisibility)
+  window.addEventListener('focus', onVisibility)
+  window.addEventListener('online', onVisibility)
   void refresh()
 
   return () => {
@@ -90,5 +101,7 @@ export function startUnreadMonitor(
     clearChannel()
     window.clearInterval(interval)
     document.removeEventListener('visibilitychange', onVisibility)
+    window.removeEventListener('focus', onVisibility)
+    window.removeEventListener('online', onVisibility)
   }
 }

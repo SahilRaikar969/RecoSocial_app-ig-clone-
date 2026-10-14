@@ -63,9 +63,15 @@ test('nested primary route retains active state without matching unrelated prefi
 })
 test('recovery routes bypass social chrome and story creation keeps a main landmark', () => {
   const Chrome=load('components/layout/root-chrome.tsx').RootChrome
-  for(const route of ['/login','/signup','/forgot-password','/reset-password','/reel/id','/stories/id']) {
+  for(const route of ['/login','/signup','/forgot-password','/reset-password']) {
     pathname=route
     assert.doesNotMatch(render(Chrome,{children:'page'}), /data-monitor-owner|<nav/)
+  }
+  for(const route of ['/reel/id','/stories/id','/camera']) {
+    pathname=route
+    const html=render(Chrome,{children:'page'})
+    assert.equal((html.match(/data-monitor-owner/g)||[]).length,1)
+    assert.doesNotMatch(html, /<nav/)
   }
   pathname='/stories/create'
   const html=render(Chrome,{children:'page'})

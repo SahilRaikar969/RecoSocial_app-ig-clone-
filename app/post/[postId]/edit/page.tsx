@@ -5,6 +5,7 @@ import { SurfaceHero } from '@/components/ui/surface-hero'
 import { requireSession } from '@/lib/auth/session'
 import { getAllCategories } from '@/lib/db/queries/categories'
 import { getEditablePost } from '@/lib/db/queries/post-edit'
+import { getMediaUrl } from '@/lib/media/get-media-url'
 
 type EditPostPageProps = {
   params: Promise<{
@@ -45,6 +46,10 @@ export default async function EditPostPage({
   }
 
   const editablePost = result.post
+  const [initialMediaUrl, initialThumbnailUrl] = await Promise.all([
+    getMediaUrl(editablePost.media_path),
+    getMediaUrl(editablePost.thumbnail_path),
+  ])
   const error = resolvedSearchParams?.error || ''
 
   const errorMessage =
@@ -91,7 +96,7 @@ export default async function EditPostPage({
   return (
     <PageShell maxWidth="6xl">
       <SurfaceHero title="Edit post" />
-      <EditPostForm profileId={profileId} post={editablePost} categories={categories} errorMessage={errorMessage} />
+      <EditPostForm profileId={profileId} post={editablePost} initialMediaUrl={initialMediaUrl} initialThumbnailUrl={initialThumbnailUrl} categories={categories} errorMessage={errorMessage} />
     </PageShell>
   )
 }

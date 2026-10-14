@@ -225,7 +225,7 @@ export default async function PostDetailPage({
                 <form action={deleteCommentByOwner}><input type="hidden" name="comment_id" value={comment.id} /><input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="dev_profile_id" value={profileId ?? ''} /><input type="hidden" name="return_to" value={returnTo} /><DeleteCommentButton /></form>
               </div>)}
             </div> : null}
-            {!isPostOwner ? <CommentThreadPanel postId={post.id} profileId={profileId} returnTo={returnTo} initialComments={initialComments} showAllComments postOwnerId={post.author_id} />
+            {!isPostOwner ? <CommentThreadPanel key={`${profileId ?? 'guest'}:${post.id}`} postId={post.id} profileId={profileId} returnTo={returnTo} initialComments={initialComments} showAllComments postOwnerId={post.author_id} />
               : initialComments.length === 0 ? <p className="py-4 text-sm text-zinc-400">No comments yet.</p> : null}
           </aside>
         </div>

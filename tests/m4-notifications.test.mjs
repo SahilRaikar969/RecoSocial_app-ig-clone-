@@ -14,7 +14,7 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
 function setup() {
   const events = new Map(), intervals = new Set(), timeouts = []
   globalThis.document = { visibilityState: 'visible', addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name) }
-  globalThis.window = { setInterval: fn => { intervals.add(fn); return fn }, clearInterval: fn => intervals.delete(fn), setTimeout: fn => { timeouts.push(fn) } }
+  globalThis.window = { addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name), setInterval: fn => { intervals.add(fn); return fn }, clearInterval: fn => intervals.delete(fn), setTimeout: fn => { timeouts.push(fn) } }
   const state = { user: 'viewer-a', count: 4, authReads: 0, reads: [], channels: [], activeChannels: [], removed: [], pendingRemovals: [], unsubscribed: false }
   let authEvent
   const client = {

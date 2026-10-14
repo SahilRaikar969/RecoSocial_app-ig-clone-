@@ -7,9 +7,10 @@ import { UnreadNotificationsProvider } from '@/components/activity/unread-notifi
 
 type RootChromeProps = {
   children: ReactNode
+  initialViewerId: string | null
 }
 
-export function RootChrome({ children }: RootChromeProps) {
+export function RootChrome({ children, initialViewerId }: RootChromeProps) {
   const pathname = usePathname()
 
   const isAuthRoute =
@@ -25,15 +26,10 @@ export function RootChrome({ children }: RootChromeProps) {
   const isStoryViewerRoute = pathname !== '/stories/create' && /^\/stories\/[^/]+$/.test(pathname)
   const isCameraRoute = pathname.startsWith('/camera')
 
-  if (
-    isAuthRoute ||
-    isLandingRoute ||
-    isReelRoute ||
-    isStoryViewerRoute ||
-    isCameraRoute
-  ) {
-    return <>{children}</>
-  }
+  if (isAuthRoute || isLandingRoute) return <>{children}</>
 
-  return <UnreadNotificationsProvider><AppShell>{children}</AppShell></UnreadNotificationsProvider>
+  const isFullscreenRoute = isReelRoute || isStoryViewerRoute || isCameraRoute
+  // Keep the same verified session owner on fullscreen routes: Stories, Reels
+  // and Camera also hold viewer-specific state even without navigation chrome.
+  return <UnreadNotificationsProvider initialViewerId={initialViewerId}>{isFullscreenRoute ? children : <AppShell>{children}</AppShell>}</UnreadNotificationsProvider>
 }

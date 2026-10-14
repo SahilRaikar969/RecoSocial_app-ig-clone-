@@ -26,6 +26,7 @@ function loadTs(path, mocks = {}) {
       throw new Error(`Unexpected dependency: ${name}`)
     },
     URL,
+    Headers,
     URLSearchParams,
     FormData,
     process: { env: {} },

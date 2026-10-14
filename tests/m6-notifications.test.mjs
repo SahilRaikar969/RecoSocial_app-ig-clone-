@@ -11,7 +11,7 @@ function fixture(){
  const state={viewer:'a',count:4,readCount:0,revision:0,pending:null,error:null}
  let authCallback
  const document={visibilityState:'visible',addEventListener:(name,fn)=>events.set(name,fn),removeEventListener:name=>events.delete(name)}
- const window={setInterval:fn=>{intervals.add(fn);return fn},clearInterval:fn=>intervals.delete(fn),setTimeout:fn=>timeouts.push(fn)}
+ const window={addEventListener:(name,fn)=>events.set(name,fn),removeEventListener:name=>events.delete(name),setInterval:fn=>{intervals.add(fn);return fn},clearInterval:fn=>intervals.delete(fn),setTimeout:fn=>timeouts.push(fn)}
  const fixtureModule={exports:{}}
  runInNewContext(output,{module:fixtureModule,exports:fixtureModule.exports,document,window,crypto:globalThis.crypto})
  const client={realtime:{async setAuth(...args){assert.equal(args.length,0);state.tokenReads=(state.tokenReads??0)+1;if(state.tokenPending)await state.tokenPending.promise;if(state.tokenError)throw Error('token unavailable');state.realtimeToken=state.cookieToken}},auth:{getUser:async()=>({data:{user:state.viewer?{id:state.viewer}:null},error:null}),onAuthStateChange(fn){authCallback=fn;return {data:{subscription:{unsubscribe(){state.stopped=true}}}}}},

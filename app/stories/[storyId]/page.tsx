@@ -24,7 +24,7 @@ export default async function StoryViewerPage({ params }: StoryViewerPageProps) 
 
   return (
     <StoryViewer
-      key={storyId}
+      key={`${profileId ?? 'guest'}:${storyId}`}
       viewerProfileId={profileId}
       previousAuthorStoryId={data.previousAuthorStoryId}
       nextAuthorStoryId={data.nextAuthorStoryId}

@@ -40,6 +40,8 @@ type EditPostFormProps = {
   post: EditablePost
   categories: CategoryOption[]
   errorMessage?: string
+  initialMediaUrl?: string | null
+  initialThumbnailUrl?: string | null
 }
 
 const MAX_CAPTION_LENGTH = 280
@@ -65,7 +67,12 @@ function isDirectPreviewableUrl(value: string) {
       pathname.endsWith('.gif') ||
       pathname.endsWith('.mp4') ||
       pathname.endsWith('.webm') ||
-      pathname.endsWith('.mov')
+      pathname.endsWith('.mov') ||
+      pathname.endsWith('.m4v') ||
+      pathname.endsWith('.3gp') ||
+      pathname.endsWith('.3g2') ||
+      pathname.endsWith('.ogv') ||
+      pathname.endsWith('.ogg')
     )
   } catch {
     return false
@@ -91,6 +98,8 @@ export function EditPostForm({
   post,
   categories,
   errorMessage = '',
+  initialMediaUrl,
+  initialThumbnailUrl,
 }: EditPostFormProps) {
   const existingCategoryNames = useMemo(
     () =>
@@ -107,9 +116,15 @@ export function EditPostForm({
 
   const [mediaType, setMediaType] = useState<'image' | 'video'>(post.media_type)
   const [caption, setCaption] = useState(post.caption || '')
-  const [mediaUrl, setMediaUrl] = useState(post.media_path || '')
-  const [enteredThumbnailUrl, setThumbnailUrl] = useState(post.thumbnail_path || '')
-  const thumbnailUrl = mediaType === 'video' ? enteredThumbnailUrl || post.thumbnail_path || '' : ''
+  const originalMediaUrl = initialMediaUrl ?? post.media_path ?? ''
+  const originalThumbnailUrl = initialThumbnailUrl ?? post.thumbnail_path ?? ''
+  const [mediaUrl, setMediaUrl] = useState(originalMediaUrl)
+  const [enteredThumbnailUrl, setThumbnailUrl] = useState(originalThumbnailUrl)
+  const thumbnailUrl = mediaType === 'video' ? enteredThumbnailUrl : ''
+  // Display browser URLs, but keep unchanged uploads as owner-scoped paths so
+  // the server still verifies their Storage metadata before saving.
+  const mediaPath = mediaUrl.trim() === originalMediaUrl ? post.media_path : mediaUrl
+  const thumbnailPath = thumbnailUrl.trim() === originalThumbnailUrl ? post.thumbnail_path || '' : thumbnailUrl
 
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
@@ -129,7 +144,7 @@ export function EditPostForm({
     setMediaType(nextType)
     if (nextType === 'image') {
       setThumbnailFile(null)
-      setThumbnailUrl('')
+      setThumbnailUrl(originalThumbnailUrl)
     }
   }
 
@@ -225,8 +240,8 @@ export function EditPostForm({
       <input type="hidden" name="expected_updated_at" value={post.updated_at} />
       <input type="hidden" name="dev_profile_id" value={profileId} />
       <input type="hidden" name="return_to" value={`/post/${post.id}/edit`} />
-      {mediaSourceMode === 'upload' ? <input type="hidden" name="media_path" value={mediaUrl} /> : null}
-      {mediaType === 'video' && thumbnailSourceMode === 'upload' ? <input type="hidden" name="thumbnail_path" value={thumbnailUrl} /> : null}
+      <input type="hidden" name="media_path" value={mediaPath} />
+      {mediaType === 'video' ? <input type="hidden" name="thumbnail_path" value={thumbnailPath} /> : null}
       <input type="hidden" name="media_type" value={mediaType} />
       {selectedCategories.map((name) => <input key={name} type="hidden" name="categories" value={name} />)}
       <div className="min-w-0 space-y-6">
@@ -250,7 +265,7 @@ export function EditPostForm({
           ) : (
             <div>
               <label htmlFor="post-media-url" className="mb-2 block text-sm font-medium text-zinc-200">Media link</label>
-              <input id="post-media-url" name="media_path" type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} className="rs-input" placeholder="https://example.com/photo.jpg" aria-describedby="post-url-hint" />
+              <input id="post-media-url" type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} className="rs-input" placeholder="https://example.com/photo.jpg" aria-describedby="post-url-hint" />
               <p id="post-url-hint" className="mt-2 text-xs leading-5 text-zinc-400">Keep the existing link or enter a new direct media link.</p>
             </div>
           )}
@@ -270,7 +285,7 @@ export function EditPostForm({
               ) : (
                 <div>
                   <label htmlFor="post-thumbnail-url" className="mb-2 block text-sm text-zinc-200">Cover link</label>
-                  <input id="post-thumbnail-url" name="thumbnail_path" type="url" value={thumbnailUrl} onChange={(event) => setThumbnailUrl(event.target.value)} className="rs-input" placeholder="https://example.com/cover.jpg" />
+                  <input id="post-thumbnail-url" type="url" value={thumbnailUrl} onChange={(event) => setThumbnailUrl(event.target.value)} className="rs-input" placeholder="https://example.com/cover.jpg" />
                 </div>
               )}
             </fieldset>
