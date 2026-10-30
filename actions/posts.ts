@@ -32,18 +32,25 @@ async function savePost(form: FormData, createNew: boolean): Promise<Failure | n
     const { data: categories, error: categoryError } = await client.from('categories').select('id,name').in('name', names)
     if (categoryError || !categories || categories.length !== names.length) throw new MediaMutationError('The selected categories could not be verified. Refresh and try again.')
     let version: string | null = null
+    let savedMedia: { media_type: string; media_path: string; thumbnail_path: string | null } | null = null
     if (!createNew) {
-      const { data: post, error } = await client.from('posts').select('id,author_id,updated_at').eq('id',postId).eq('author_id',profileId).maybeSingle()
+      const { data: post, error } = await client.from('posts').select('id,author_id,updated_at,media_type,media_path,thumbnail_path').eq('id',postId).eq('author_id',profileId).maybeSingle()
       if (error || !post) throw new MediaMutationError('This post is unavailable or you cannot edit it.')
+      savedMedia = post
       version = String(form.get('expected_updated_at') || post.updated_at)
       returnTo = String(form.get('return_to') || `/post/${postId}`)
     }
     const media: MediaInput = { file:fileField(form,'media_file'), path:String(form.get('media_path') || '').trim(), folder:kind === 'image' ? 'images' : 'videos', kind, maxBytes:(kind === 'image' ? 15 : 50)*MiB }
     const thumbnail: MediaInput = { file:kind === 'video' ? fileField(form,'thumbnail_file') : null, path:kind === 'video' ? String(form.get('thumbnail_path') || '').trim() : '', folder:'thumbnails',kind:'image',maxBytes:10*MiB,optional:true }
-    await validateMedia(media,profileId)
-    await validateMedia(thumbnail,profileId)
-    const mediaPath = await resolveMedia(client,profileId,media,fresh)
-    const thumbnailPath = await resolveMedia(client,profileId,thumbnail,fresh)
+    // Preserve only the exact reference read from this actor's existing row.
+    // Historical paths may predate owner folders; changed references still use
+    // normal upload validation, and the RPC checks the optimistic row version.
+    const keepMedia = !media.file && savedMedia?.media_type === kind && savedMedia.media_path === media.path
+    const keepThumbnail = !thumbnail.file && savedMedia?.media_type === kind && (savedMedia.thumbnail_path ?? '') === thumbnail.path
+    if (!keepMedia) await validateMedia(media,profileId)
+    if (!keepThumbnail) await validateMedia(thumbnail,profileId)
+    const mediaPath = keepMedia ? savedMedia!.media_path : await resolveMedia(client,profileId,media,fresh)
+    const thumbnailPath = keepThumbnail ? savedMedia!.thumbnail_path : await resolveMedia(client,profileId,thumbnail,fresh)
     databaseStarted = true
     safeToClean = false
     const { error } = await client.rpc('save_post_with_categories', {

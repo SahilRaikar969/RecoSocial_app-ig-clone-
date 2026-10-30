@@ -11,7 +11,7 @@ import ts from 'typescript'
 const require = createRequire(import.meta.url)
 const rendererPath = require.resolve('next/dist/compiled/react-dom/cjs/react-dom-client.production.js')
 const source = ts.createSourceFile(rendererPath, readFileSync(rendererPath, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
-const functionNames = ['attachPingListener', 'pingSuspendedRoot', 'markRootSuspended']
+const functionNames = ['attachPingListener', 'pingSuspendedRoot', 'getEntangledLanes', 'markRootSuspended']
 const rendererFunctions = functionNames.map(name => {
   const matches = source.statements.filter(statement => ts.isFunctionDeclaration(statement) && statement.name?.text === name)
   assert.equal(matches.length, 1, `Review the bundled renderer retry regression after upstream changes: ${name}`)
@@ -25,6 +25,8 @@ function fixture({ lane = 256, suspended = lane, rendering = true, exitStatus = 
     suspendedLanes: suspended,
     pingedLanes: 0,
     warmLanes: suspended,
+    entangledLanes: 0,
+    entanglements: Array(31).fill(0),
     expirationTimes: Array(31).fill(-1),
   }
   const calls = { scheduled: [], restarted: [] }

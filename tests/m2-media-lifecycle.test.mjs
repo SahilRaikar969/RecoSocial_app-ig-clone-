@@ -41,7 +41,7 @@ function fixture(options={}) {
           writes.push(call)
           if(options.answer)return options.answer(call)
           if(table==='categories')return {data:[{id:'category',name:'Tech'}],error:null}
-          if(table==='posts')return {data:{id:'post',author_id:owner,updated_at:'2026-10-08T00:00:00Z'},error:null}
+          if(table==='posts')return {data:options.post === null ? null : {id:'post',author_id:owner,updated_at:'2026-10-08T00:00:00Z',...options.post},error:null}
           if(table==='profiles')return call.method==='update'?{data:options.updateMissing?null:{id:owner},error:options.dbError || null}:{data:{id:owner,updated_at:'2026-10-08T00:00:00Z'},error:null}
           return {data:null,error:null}
         }).then(resolve,reject)},}
@@ -124,6 +124,50 @@ test('edit supplies form version and never deletes prior media on success',async
   const f=fixture(),data=postForm();data.set('post_id','post');data.set('expected_updated_at','2026-10-07T00:00:00Z')
   await assert.rejects(f.actions.updatePost(data),e=>e instanceof Redirect)
   assert.equal(f.rpcs[0].args.expected_updated_at,'2026-10-07T00:00:00Z');assert.deepEqual(f.removed,[])
+})
+
+test('edit preserves an unchanged historical non-owner reference from the verified owned row',async()=>{
+  const path='images/'+other+'/historical.jpg'
+  const f=fixture({post:{media_type:'image',media_path:path,thumbnail_path:null},infoError:true})
+  const data=form({post_id:'post',caption:'Caption only',media_type:'image',categories:'Tech',media_path:path,expected_updated_at:'2026-10-08T00:00:00Z'})
+  await assert.rejects(f.actions.updatePost(data),e=>e instanceof Redirect)
+  assert.equal(f.rpcs[0].args.post_media_path,path)
+  assert.equal(f.uploads.length,0);assert.deepEqual(f.removed,[])
+  assert.ok(f.writes.find(call=>call.table==='posts').filters.some(([key,value])=>key==='author_id'&&value===owner))
+})
+
+test('edit rejects a changed foreign reference even when the post has historical media',async()=>{
+  const f=fixture({post:{media_type:'image',media_path:'images/'+other+'/old.jpg',thumbnail_path:null}})
+  const data=form({post_id:'post',caption:'Changed',media_type:'image',categories:'Tech',media_path:'images/'+other+'/different.jpg'})
+  assert.equal((await f.actions.updatePost(data)).ok,false)
+  assert.equal(f.rpcs.length,0);assert.equal(f.uploads.length,0)
+})
+
+test('unavailable owned-row lookup cannot authorize historical media reuse',async()=>{
+  const f=fixture({post:null})
+  const data=form({post_id:'post',caption:'Changed',media_type:'image',categories:'Tech',media_path:'images/'+other+'/old.jpg'})
+  assert.equal((await f.actions.updatePost(data)).ok,false);assert.equal(f.rpcs.length,0)
+})
+
+test('historical video and thumbnail are preserved with the submitted optimistic version',async()=>{
+  const path='videos/'+other+'/historical.mp4',thumbnail='thumbnails/'+other+'/historical.jpg'
+  const f=fixture({post:{media_type:'video',media_path:path,thumbnail_path:thumbnail},infoError:true,dbError:{code:'40001'}})
+  const data=form({post_id:'post',caption:'Caption only',media_type:'video',categories:'Tech',media_path:path,thumbnail_path:thumbnail,expected_updated_at:'2026-10-07T00:00:00Z'})
+  const result=await f.actions.updatePost(data)
+  assert.equal(result.ok,false);assert.match(result.error,/Reload/)
+  assert.equal(f.rpcs[0].args.post_media_path,path);assert.equal(f.rpcs[0].args.post_thumbnail_path,thumbnail)
+  assert.equal(f.rpcs[0].args.expected_updated_at,'2026-10-07T00:00:00Z');assert.deepEqual(f.removed,[])
+})
+
+test('historical reference exception does not admit a replacement file or changed media kind',async()=>{
+  const path='images/'+other+'/historical.jpg'
+  for(const change of ['file','kind']){
+    const f=fixture({post:{media_type:'image',media_path:path,thumbnail_path:null}})
+    const data=form({post_id:'post',caption:'Changed',media_type:'image',categories:'Tech',media_path:path})
+    if(change==='file')data.set('media_file',new File(['invalid'],'bad.png',{type:'image/png'}))
+    else data.set('media_type','video')
+    assert.equal((await f.actions.updatePost(data)).ok,false);assert.equal(f.rpcs.length,0);assert.equal(f.uploads.length,0)
+  }
 })
 test('direct browser preparation strips all file payloads and reuses upload on retry',async()=>{
   const f=fixture(),prepare=load('lib/media/direct-upload.ts',f.mocks).createMediaUploadSession(),data=postForm()

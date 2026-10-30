@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Local agent scratch artifacts are not application source.
 /.codex/
+
+.vercel
+.env*.local

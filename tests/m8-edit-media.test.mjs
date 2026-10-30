@@ -93,7 +93,7 @@ for (const extension of ['webm', 'm4v', 'ogg']) test('uploaded ' + extension + '
   field(tree, 'post-caption').props.onChange({ target: { value: 'Changed caption only' } })
   tree = f.render()
   assertCanSubmit(tree)
-  assert.equal(value(tree, 'media_path'), post.media_path, 'unchanged upload still goes through server Storage.info ownership/metadata checks')
+  assert.equal(value(tree, 'media_path'), post.media_path, 'server receives the unchanged reference for comparison with the verified owned row')
   assert.equal(value(tree, 'thumbnail_path'), post.thumbnail_path)
   assert.equal(value(tree, 'expected_updated_at'), post.updated_at)
 })
